@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Skripsi Analyzer – FEB UNPAM
 
-## Getting Started
+Aplikasi analisis data skripsi Manajemen Pemasaran format UNPAM/FEB berbasis web.
+Semua proses berjalan **client-side** — tidak ada data yang dikirim ke server.
 
-First, run the development server:
+> ⚠️ **Pastikan data berasal dari responden asli.**
+
+---
+
+## Fitur
+
+| Fitur | Deskripsi |
+|-------|-----------|
+| Upload Excel/CSV | Drag-and-drop atau pilih file, auto-deteksi kolom variabel |
+| Mapping Variabel | Tentukan X1, X2, Y dan item masing-masing |
+| Statistik Deskriptif | Frekuensi Likert 1–5, skor total, mean, kategori STS/TS/KS/S/SS |
+| Uji Validitas | Pearson item-total vs r tabel (dapat diedit, default n=100: 0.196) |
+| Uji Reliabilitas | Cronbach's Alpha per variabel |
+| Regresi Linear Berganda | Y = a + b₁X₁ + b₂X₂, koefisien, t hitung, p-value |
+| Uji F & R² | F hitung, sig F, R, R Square, Adjusted R² |
+| Multikolinearitas | Tolerance, VIF per variabel X |
+| Normalitas Residual | Mean & std residual |
+| Heteroskedastisitas | Pendekatan Glejser (korelasi |e| dengan X) |
+| Narasi Bab 4 | Teks otomatis Bahasa Indonesia, tombol salin |
+
+---
+
+## Tech Stack
+
+- **Next.js 16** App Router
+- **TypeScript**
+- **Tailwind CSS v4**
+- **shadcn/ui**
+- **xlsx** – baca file Excel/CSV
+- **Semua kalkulasi custom** – tanpa library statistik eksternal
+
+---
+
+## Cara Menjalankan
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Build Production
 
-## Learn More
+```bash
+npm run build
+npm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Template Data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Download template Excel di: `public/templates/template-data-responden.xlsx`
 
-## Deploy on Vercel
+Kolom template:
+- `Responden` – nomor/nama responden
+- `X1.1` – `X1.10` – item variabel X1
+- `X2.1` – `X2.10` – item variabel X2
+- `Y.1` – `Y.10` – item variabel Y
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Isi setiap sel item dengan skor Likert **1–5**.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Struktur Folder
+
+```
+app/
+  page.tsx          → Dashboard
+  upload/           → Upload & preview data
+  mapping/          → Mapping variabel
+  deskriptif/       → Statistik deskriptif
+  validitas/        → Uji validitas
+  reliabilitas/     → Uji reliabilitas
+  regresi/          → Regresi & asumsi klasik
+  narasi/           → Narasi Bab 4
+
+components/
+  layout/           → Sidebar, AppShell
+  ui/               → shadcn/ui components
+
+lib/
+  context.tsx       → Global state (React Context + sessionStorage)
+  store.ts          → Session storage helpers
+  excel/parser.ts   → Excel/CSV parser (xlsx)
+  statistics/
+    descriptive.ts  → Statistik deskriptif Likert
+    validity.ts     → Uji validitas (Pearson)
+    reliability.ts  → Cronbach's Alpha
+    regression.ts   → Regresi, multikolinearitas, normalitas, heteroskedastisitas
+  narratives/
+    generator.ts    → Generator narasi Bab 4 Bahasa Indonesia
+
+types/index.ts      → TypeScript interfaces
+public/templates/   → Template Excel
+```
+
+---
+
+## Catatan
+
+- Tidak memerlukan database atau backend
+- Data tersimpan sementara di `sessionStorage` browser (hilang saat tab ditutup)
+- Tidak ada login
+- Tidak terhubung ke Supabase, AturGudang, atau layanan eksternal manapun
