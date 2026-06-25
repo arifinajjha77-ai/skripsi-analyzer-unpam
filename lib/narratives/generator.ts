@@ -7,17 +7,44 @@ import {
   HeteroskedasticityResult,
   VariableConfig,
 } from "@/types";
+import {
+  REFERENCE_DB,
+  getReferencesByTopic,
+  type Reference,
+  type TopicKey,
+} from "@/lib/reference-engine";
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function fmt(n: number, decimals = 3): string {
   return n.toFixed(decimals);
 }
 
+/** Collect primary references for a topic */
+function refs(topic: TopicKey): Reference[] {
+  return getReferencesByTopic(topic);
+}
+
+/** Get first reference's theory text for a topic */
+function theoryIntro(topic: TopicKey, preferredId?: string): string {
+  const list = refs(topic);
+  if (list.length === 0) return "";
+  const primary = preferredId ? list.find((r) => r.id === preferredId) ?? list[0] : list[0];
+  return primary.teori[topic] ?? "";
+}
+
+// ─── Section builders (original API preserved) ───────────────────────────────
+
 export function narrativeValiditas(results: ValidityResult[]): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji Validitas**\n");
+
+  const intro = theoryIntro("validitas", "sugiyono2019");
+  if (intro) lines.push(intro + "\n");
+
   lines.push(
-    "Uji validitas dilakukan dengan menggunakan korelasi Pearson Product Moment antara skor item dengan skor total. " +
-    "Suatu item dinyatakan valid apabila nilai r hitung lebih besar dari r tabel.\n"
+    "Uji validitas dilakukan dengan menggunakan korelasi Pearson Product Moment antara skor item " +
+    "dengan skor total. Suatu item dinyatakan valid apabila nilai r hitung lebih besar dari r tabel.\n"
   );
 
   for (const res of results) {
@@ -39,10 +66,9 @@ export function narrativeValiditas(results: ValidityResult[]): string {
 export function narrativeReliabilitas(results: ReliabilityResult[]): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji Reliabilitas**\n");
-  lines.push(
-    "Uji reliabilitas menggunakan metode Cronbach's Alpha. Instrumen penelitian dinyatakan reliabel " +
-    "apabila nilai Cronbach's Alpha ≥ 0,60.\n"
-  );
+
+  const intro = theoryIntro("reliabilitas", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
 
   for (const res of results) {
     lines.push(
@@ -62,7 +88,10 @@ export function narrativeRegresi(result: RegressionResult, yName: string): strin
   const lines: string[] = [];
   lines.push("**Hasil Analisis Regresi Linear Berganda**\n");
 
-  const varParts = result.variables.map((key, i) => {
+  const intro = theoryIntro("regresi", "priyatno2016");
+  if (intro) lines.push(intro + "\n");
+
+  const varParts = result.variables.map((key) => {
     const b = result.coefficients[key];
     return `${b >= 0 ? "+" : ""} ${fmt(b, 3)}${key}`;
   });
@@ -96,10 +125,9 @@ export function narrativeRegresi(result: RegressionResult, yName: string): strin
 export function narrativeUjiT(result: RegressionResult, yName: string): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji t (Parsial)**\n");
-  lines.push(
-    "Uji t dilakukan untuk mengetahui pengaruh masing-masing variabel independen secara parsial terhadap variabel dependen. " +
-    "Hipotesis diterima apabila nilai signifikansi < 0,05.\n"
-  );
+
+  const intro = theoryIntro("uji_t", "priyatno2016");
+  if (intro) lines.push(intro + "\n");
 
   result.variables.forEach((key, i) => {
     const name = result.variableNames[i];
@@ -121,9 +149,9 @@ export function narrativeUjiT(result: RegressionResult, yName: string): string {
 export function narrativeUjiF(result: RegressionResult, yName: string): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji F (Simultan)**\n");
-  lines.push(
-    "Uji F dilakukan untuk mengetahui apakah seluruh variabel independen secara bersama-sama (simultan) berpengaruh terhadap variabel dependen.\n"
-  );
+
+  const intro = theoryIntro("uji_f", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
 
   const berpengaruh = result.fSig < 0.05;
   lines.push(
@@ -141,18 +169,15 @@ export function narrativeRSquare(result: RegressionResult, yName: string): strin
   const lines: string[] = [];
   lines.push("**Koefisien Determinasi (R²)**\n");
 
+  const intro = theoryIntro("r_square", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
+
   const persen = (result.rSquare * 100).toFixed(2);
   const sisanya = (100 - parseFloat(persen)).toFixed(2);
 
   lines.push(
     `Nilai koefisien korelasi (R) sebesar **${fmt(result.r, 4)}** menunjukkan tingkat hubungan yang ` +
-    (result.r >= 0.8
-      ? "sangat kuat"
-      : result.r >= 0.6
-      ? "kuat"
-      : result.r >= 0.4
-      ? "sedang"
-      : "lemah") +
+    (result.r >= 0.8 ? "sangat kuat" : result.r >= 0.6 ? "kuat" : result.r >= 0.4 ? "sedang" : "lemah") +
     ` antara variabel independen dengan ${yName}.\n\n` +
     `Nilai koefisien determinasi (R²) sebesar **${fmt(result.rSquare, 4)}** atau **${persen}%** menunjukkan bahwa ` +
     `variabel-variabel independen mampu menjelaskan variasi ${yName} sebesar ${persen}%, ` +
@@ -165,10 +190,9 @@ export function narrativeRSquare(result: RegressionResult, yName: string): strin
 export function narrativeMultikolinearitas(results: MulticollinearityResult[]): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji Multikolinearitas**\n");
-  lines.push(
-    "Uji multikolinearitas dilakukan untuk mendeteksi adanya korelasi yang tinggi antar variabel independen. " +
-    "Model dikatakan bebas dari multikolinearitas apabila nilai Tolerance > 0,10 dan nilai VIF < 10.\n"
-  );
+
+  const intro = theoryIntro("multikolinearitas", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
 
   const allGood = results.every((r) => r.tolerance > 0.1 && r.vif < 10);
 
@@ -192,9 +216,10 @@ export function narrativeMultikolinearitas(results: MulticollinearityResult[]): 
 export function narrativeNormalitas(result: NormalityResult): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji Normalitas Residual**\n");
-  lines.push(
-    "Uji normalitas dilakukan untuk menguji apakah residual model regresi berdistribusi normal.\n"
-  );
+
+  const intro = theoryIntro("normalitas", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
+
   lines.push(
     `Diperoleh nilai mean residual sebesar **${fmt(result.meanResidual, 4)}** dan standar deviasi residual sebesar **${fmt(result.stdResidual, 4)}**. ` +
     result.interpretation
@@ -208,6 +233,10 @@ export function narrativeNormalitas(result: NormalityResult): string {
 export function narrativeHeteroskedastisitas(results: HeteroskedasticityResult[]): string {
   const lines: string[] = [];
   lines.push("**Hasil Uji Heteroskedastisitas**\n");
+
+  const intro = theoryIntro("heteroskedastisitas", "ghozali2018");
+  if (intro) lines.push(intro + "\n");
+
   lines.push(
     "Uji heteroskedastisitas dilakukan menggunakan pendekatan Glejser sederhana, yaitu dengan menghitung korelasi " +
     "antara nilai absolut residual dengan masing-masing variabel independen.\n"
@@ -228,7 +257,14 @@ export function narrativeHeteroskedastisitas(results: HeteroskedasticityResult[]
   return lines.join("\n");
 }
 
-export function generateBab4Narasi(params: {
+// ─── Enhanced generator with references tracking ─────────────────────────────
+
+export interface Bab4EnhancedResult {
+  text: string;
+  refsUsed: Reference[];
+}
+
+export function generateBab4Enhanced(params: {
   validityResults: ValidityResult[];
   reliabilityResults: ReliabilityResult[];
   regressionResult: RegressionResult;
@@ -236,16 +272,27 @@ export function generateBab4Narasi(params: {
   normalityResult: NormalityResult;
   heteroskedasticityResults: HeteroskedasticityResult[];
   yVariable: VariableConfig;
-}): string {
+}): Bab4EnhancedResult {
   const {
-    validityResults,
-    reliabilityResults,
-    regressionResult,
-    multicollinearityResults,
-    normalityResult,
-    heteroskedasticityResults,
-    yVariable,
+    validityResults, reliabilityResults, regressionResult,
+    multicollinearityResults, normalityResult, heteroskedasticityResults, yVariable,
   } = params;
+
+  // Collect references used per topic
+  const topicsUsed: TopicKey[] = [
+    "validitas", "reliabilitas", "multikolinearitas",
+    "normalitas", "heteroskedastisitas", "regresi", "uji_t", "uji_f", "r_square",
+  ];
+  const refsUsed: Reference[] = [];
+  const seenIds = new Set<string>();
+  for (const topic of topicsUsed) {
+    for (const ref of getReferencesByTopic(topic)) {
+      if (!seenIds.has(ref.id)) {
+        seenIds.add(ref.id);
+        refsUsed.push(ref);
+      }
+    }
+  }
 
   const sections = [
     "# BAB IV – HASIL PENELITIAN DAN PEMBAHASAN\n",
@@ -270,5 +317,14 @@ export function generateBab4Narasi(params: {
     "> ⚠️ **Catatan:** Pastikan data berasal dari responden asli. Seluruh hasil analisis di atas diperoleh berdasarkan data yang Anda unggah.",
   ];
 
-  return sections.join("\n");
+  return { text: sections.join("\n"), refsUsed };
 }
+
+// ─── Legacy wrapper (backward-compatible) ────────────────────────────────────
+
+export function generateBab4Narasi(params: Parameters<typeof generateBab4Enhanced>[0]): string {
+  return generateBab4Enhanced(params).text;
+}
+
+// ─── Re-export reference helpers ─────────────────────────────────────────────
+export { REFERENCE_DB, getReferencesByTopic } from "@/lib/reference-engine";

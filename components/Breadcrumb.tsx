@@ -7,7 +7,8 @@ import { ChevronRight, Home } from "lucide-react";
 const ROUTE_MAP: Record<string, { label: string; group?: string }> = {
   "/":               { label: "Dashboard" },
   "/project":        { label: "Project" },
-  "/settings":       { label: "Pengaturan" },
+  "/settings":          { label: "Pengaturan" },
+  "/settings/template": { label: "Template Kampus", group: "Pengaturan" },
   "/judul":          { label: "Generator Judul",      group: "Generator" },
   "/kuesioner":      { label: "Kuesioner",            group: "Generator" },
   "/latar-belakang": { label: "Latar Belakang",       group: "Generator" },

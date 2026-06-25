@@ -13,6 +13,8 @@ export interface AppSettings {
   margin: string;
   spasi: string;
   font: string;
+  /** Template ID from lib/templates registry */
+  template: string;
 }
 
 export const defaultSettings: AppSettings = {
@@ -26,6 +28,7 @@ export const defaultSettings: AppSettings = {
   margin: "4-3-3-3",
   spasi: "1.5",
   font: "Times New Roman",
+  template: "unpam",
 };
 
 export function loadSettings(): AppSettings {

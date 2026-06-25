@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck, TrendingUp,
   FileText, LayoutDashboard, X, BookOpen, ClipboardList, Newspaper,
-  GitFork, Table2, Users, Settings, FolderOpen,
+  GitFork, Table2, Users, Settings, FolderOpen, Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/lib/context";
@@ -159,6 +159,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           >
             <Settings className="w-4 h-4 text-slate-400 shrink-0" />
             Pengaturan
+          </Link>
+          <Link
+            href="/settings/template"
+            onClick={onClose}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              pathname === "/settings/template" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            )}
+          >
+            <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+            Template Kampus
           </Link>
           <div className="px-3 py-2">
             <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1.5 leading-relaxed border border-amber-100">
