@@ -9,8 +9,8 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Skripsi Analyzer – FEB UNPAM",
-  description: "Aplikasi analisis data skripsi Manajemen Pemasaran UNPAM",
+  title: "SmartCampus – Academic Workspace Indonesia",
+  description: "Satu platform untuk semua kebutuhan akademik mahasiswa — Skripsi, Makalah, Proposal, dan lebih banyak lagi.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
