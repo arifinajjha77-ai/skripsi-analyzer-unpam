@@ -6,7 +6,7 @@ import {
   BookOpen, ClipboardList, Newspaper, GitFork, Table2,
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck,
   TrendingUp, FileText, Users, Zap, Package, ChevronRight,
-  FolderOpen, ArrowRight,
+  FolderOpen, ArrowRight, BookMarked,
 } from "lucide-react";
 import { useAppContext } from "@/lib/context";
 import { loadThesisState } from "@/lib/thesis/store";
@@ -43,6 +43,7 @@ const QUICK_ACTIONS = [
 const NAV_CARDS = [
   { label: "Generator Judul",      desc: "Buat judul, rumusan, hipotesis",     icon: BookOpen,      href: "/judul",           color: "border-blue-200 bg-blue-50",   iconColor: "text-blue-600" },
   { label: "Kuesioner",            desc: "Generate & export kuesioner DOCX",   icon: ClipboardList, href: "/kuesioner",       color: "border-blue-200 bg-blue-50",   iconColor: "text-blue-600" },
+  { label: "Belajar Variabel",     desc: "Definisi, indikator, glosarium",     icon: BookMarked,    href: "/variabel",        color: "border-indigo-200 bg-indigo-50",iconColor: "text-indigo-600" },
   { label: "Latar Belakang",       desc: "Generator BAB I otomatis",           icon: Newspaper,     href: "/latar-belakang",  color: "border-blue-200 bg-blue-50",   iconColor: "text-blue-600" },
   { label: "Kerangka Berpikir",    desc: "Diagram SVG + export PNG",           icon: GitFork,       href: "/kerangka",        color: "border-blue-200 bg-blue-50",   iconColor: "text-blue-600" },
   { label: "Operasional Variabel", desc: "Tabel definisi operasional",         icon: Table2,        href: "/operasional",     color: "border-blue-200 bg-blue-50",   iconColor: "text-blue-600" },

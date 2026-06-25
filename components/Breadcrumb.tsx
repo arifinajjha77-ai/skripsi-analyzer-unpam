@@ -11,6 +11,7 @@ const ROUTE_MAP: Record<string, { label: string; group?: string }> = {
   "/settings/template": { label: "Template Kampus", group: "Pengaturan" },
   "/judul":          { label: "Generator Judul",      group: "Generator" },
   "/kuesioner":      { label: "Kuesioner",            group: "Generator" },
+  "/variabel":       { label: "Belajar Variabel",     group: "Generator" },
   "/latar-belakang": { label: "Latar Belakang",       group: "Generator" },
   "/kerangka":       { label: "Kerangka Berpikir",    group: "Generator" },
   "/operasional":    { label: "Operasional Variabel", group: "Generator" },

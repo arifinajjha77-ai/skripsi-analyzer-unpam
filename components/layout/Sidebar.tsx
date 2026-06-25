@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck, TrendingUp,
   FileText, LayoutDashboard, X, BookOpen, ClipboardList, Newspaper,
-  GitFork, Table2, Users, Settings, FolderOpen, Layers,
+  GitFork, Table2, Users, Settings, FolderOpen, Layers, BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/lib/context";
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   // Generator
   { href: "/judul",           label: "Generator Judul",      icon: BookOpen,      group: "Generator", alwaysEnabled: true },
   { href: "/kuesioner",       label: "Kuesioner",            icon: ClipboardList, group: "Generator", alwaysEnabled: true },
+  { href: "/variabel",        label: "Belajar Variabel",     icon: BookMarked,    group: "Generator", alwaysEnabled: true },
   { href: "/latar-belakang",  label: "Latar Belakang",       icon: Newspaper,     group: "Generator", alwaysEnabled: true },
   { href: "/kerangka",        label: "Kerangka Berpikir",    icon: GitFork,       group: "Generator", alwaysEnabled: true },
   { href: "/operasional",     label: "Operasional Variabel", icon: Table2,        group: "Generator", alwaysEnabled: true },
