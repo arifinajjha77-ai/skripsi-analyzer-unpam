@@ -6,6 +6,7 @@ import {
   SalesRow,
   ConsumerRow,
   CompetitorRow,
+  CompetitorSource,
   DataMode,
   defaultBab1State,
   loadBab1State,
@@ -21,6 +22,13 @@ import {
   buildCompetitorTable,
 } from "@/lib/thesis/bab1Generator";
 import { generateSyncEstimation } from "@/lib/thesis/dataEstimator";
+import {
+  searchCompetitors,
+  generateEstimasiKompetitor,
+  SOURCE_LABELS,
+  SOURCE_COLORS,
+  type CompetitorSearchResult,
+} from "@/lib/thesis/competitorDb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -39,6 +47,10 @@ import {
   Wand2,
   Lock,
   AlertTriangle,
+  Search,
+  Sparkles,
+  PlusCircle,
+  Info,
 } from "lucide-react";
 
 // ─── Copy button ───────────────────────────────────────────────────────────────
@@ -259,6 +271,285 @@ function ConsumerTableEditor({
   );
 }
 
+// ─── Auto Riset Kompetitor Panel ───────────────────────────────────────────────
+
+type RisetMode = "manual" | "auto" | "estimasi";
+
+function AutoRisetPanel({
+  namaObjek,
+  jenisUsaha,
+  lokasi,
+  onAdd,
+}: {
+  namaObjek: string;
+  jenisUsaha: string;
+  lokasi: string;
+  onAdd: (rows: CompetitorRow[]) => void;
+}) {
+  const [mode, setMode] = useState<RisetMode>("manual");
+  const [produkKeyword, setProdukKeyword] = useState("");
+  const [extraKeyword, setExtraKeyword] = useState("");
+  const [results, setResults] = useState<CompetitorSearchResult[]>([]);
+  const [estimasiResults, setEstimasiResults] = useState<ReturnType<typeof generateEstimasiKompetitor>>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [searched, setSearched] = useState(false);
+
+  function doSearch() {
+    const r = searchCompetitors(jenisUsaha, produkKeyword, lokasi, extraKeyword);
+    setResults(r);
+    setSearched(true);
+    setSelected(new Set());
+  }
+
+  function doEstimasi() {
+    const r = generateEstimasiKompetitor(jenisUsaha, lokasi, produkKeyword, namaObjek);
+    setEstimasiResults(r);
+    setSearched(true);
+    setSelected(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function addSelected() {
+    const allEntries = mode === "auto" ? results.map((r) => r.entry) : estimasiResults;
+    const toAdd: CompetitorRow[] = allEntries
+      .filter((e) => selected.has(e.id))
+      .map((e) => ({
+        nama: e.nama,
+        produk: e.produk,
+        harga: e.harga,
+        source: e.source as CompetitorSource,
+        catatan: e.catatan,
+      }));
+    if (toAdd.length > 0) {
+      onAdd(toAdd);
+      setSelected(new Set());
+      toast.success(`${toAdd.length} kompetitor ditambahkan ke tabel`);
+    }
+  }
+
+  function addSingle(id: string, source: "auto" | "estimasi") {
+    const allEntries = source === "auto" ? results.map((r) => r.entry) : estimasiResults;
+    const entry = allEntries.find((e) => e.id === id);
+    if (!entry) return;
+    onAdd([{
+      nama: entry.nama,
+      produk: entry.produk,
+      harga: entry.harga,
+      source: entry.source as CompetitorSource,
+      catatan: entry.catatan,
+    }]);
+    toast.success("Kompetitor ditambahkan ke tabel");
+  }
+
+  const displayEntries = mode === "auto" ? results.map((r) => r.entry) : estimasiResults;
+
+  return (
+    <div className="space-y-4">
+      {/* Mode selector */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Mode Input Kompetitor</p>
+        <div className="flex flex-wrap gap-2">
+          {(["manual", "auto", "estimasi"] as RisetMode[]).map((m) => {
+            const labels: Record<RisetMode, string> = {
+              manual: "✏ Manual",
+              auto: "🔍 Auto Search",
+              estimasi: "📊 Estimasi Aman",
+            };
+            return (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setSearched(false); }}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border-2 transition-all ${
+                  mode === m
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-slate-200 text-slate-500 hover:border-slate-300"
+                }`}
+              >
+                {labels[m]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Auto Search form */}
+      {mode === "auto" && (
+        <div className="space-y-3 bg-blue-50/60 border border-blue-200 rounded-xl p-4">
+          <p className="text-xs font-semibold text-blue-700 flex items-center gap-1.5">
+            <Search className="w-3.5 h-3.5" /> Auto Search dari Database Referensi
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Produk Utama</label>
+              <input
+                value={produkKeyword}
+                onChange={(e) => setProdukKeyword(e.target.value)}
+                placeholder="cth: Ghost Lady, Jibbitz, Keychain"
+                className="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Keyword Tambahan</label>
+              <input
+                value={extraKeyword}
+                onChange={(e) => setExtraKeyword(e.target.value)}
+                placeholder="cth: online, depok, custom"
+                className="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={doSearch}
+              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Search className="w-3.5 h-3.5" /> Cari Kompetitor
+            </button>
+            {selected.size > 0 && (
+              <button
+                onClick={addSelected}
+                className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <PlusCircle className="w-3.5 h-3.5" /> Gunakan {selected.size} Terpilih
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Estimasi Aman form */}
+      {mode === "estimasi" && (
+        <div className="space-y-3 bg-yellow-50/60 border border-yellow-200 rounded-xl p-4">
+          <p className="text-xs font-semibold text-yellow-700 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Estimasi Aman — Kompetitor Umum
+          </p>
+          <p className="text-xs text-yellow-600">
+            Sistem akan menghasilkan nama kompetitor estimasi berdasarkan jenis usaha dan lokasi Anda.
+            Data bersifat referensi dan harus diverifikasi.
+          </p>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Produk Utama (opsional)</label>
+            <input
+              value={produkKeyword}
+              onChange={(e) => setProdukKeyword(e.target.value)}
+              placeholder="cth: jibbitz, kaos kaki, kopi"
+              className="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={doEstimasi}
+              className="inline-flex items-center gap-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Generate Estimasi
+            </button>
+            {selected.size > 0 && (
+              <button
+                onClick={addSelected}
+                className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <PlusCircle className="w-3.5 h-3.5" /> Gunakan {selected.size} Terpilih
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Results preview */}
+      {searched && mode !== "manual" && (
+        <div className="space-y-3">
+          {displayEntries.length === 0 ? (
+            <div className="text-center py-6 text-sm text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+              Tidak ditemukan kompetitor yang cocok. Coba ubah keyword atau gunakan mode Estimasi Aman.
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-600">{displayEntries.length} kompetitor ditemukan — pilih yang ingin digunakan:</p>
+                <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === displayEntries.length && displayEntries.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelected(new Set(displayEntries.map((e) => e.id)));
+                      else setSelected(new Set());
+                    }}
+                    className="rounded"
+                  />
+                  Pilih Semua
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {displayEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`relative rounded-xl border-2 p-3 cursor-pointer transition-all ${
+                      selected.has(entry.id)
+                        ? "border-blue-400 bg-blue-50"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                    onClick={() => toggleSelect(entry.id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{entry.nama}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{entry.produk}</p>
+                        <p className="text-xs font-medium text-slate-700 mt-1">{entry.harga}</p>
+                        {entry.catatan && (
+                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 italic">{entry.catatan}</p>
+                        )}
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(entry.id)}
+                        onChange={() => {}}
+                        className="shrink-0 mt-0.5 rounded"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${SOURCE_COLORS[entry.source]}`}>
+                        {SOURCE_LABELS[entry.source]}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addSingle(entry.id, mode === "auto" ? "auto" : "estimasi"); }}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                      >
+                        <PlusCircle className="w-3 h-3" /> Gunakan
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Warning disclaimer */}
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  <span className="font-semibold">Peringatan:</span> Data kompetitor bersifat referensi awal.
+                  Pastikan pengguna melakukan pengecekan ulang sebelum digunakan dalam skripsi.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dynamic table editors ─────────────────────────────────────────────────────
+
 function CompetitorTableEditor({
   data,
   onChange,
@@ -270,7 +561,7 @@ function CompetitorTableEditor({
     onChange(data.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)));
   }
   function addRow() {
-    onChange([...data, { nama: "", produk: "", harga: "" }]);
+    onChange([...data, { nama: "", produk: "", harga: "", source: "manual" }]);
   }
   function removeRow(i: number) {
     if (data.length <= 1) return;
@@ -283,7 +574,7 @@ function CompetitorTableEditor({
         <table className="w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {["Nama Kompetitor", "Produk Utama", "Harga", ""].map((h) => (
+              {["Nama Kompetitor", "Produk", "Harga", "Sumber", ""].map((h) => (
                 <th key={h} className="text-xs text-left px-3 py-2 font-semibold text-slate-600">{h}</th>
               ))}
             </tr>
@@ -293,15 +584,24 @@ function CompetitorTableEditor({
               <tr key={i} className="border-t border-slate-100">
                 <td className="px-2 py-1.5">
                   <input value={row.nama} onChange={(e) => update(i, "nama", e.target.value)}
-                    className="w-40 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="cth: Kaoskaki Store" />
+                    className="w-36 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="Nama kompetitor" />
                 </td>
                 <td className="px-2 py-1.5">
                   <input value={row.produk} onChange={(e) => update(i, "produk", e.target.value)}
-                    className="w-36 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="cth: Ankle Terry" />
+                    className="w-32 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="Produk utama" />
                 </td>
                 <td className="px-2 py-1.5">
                   <input value={row.harga} onChange={(e) => update(i, "harga", e.target.value)}
-                    className="w-28 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="cth: Rp18.000" />
+                    className="w-24 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="Rp18.000" />
+                </td>
+                <td className="px-2 py-1.5">
+                  {row.source && row.source !== "manual" ? (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full border ${SOURCE_COLORS[row.source]}`}>
+                      {SOURCE_LABELS[row.source]}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">Manual</span>
+                  )}
                 </td>
                 <td className="px-2 py-1.5">
                   <button onClick={() => removeRow(i)} className="text-slate-300 hover:text-red-500 transition-colors">
@@ -314,7 +614,7 @@ function CompetitorTableEditor({
         </table>
       </div>
       <button onClick={addRow} className="inline-flex items-center gap-1.5 text-xs text-slate-600 border border-slate-300 rounded-md px-3 py-1.5 hover:bg-slate-50 transition-colors">
-        <Plus className="w-3.5 h-3.5" /> Tambah Kompetitor
+        <Plus className="w-3.5 h-3.5" /> Tambah Manual
       </button>
     </div>
   );
@@ -716,13 +1016,35 @@ export default function LatarBelakangPage() {
 
       {/* Kompetitor */}
       <Section title="Kompetitor" badge={`${form.competitors.filter(c => c.nama).length} kompetitor`}>
-        <CompetitorTableEditor data={form.competitors} onChange={(rows) => updateForm({ competitors: rows })} />
-        {competitorTable.rows.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
-            <CompetitorTableView table={competitorTable} />
+        <div className="space-y-5">
+          {/* Auto Riset Panel */}
+          <AutoRisetPanel
+            namaObjek={form.namaObjek}
+            jenisUsaha={form.jenisUsaha}
+            lokasi={form.lokasi}
+            onAdd={(newRows) => {
+              const filtered = form.competitors.filter(c => c.nama);
+              updateForm({ competitors: [...filtered, ...newRows] });
+            }}
+          />
+
+          {/* Manual table editor */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Daftar Kompetitor (Edit / Hapus)</p>
+            <CompetitorTableEditor
+              data={form.competitors}
+              onChange={(rows) => updateForm({ competitors: rows })}
+            />
           </div>
-        )}
+
+          {/* Preview */}
+          {competitorTable.rows.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
+              <CompetitorTableView table={competitorTable} />
+            </div>
+          )}
+        </div>
       </Section>
 
       {/* Fenomena */}

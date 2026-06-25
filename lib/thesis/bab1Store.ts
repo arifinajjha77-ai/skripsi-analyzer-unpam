@@ -16,10 +16,14 @@ export interface ConsumerRow {
   realisasi: string;
 }
 
+export type CompetitorSource = "google" | "marketplace" | "estimasi" | "manual";
+
 export interface CompetitorRow {
   nama: string;
   produk: string;
   harga: string;
+  source?: CompetitorSource;
+  catatan?: string;
 }
 
 export interface Bab1State {
@@ -55,7 +59,7 @@ export const defaultBab1State: Bab1State = {
     { tahun: "2024", target: "", realisasi: "" },
   ],
   competitors: [
-    { nama: "", produk: "", harga: "" },
+    { nama: "", produk: "", harga: "", source: "manual" as CompetitorSource },
   ],
   fenomena: "",
   catatanKerahasiaan: DEFAULT_CATATAN_KERAHASIAAN,

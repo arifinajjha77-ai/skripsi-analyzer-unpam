@@ -87,12 +87,25 @@ export function buildConsumerTable(
   };
 }
 
+const SOURCE_LABEL_MAP: Record<string, string> = {
+  google: "Data Google",
+  marketplace: "Data Marketplace",
+  estimasi: "Estimasi",
+  manual: "Manual",
+};
+
 export function buildCompetitorTable(competitors: CompetitorRow[]): GeneratedTable {
-  const headers = ["No", "Nama Kompetitor", "Produk", "Harga"];
+  const hasSource = competitors.some((c) => c.source && c.source !== "manual");
+  const headers = hasSource
+    ? ["No", "Nama Kompetitor", "Produk", "Harga", "Sumber"]
+    : ["No", "Nama Kompetitor", "Produk", "Harga"];
+
   const rows = competitors
     .filter((c) => c.nama)
     .map((c, i) => ({
-      cols: [String(i + 1), c.nama, c.produk || "-", c.harga || "-"],
+      cols: hasSource
+        ? [String(i + 1), c.nama, c.produk || "-", c.harga || "-", SOURCE_LABEL_MAP[c.source ?? "manual"] ?? "-"]
+        : [String(i + 1), c.nama, c.produk || "-", c.harga || "-"],
     }));
   return {
     headers,
@@ -240,13 +253,22 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
   // 5. Kompetitor
   if (validCompetitors.length > 0) {
-    let compDesc = `Tantangan yang dihadapi ${namaObjek} semakin bertambah dengan semakin banyaknya pesaing ` +
-      `yang bergerak di bidang yang sama. `;
-    compDesc += `Beberapa kompetitor yang diidentifikasi antara lain ${competitorNames}. `;
+    const hasEstimatedComp = validCompetitors.some((c) => c.source === "estimasi");
+    const referensiNote = hasEstimatedComp
+      ? `Berdasarkan pengamatan awal dan referensi yang diperoleh peneliti, `
+      : `Berdasarkan observasi lapangan yang dilakukan peneliti, `;
+
+    let compDesc = referensiNote +
+      `terdapat beberapa usaha sejenis di wilayah ${lokasi || "sekitar"} yang menawarkan produk serupa ` +
+      `sehingga persaingan usaha semakin meningkat. `;
+    compDesc += `Beberapa kompetitor yang teridentifikasi antara lain ${competitorNames}. `;
     compDesc += `Kehadiran para pesaing ini memberikan tekanan kompetitif yang signifikan bagi ${namaObjek}, `;
     compDesc += `sehingga mendorong perusahaan untuk terus berinovasi dan meningkatkan strategi pemasarannya. `;
     compDesc += `Persaingan harga dan kualitas produk menjadi salah satu faktor yang perlu diperhatikan `;
     compDesc += `agar ${namaObjek} tetap kompetitif di pasar.`;
+    if (hasEstimatedComp) {
+      compDesc += ` (Catatan: Data kompetitor bersifat referensi awal. Pastikan dilakukan pengecekan ulang sebelum digunakan dalam skripsi.)`;
+    }
     paragraphs.push(compDesc);
   }
 

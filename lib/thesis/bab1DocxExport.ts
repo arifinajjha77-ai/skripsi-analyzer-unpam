@@ -231,6 +231,17 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
       ? [
           caption(`Tabel 1.3 ${competitorTable.caption}`),
           buildDocxTable(competitorTable),
+          ...(bab1.competitors.some((c) => c.source === "estimasi" || c.source === "google" || c.source === "marketplace")
+            ? [new Paragraph({
+                children: [new TextRun({
+                  text: "Sumber: Data kompetitor bersifat referensi awal. Pastikan dilakukan pengecekan ulang sebelum digunakan dalam skripsi.",
+                  size: 18,
+                  color: "888888",
+                  italics: true,
+                })],
+                spacing: { after: 120 },
+              })]
+            : []),
           blank(),
         ]
       : []),
