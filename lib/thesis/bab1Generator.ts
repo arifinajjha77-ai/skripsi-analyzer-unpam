@@ -1,4 +1,4 @@
-import { Bab1State, SalesRow, ConsumerRow, CompetitorRow } from "./bab1Store";
+import { Bab1State, SalesRow, ConsumerRow, CompetitorRow, DataMode } from "./bab1Store";
 import { ThesisState } from "./store";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -14,8 +14,11 @@ function keterangan(target: string, realisasi: string): string {
   const t = parseFloat(target.replace(/[^\d.]/g, ""));
   const r = parseFloat(realisasi.replace(/[^\d.]/g, ""));
   if (isNaN(t) || isNaN(r)) return "-";
-  if (r >= t) return "Tercapai";
-  return "Tidak Tercapai";
+  const ratio = r / t;
+  if (ratio >= 1.0) return "Tercapai";
+  if (ratio >= 0.80) return "Belum Optimal";
+  if (ratio >= 0.60) return "Tidak Tercapai";
+  return "Rendah";
 }
 
 function formatNumber(val: string): string {
@@ -34,7 +37,12 @@ export interface GeneratedTable {
   caption: string;
 }
 
-export function buildSalesTable(salesData: SalesRow[], namaObjek: string): GeneratedTable {
+export function buildSalesTable(
+  salesData: SalesRow[],
+  namaObjek: string,
+  mode: DataMode = "asli"
+): GeneratedTable {
+  const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Penjualan", "Realisasi Penjualan", "Persentase", "Keterangan"];
   const rows = salesData
     .filter((r) => r.tahun)
@@ -50,11 +58,16 @@ export function buildSalesTable(salesData: SalesRow[], namaObjek: string): Gener
   return {
     headers,
     rows,
-    caption: `Data Penjualan ${namaObjek}`,
+    caption: `Data Penjualan ${namaObjek}${modeLabel}`,
   };
 }
 
-export function buildConsumerTable(consumerData: ConsumerRow[], namaObjek: string): GeneratedTable {
+export function buildConsumerTable(
+  consumerData: ConsumerRow[],
+  namaObjek: string,
+  mode: DataMode = "asli"
+): GeneratedTable {
+  const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Konsumen", "Realisasi Konsumen", "Persentase", "Keterangan"];
   const rows = consumerData
     .filter((r) => r.tahun)
@@ -70,7 +83,7 @@ export function buildConsumerTable(consumerData: ConsumerRow[], namaObjek: strin
   return {
     headers,
     rows,
-    caption: `Data Konsumen ${namaObjek}`,
+    caption: `Data Konsumen ${namaObjek}${modeLabel}`,
   };
 }
 
@@ -94,8 +107,12 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
   const { namaObjek, jenisUsaha, lokasi, salesData, consumerData, competitors, fenomena } = bab1;
   const { x1, x2, y } = thesis;
 
-  const validSales = salesData.filter((r) => r.tahun && r.target && r.realisasi);
-  const validConsumers = consumerData.filter((r) => r.tahun && r.target && r.realisasi);
+  const validSales = (bab1.salesDataMode === "tidak_tersedia")
+    ? []
+    : salesData.filter((r) => r.tahun && r.target && r.realisasi);
+  const validConsumers = (bab1.consumerDataMode === "tidak_tersedia")
+    ? []
+    : consumerData.filter((r) => r.tahun && r.target && r.realisasi);
   const validCompetitors = competitors.filter((c) => c.nama);
 
   // Trend analysis helpers
@@ -148,10 +165,18 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     `yang mempengaruhi ${y || "keputusan konsumen"}.`
   );
 
+  const salesMode    = bab1.salesDataMode    ?? "asli";
+  const consumerMode = bab1.consumerDataMode ?? "asli";
+
   // 3. Data penjualan
   if (validSales.length > 0) {
-    let salesDesc = `Berdasarkan data penjualan ${namaObjek} pada periode ${salesPeriod}, `;
-    salesDesc += `penjualan ${namaObjek} ${saleTrend} dari tahun ke tahun. `;
+    let salesDesc = salesMode === "estimasi"
+      ? `Berdasarkan data penjualan yang telah disamarkan untuk menjaga kerahasiaan perusahaan, ` +
+        `gambaran kondisi penjualan ${namaObjek} pada periode ${salesPeriod} menunjukkan bahwa ` +
+        `penjualan ${namaObjek} ${saleTrend} dari tahun ke tahun. ` +
+        `(Data merupakan estimasi yang disusun berdasarkan gambaran umum kondisi perusahaan.) `
+      : `Berdasarkan data penjualan ${namaObjek} pada periode ${salesPeriod}, ` +
+        `penjualan ${namaObjek} ${saleTrend} dari tahun ke tahun. `;
 
     if (validSales.length >= 1) {
       const rows = validSales.map(
@@ -169,12 +194,25 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
     salesDesc += `Data penjualan tersebut dapat dilihat pada tabel berikut.`;
     paragraphs.push(salesDesc);
+  } else if (salesMode === "tidak_tersedia") {
+    paragraphs.push(
+      `Data penjualan ${namaObjek} tidak dapat ditampilkan secara rinci karena perusahaan tidak ` +
+      `bersedia memberikan data tersebut. Namun, berdasarkan observasi dan informasi yang diperoleh ` +
+      `peneliti, terdapat indikasi bahwa kinerja penjualan ${namaObjek} belum mencapai kondisi yang ` +
+      `diharapkan, sehingga diperlukan evaluasi terhadap faktor-faktor yang mempengaruhi ${y || "keputusan konsumen"}.`
+    );
   }
 
   // 4. Data konsumen
   if (validConsumers.length > 0) {
-    let consumerDesc = `Sejalan dengan data penjualan, data konsumen ${namaObjek} juga menunjukkan tren yang ${consumerTrend === saleTrend ? "serupa" : "berbeda"}. `;
-    consumerDesc += `Jumlah konsumen ${namaObjek} ${consumerTrend} selama periode yang sama. `;
+    let consumerDesc = consumerMode === "estimasi"
+      ? `Sejalan dengan data penjualan, data konsumen yang telah disamarkan menunjukkan tren yang ` +
+        `${consumerTrend === saleTrend ? "serupa dengan data penjualan" : "berbeda dengan data penjualan"}. ` +
+        `Berdasarkan estimasi yang disusun berdasarkan gambaran umum kondisi perusahaan, ` +
+        `jumlah konsumen ${namaObjek} ${consumerTrend} selama periode yang sama. `
+      : `Sejalan dengan data penjualan, data konsumen ${namaObjek} juga menunjukkan tren yang ` +
+        `${consumerTrend === saleTrend ? "serupa" : "berbeda"}. ` +
+        `Jumlah konsumen ${namaObjek} ${consumerTrend} selama periode yang sama. `;
 
     if (validConsumers.length >= 1) {
       const rows = validConsumers.map(
@@ -192,6 +230,12 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     }
 
     paragraphs.push(consumerDesc);
+  } else if (consumerMode === "tidak_tersedia") {
+    paragraphs.push(
+      `Data jumlah konsumen ${namaObjek} juga tidak tersedia secara resmi. Berdasarkan gambaran ` +
+      `lapangan yang diperoleh peneliti, terdapat indikasi bahwa pertumbuhan konsumen ${namaObjek} ` +
+      `menghadapi tantangan yang memerlukan perbaikan strategi pemasaran secara menyeluruh.`
+    );
   }
 
   // 5. Kompetitor

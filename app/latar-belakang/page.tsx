@@ -6,9 +6,11 @@ import {
   SalesRow,
   ConsumerRow,
   CompetitorRow,
+  DataMode,
   defaultBab1State,
   loadBab1State,
   saveBab1State,
+  DEFAULT_CATATAN_KERAHASIAAN,
 } from "@/lib/thesis/bab1Store";
 import { loadThesisState, ThesisState } from "@/lib/thesis/store";
 import {
@@ -17,9 +19,8 @@ import {
   buildSalesTable,
   buildConsumerTable,
   buildCompetitorTable,
-  pct,
-  keterangan,
 } from "@/lib/thesis/bab1Generator";
+import { generateSyncEstimation } from "@/lib/thesis/dataEstimator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -35,6 +36,9 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  Wand2,
+  Lock,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Copy button ───────────────────────────────────────────────────────────────
@@ -86,6 +90,45 @@ function Section({ title, badge, children }: { title: string; badge?: string; ch
       </CardHeader>
       {open && <CardContent className="pt-4">{children}</CardContent>}
     </Card>
+  );
+}
+
+// ─── Data Mode Selector ────────────────────────────────────────────────────────
+
+const DATA_MODE_OPTIONS: { value: DataMode; label: string; badge: string; color: string }[] = [
+  { value: "asli",           label: "Data asli perusahaan",     badge: "📊 Data Asli",         color: "text-green-700 border-green-300 bg-green-50" },
+  { value: "estimasi",       label: "Data estimasi/disamarkan", badge: "🔒 Data Disamarkan",    color: "text-amber-700 border-amber-300 bg-amber-50" },
+  { value: "tidak_tersedia", label: "Data tidak tersedia",      badge: "⚠ Data Tidak Tersedia", color: "text-red-700 border-red-300 bg-red-50" },
+];
+
+function DataModeSelector({
+  mode,
+  onChange,
+}: {
+  mode: DataMode;
+  onChange: (m: DataMode) => void;
+}) {
+  const current = DATA_MODE_OPTIONS.find((o) => o.value === mode) ?? DATA_MODE_OPTIONS[0];
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sumber Data</p>
+      <div className="flex flex-wrap gap-2">
+        {DATA_MODE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full border-2 transition-all ${
+              mode === opt.value
+                ? opt.color + " border-current"
+                : "border-slate-200 text-slate-500 hover:border-slate-300"
+            }`}
+          >
+            {opt.badge}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-slate-400">Dipilih: <span className="font-medium text-slate-600">{current.label}</span></p>
+    </div>
   );
 }
 
@@ -293,11 +336,14 @@ function GeneratedTableView({ table }: { table: ReturnType<typeof buildSalesTabl
         </thead>
         <tbody>
           {table.rows.map((row, i) => {
-            const isNotAchieved = row.cols[4] === "Tidak Tercapai";
+            const status = row.cols[4] ?? "";
+            const isBad  = ["Tidak Tercapai", "Rendah"].includes(status);
+            const isWarn = status === "Belum Optimal";
+            const isGood = status === "Tercapai";
             return (
-              <tr key={i} className={`border-t border-slate-100 ${isNotAchieved ? "bg-red-50/40" : ""}`}>
+              <tr key={i} className={`border-t border-slate-100 ${isBad ? "bg-red-50/40" : isWarn ? "bg-amber-50/40" : ""}`}>
                 {row.cols.map((cell, ci) => (
-                  <td key={ci} className={`px-3 py-2 ${ci === 0 ? "font-medium" : ""} ${isNotAchieved && ci === 4 ? "text-red-600 font-medium" : ""}`}>
+                  <td key={ci} className={`px-3 py-2 ${ci === 0 ? "font-medium" : ""} ${ci === 4 && isBad ? "text-red-600 font-medium" : ci === 4 && isWarn ? "text-amber-600 font-medium" : ci === 4 && isGood ? "text-green-600 font-medium" : ""}`}>
                     {cell}
                   </td>
                 ))}
@@ -406,8 +452,17 @@ export default function LatarBelakangPage() {
     setLoading(false);
   }
 
-  const salesTable = buildSalesTable(form.salesData, form.namaObjek || "Objek");
-  const consumerTable = buildConsumerTable(form.consumerData, form.namaObjek || "Objek");
+  const salesTable    = buildSalesTable(form.salesData, form.namaObjek || "Objek", form.salesDataMode);
+  const consumerTable = buildConsumerTable(form.consumerData, form.namaObjek || "Objek", form.consumerDataMode);
+
+  function handleGenerateEstimation() {
+    const estimation = generateSyncEstimation(form.namaObjek || "objek");
+    updateForm({
+      salesData: estimation.salesRows,
+      consumerData: estimation.consumerRows,
+    });
+    toast.success("Data estimasi sinkron berhasil digenerate");
+  }
   const competitorTable = buildCompetitorTable(form.competitors);
 
   const isReady = !!thesis.x1 && !!thesis.x2 && !!thesis.y;
@@ -507,26 +562,157 @@ export default function LatarBelakangPage() {
       </Section>
 
       {/* Data Penjualan */}
-      <Section title="Data Penjualan" badge={`${form.salesData.filter(r => r.tahun).length} tahun`}>
-        <SalesTableEditor data={form.salesData} onChange={(rows) => updateForm({ salesData: rows })} />
-        {salesTable.rows.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
-            <GeneratedTableView table={salesTable} />
-          </div>
-        )}
+      <Section
+        title="Data Penjualan"
+        badge={
+          form.salesDataMode === "estimasi" ? "🔒 Estimasi" :
+          form.salesDataMode === "tidak_tersedia" ? "⚠ Tidak Tersedia" :
+          `${form.salesData.filter(r => r.tahun).length} tahun`
+        }
+      >
+        <div className="space-y-4">
+          {/* Mode selector */}
+          <DataModeSelector
+            mode={form.salesDataMode}
+            onChange={(m) => updateForm({ salesDataMode: m })}
+          />
+
+          {/* Generate Sinkron button */}
+          {form.salesDataMode === "estimasi" && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Mode Estimasi/Disamarkan</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Data akan diberi keterangan &quot;estimasi/disamarkan&quot; pada narasi BAB I dan tabel DOCX.
+                    Isi manual atau gunakan generator untuk data yang sinkron dan masuk akal.
+                  </p>
+                </div>
+                <button
+                  onClick={handleGenerateEstimation}
+                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  Generate Data Sinkron
+                </button>
+              </div>
+            </div>
+          )}
+
+          {form.salesDataMode === "tidak_tersedia" && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">Data Tidak Tersedia</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  BAB I akan dibuat tanpa tabel data penjualan. Narasi akan menyebutkan bahwa data tidak dapat ditampilkan.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Table editor — only show when not "tidak_tersedia" */}
+          {form.salesDataMode !== "tidak_tersedia" && (
+            <>
+              <SalesTableEditor data={form.salesData} onChange={(rows) => updateForm({ salesData: rows })} />
+              {salesTable.rows.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
+                  <GeneratedTableView table={salesTable} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </Section>
 
       {/* Data Konsumen */}
-      <Section title="Data Konsumen" badge={`${form.consumerData.filter(r => r.tahun).length} tahun`}>
-        <ConsumerTableEditor data={form.consumerData} onChange={(rows) => updateForm({ consumerData: rows })} />
-        {consumerTable.rows.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
-            <GeneratedTableView table={consumerTable} />
-          </div>
-        )}
+      <Section
+        title="Data Konsumen"
+        badge={
+          form.consumerDataMode === "estimasi" ? "🔒 Estimasi" :
+          form.consumerDataMode === "tidak_tersedia" ? "⚠ Tidak Tersedia" :
+          `${form.consumerData.filter(r => r.tahun).length} tahun`
+        }
+      >
+        <div className="space-y-4">
+          {/* Mode selector */}
+          <DataModeSelector
+            mode={form.consumerDataMode}
+            onChange={(m) => updateForm({ consumerDataMode: m })}
+          />
+
+          {form.consumerDataMode === "estimasi" && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Mode Estimasi/Disamarkan</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Data konsumen akan disertai keterangan estimasi. Gunakan tombol di bawah untuk mengisi data yang
+                    sinkron dengan data penjualan.
+                  </p>
+                </div>
+                <button
+                  onClick={handleGenerateEstimation}
+                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  Generate Data Sinkron
+                </button>
+              </div>
+            </div>
+          )}
+
+          {form.consumerDataMode === "tidak_tersedia" && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">Data Tidak Tersedia</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  BAB I akan dibuat tanpa tabel data konsumen. Narasi tetap akan menjelaskan fenomena secara kualitatif.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {form.consumerDataMode !== "tidak_tersedia" && (
+            <>
+              <ConsumerTableEditor data={form.consumerData} onChange={(rows) => updateForm({ consumerData: rows })} />
+              {consumerTable.rows.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500">Preview Tabel:</p>
+                  <GeneratedTableView table={consumerTable} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </Section>
+
+      {/* Catatan Kerahasiaan — shown when any data is estimated/not available */}
+      {(form.salesDataMode !== "asli" || form.consumerDataMode !== "asli") && (
+        <Section title="Catatan Kerahasiaan Data">
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">
+              Catatan ini akan dicantumkan sebagai keterangan sumber data pada tabel DOCX.
+            </p>
+            <textarea
+              value={form.catatanKerahasiaan}
+              onChange={(e) => updateForm({ catatanKerahasiaan: e.target.value })}
+              rows={3}
+              className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <button
+              onClick={() => updateForm({ catatanKerahasiaan: DEFAULT_CATATAN_KERAHASIAAN })}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Reset ke default
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* Kompetitor */}
       <Section title="Kompetitor" badge={`${form.competitors.filter(c => c.nama).length} kompetitor`}>

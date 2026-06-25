@@ -151,8 +151,8 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
   const rumusan = buildRumusan(thesis, namaObjek);
   const tujuan = buildTujuan(thesis, namaObjek);
 
-  const salesTable = buildSalesTable(bab1.salesData, namaObjek);
-  const consumerTable = buildConsumerTable(bab1.consumerData, namaObjek);
+  const salesTable = buildSalesTable(bab1.salesData, namaObjek, bab1.salesDataMode ?? "asli");
+  const consumerTable = buildConsumerTable(bab1.consumerData, namaObjek, bab1.consumerDataMode ?? "asli");
   const competitorTable = buildCompetitorTable(bab1.competitors);
 
   const manfaatSections = manfaatText.split("\n\n").map((block) => {
@@ -201,6 +201,12 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
       ? [
           caption(`Tabel 1.1 ${salesTable.caption}`),
           buildDocxTable(salesTable),
+          ...(bab1.salesDataMode !== "asli" && bab1.catatanKerahasiaan
+            ? [new Paragraph({
+                children: [new TextRun({ text: `Sumber: ${bab1.catatanKerahasiaan}`, size: 18, color: "666666", italics: true })],
+                spacing: { after: 120 },
+              })]
+            : []),
           blank(),
         ]
       : []),
@@ -210,6 +216,12 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
       ? [
           caption(`Tabel 1.2 ${consumerTable.caption}`),
           buildDocxTable(consumerTable),
+          ...(bab1.consumerDataMode !== "asli" && bab1.catatanKerahasiaan
+            ? [new Paragraph({
+                children: [new TextRun({ text: `Sumber: ${bab1.catatanKerahasiaan}`, size: 18, color: "666666", italics: true })],
+                spacing: { after: 120 },
+              })]
+            : []),
           blank(),
         ]
       : []),
