@@ -22,6 +22,7 @@ export interface CompetitorRow {
   nama: string;
   produk: string;
   harga: string;
+  mediaProposi?: string;
   source?: CompetitorSource;
   catatan?: string;
 }

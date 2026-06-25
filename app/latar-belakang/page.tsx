@@ -21,6 +21,8 @@ import {
   buildConsumerTable,
   buildCompetitorTable,
 } from "@/lib/thesis/bab1Generator";
+import { checkBab1Quality, getBab1Score } from "@/lib/bab1-engine/qualityChecker";
+import type { QualityItem } from "@/lib/bab1-engine/qualityChecker";
 import { generateSyncEstimation } from "@/lib/thesis/dataEstimator";
 import {
   searchCompetitors,
@@ -51,6 +53,10 @@ import {
   Sparkles,
   PlusCircle,
   Info,
+  ShieldCheck,
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 // ─── Copy button ───────────────────────────────────────────────────────────────
@@ -574,7 +580,7 @@ function CompetitorTableEditor({
         <table className="w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {["Nama Kompetitor", "Produk", "Harga", "Sumber", ""].map((h) => (
+              {["Nama Kompetitor", "Produk", "Harga", "Media Promosi", "Sumber", ""].map((h) => (
                 <th key={h} className="text-xs text-left px-3 py-2 font-semibold text-slate-600">{h}</th>
               ))}
             </tr>
@@ -593,6 +599,10 @@ function CompetitorTableEditor({
                 <td className="px-2 py-1.5">
                   <input value={row.harga} onChange={(e) => update(i, "harga", e.target.value)}
                     className="w-24 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="Rp18.000" />
+                </td>
+                <td className="px-2 py-1.5">
+                  <input value={row.mediaProposi ?? ""} onChange={(e) => update(i, "mediaProposi", e.target.value)}
+                    className="w-28 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="Instagram, TikTok" />
                 </td>
                 <td className="px-2 py-1.5">
                   {row.source && row.source !== "manual" ? (
@@ -694,6 +704,12 @@ export default function LatarBelakangPage() {
   // Output state
   const [latarBelakang, setLatarBelakang] = useState("");
   const [manfaat, setManfaat] = useState("");
+
+  // Quality check — computed live from current form + thesis
+  const qualityItems: QualityItem[] = checkBab1Quality(form, thesis);
+  const qualityScore = getBab1Score(qualityItems);
+  const qualityPassed = qualityItems.filter((q) => q.pass).length;
+  const qualityTotal  = qualityItems.length;
 
   useEffect(() => {
     setForm(loadBab1State());
@@ -1229,6 +1245,60 @@ export default function LatarBelakangPage() {
                   </div>
                 );
               })}
+            </CardContent>
+          </Card>
+
+          {/* BAB I Quality Check Engine */}
+          <Card className={qualityScore >= 80 ? "border-green-300" : qualityScore >= 50 ? "border-amber-300" : "border-red-300"}>
+            <CardHeader className={`pb-3 border-b ${qualityScore >= 80 ? "bg-green-50 border-green-100" : qualityScore >= 50 ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100"}`}>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  {qualityScore >= 80
+                    ? <ShieldCheck className="w-4 h-4 text-green-600" />
+                    : <ShieldAlert className="w-4 h-4 text-amber-600" />}
+                  <span className={qualityScore >= 80 ? "text-green-800" : qualityScore >= 50 ? "text-amber-800" : "text-red-800"}>
+                    BAB I Quality Check
+                  </span>
+                </span>
+                <Badge
+                  variant="outline"
+                  className={qualityScore >= 80 ? "border-green-400 text-green-700" : qualityScore >= 50 ? "border-amber-400 text-amber-700" : "border-red-400 text-red-700"}
+                >
+                  {qualityPassed}/{qualityTotal} — {qualityScore}%
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {qualityItems.map((item) => (
+                  <div
+                    key={item.key}
+                    className={`flex items-start gap-2 text-xs rounded-md px-3 py-2 ${
+                      item.pass
+                        ? "bg-green-50 text-green-800 border border-green-200"
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    {item.pass
+                      ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-green-600" />
+                      : <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-red-500" />}
+                    <div>
+                      <p className="font-medium leading-tight">{item.label}</p>
+                      {!item.pass && item.hint && (
+                        <p className="text-red-600 mt-0.5 leading-tight">{item.hint}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {qualityScore < 80 && (
+                <Alert className="mt-3 border-amber-200 bg-amber-50">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800 text-xs">
+                    Lengkapi item yang belum terpenuhi sebelum mengekspor ke DOCX untuk hasil terbaik.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 
