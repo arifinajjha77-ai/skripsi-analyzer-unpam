@@ -1,11 +1,16 @@
 /**
- * Research Gap Engine — automatically constructs a "Meskipun… Namun… Oleh karena itu…"
- * research gap paragraph based on data trends, variables, and context.
+ * Research Gap Engine (V2.1 Polish)
  *
- * Structure:
- *   1. Meskipun [existing conditions / prior research]
- *   2. Namun [problem / gap found]
- *   3. Oleh karena itu / Dengan demikian [this research is needed]
+ * Produces a TWO-PARAGRAPH research gap:
+ *
+ * Para 1 — Academic landscape & gap identification:
+ *   Sejumlah penelitian terdahulu… [specific sectors that have been studied]
+ *   Namun, kajian pada sektor [jenisUsaha] di [lokasi] masih terbatas…
+ *   Kombinasi [x1] dan [x2] terhadap [y] dalam konteks ini belum banyak diteliti…
+ *
+ * Para 2 — Why this specific research matters:
+ *   Kesenjangan tersebut menjadi relevan mengingat [data evidence]…
+ *   Dengan demikian, penelitian ini hadir untuk mengisi gap tersebut…
  */
 
 export type TrendKey = "meningkat" | "menurun" | "fluktuatif" | "stabil";
@@ -23,72 +28,149 @@ export interface ResearchGapInput {
   hasFenomena: boolean;
 }
 
-// ─── Clause Builders ─────────────────────────────────────────────────────────
+// ─── Prior Research Context ───────────────────────────────────────────────────
 
-function buildMeskipunClause(
-  namaObjek: string,
-  saleTrend: TrendKey,
-  x1: string,
-  x2: string
-): string {
-  if (saleTrend === "meningkat") {
+/** Returns a plausible description of sectors where similar research has been done. */
+function getPriorResearchContext(jenisUsaha: string, x1: string, x2: string, y: string): string {
+  const combo = `${x1} ${x2} ${y}`.toLowerCase();
+  const usaha = jenisUsaha.toLowerCase();
+
+  if (/influencer|media.?sosial|digital/.test(combo)) {
     return (
-      `Meskipun ${namaObjek} telah berhasil mencatatkan pertumbuhan penjualan dalam beberapa ` +
-      `periode terakhir, serta telah menerapkan berbagai upaya pemasaran yang mencakup strategi ` +
-      `${x1 || "pemasaran"} dan ${x2 || "promosi"}, `
+      `Penelitian mengenai pengaruh strategi pemasaran digital, khususnya yang melibatkan ` +
+      `${x1 || "pemasaran digital"} dan ${x2 || "media sosial"} terhadap ${y || "keputusan pembelian"}, ` +
+      `telah banyak dilakukan pada sektor e-commerce, fashion, dan produk kecantikan. ` +
+      `Beberapa penelitian juga telah mengkaji konteks usaha makanan dan minuman (F&B) ` +
+      `serta produk elektronik konsumen.`
     );
   }
-  if (saleTrend === "stabil") {
+  if (/harga|price/.test(combo)) {
     return (
-      `Meskipun ${namaObjek} mampu mempertahankan stabilitas kinerja penjualannya dan telah ` +
-      `menjalankan berbagai inisiatif pemasaran melalui optimalisasi ${x1 || "variabel pemasaran"} ` +
-      `dan ${x2 || "strategi promosi"}, `
+      `Kajian mengenai pengaruh ${x1 || "harga"} dan ${x2 || "promosi"} terhadap ` +
+      `${y || "keputusan pembelian"} telah cukup banyak dilakukan dalam konteks sektor ritel ` +
+      `modern, supermarket, dan platform belanja online. ` +
+      `Penelitian serupa pada sektor jasa dan usaha kecil menengah (UKM) juga mulai ` +
+      `berkembang dalam beberapa tahun terakhir.`
     );
   }
-  // menurun or fluktuatif
+  if (/kualitas|quality/.test(combo)) {
+    return (
+      `Tema penelitian mengenai kualitas produk atau kualitas layanan dan dampaknya terhadap ` +
+      `${y || "kepuasan konsumen"} telah banyak diteliti di sektor perhotelan, perbankan, ` +
+      `dan layanan kesehatan. ` +
+      `Studi pada sektor ritel dan jasa konsumer juga telah menghasilkan sejumlah temuan ` +
+      `yang relevan di berbagai negara, termasuk Indonesia.`
+    );
+  }
+  if (/pelayanan|service/.test(combo)) {
+    return (
+      `Penelitian yang mengkaji dimensi kualitas pelayanan dan pengaruhnya terhadap ` +
+      `${y || "kepuasan pelanggan"} telah banyak dilakukan pada sektor perbankan, ` +
+      `telekomunikasi, dan transportasi online. ` +
+      `Namun, temuan dari sektor-sektor tersebut tidak serta merta dapat digeneralisasikan ` +
+      `pada jenis usaha yang memiliki karakteristik layanan yang berbeda.`
+    );
+  }
+
+  // Generic prior research context based on jenisUsaha
+  if (/kuliner|makanan|f.b|restoran|kafe|cafe/.test(usaha)) {
+    return (
+      `Penelitian mengenai pengaruh ${x1 || "strategi pemasaran"} dan ${x2 || "promosi"} ` +
+      `terhadap ${y || "keputusan pembelian"} telah cukup banyak dilakukan pada bisnis ` +
+      `kuliner berskala besar seperti restoran waralaba dan kafe premium. ` +
+      `Sementara kajian pada usaha kuliner berskala kecil dan menengah (UKM) yang beroperasi ` +
+      `secara lokal masih relatif terbatas dalam literatur akademik Indonesia.`
+    );
+  }
+  if (/fashion|pakaian|busana|konveksi/.test(usaha)) {
+    return (
+      `Industri fashion menjadi salah satu sektor yang cukup banyak diteliti dalam kaitannya ` +
+      `dengan pengaruh ${x1 || "pemasaran digital"} terhadap ${y || "keputusan pembelian"}, ` +
+      `terutama pada merek-merek ternama yang beroperasi secara nasional. ` +
+      `Namun, penelitian yang berfokus pada usaha fashion lokal dan independen yang beroperasi ` +
+      `di tingkat kota atau kabupaten masih sangat terbatas jumlahnya.`
+    );
+  }
+
   return (
-    `Meskipun ${namaObjek} telah berupaya menerapkan berbagai strategi pemasaran yang melibatkan ` +
-    `${x1 || "berbagai instrumen pemasaran"} dan ${x2 || "kegiatan promosi"} untuk mendorong ` +
-    `pertumbuhan bisnisnya, `
+    `Sejumlah penelitian terdahulu telah mengkaji pengaruh ${x1 || "variabel X1"} dan ` +
+    `${x2 || "variabel X2"} terhadap ${y || "variabel Y"} pada berbagai sektor industri, ` +
+    `di antaranya sektor perbankan, ritel, pendidikan, dan kesehatan. ` +
+    `Temuan dari penelitian-penelitian tersebut secara konsisten menunjukkan adanya hubungan ` +
+    `yang signifikan antara variabel-variabel tersebut, meskipun besaran dan arah pengaruhnya ` +
+    `bervariasi tergantung pada konteks industri dan karakteristik konsumen yang diteliti.`
   );
 }
 
-function buildNamunClause(
+// ─── Gap Identification ───────────────────────────────────────────────────────
+
+function buildGapIdentification(
+  jenisUsaha: string,
+  lokasi: string,
+  x1: string,
+  x2: string,
+  y: string
+): string {
+  const sectorStr = jenisUsaha ? `sektor ${jenisUsaha}` : "sektor yang diteliti";
+  const lokStr = lokasi ? ` yang beroperasi di wilayah ${lokasi}` : "";
+
+  return (
+    `Namun demikian, kajian yang secara spesifik mengeksplorasi pengaruh ${x1 || "variabel X1"} ` +
+    `dan ${x2 || "variabel X2"} terhadap ${y || "variabel Y"} pada ${sectorStr}${lokStr} ` +
+    `masih sangat terbatas. ` +
+    `Sebagian besar penelitian terdahulu berfokus pada pelaku usaha berskala nasional atau ` +
+    `pada segmen pasar yang karakteristiknya berbeda secara signifikan dengan konteks yang ` +
+    `diteliti dalam penelitian ini. ` +
+    `Kesenjangan ini menjadi penting untuk diisi, mengingat perilaku konsumen dan dinamika ` +
+    `persaingan pada ${sectorStr} memiliki kekhasan tersendiri yang tidak dapat ` +
+    `digeneralisasikan dari hasil penelitian pada sektor lain.`
+  );
+}
+
+// ─── Evidence from Data ───────────────────────────────────────────────────────
+
+function buildDataEvidence(
   namaObjek: string,
   saleTrend: TrendKey,
   consumerTrend: TrendKey,
-  x1: string,
-  x2: string,
-  y: string,
-  hasCompetitors: boolean
+  hasCompetitors: boolean,
+  hasFenomena: boolean
 ): string {
-  const salesProblem =
-    saleTrend === "menurun" || saleTrend === "fluktuatif"
-      ? `pencapaian target penjualan yang belum konsisten menunjukkan adanya permasalahan yang ` +
-        `memerlukan identifikasi lebih lanjut. `
-      : `upaya untuk mempertahankan momentum pertumbuhan secara berkelanjutan tetap menjadi ` +
-        `tantangan yang tidak dapat diabaikan. `;
+  const salesDesc =
+    saleTrend === "menurun"
+      ? `penurunan realisasi penjualan yang terjadi secara konsisten`
+      : saleTrend === "fluktuatif"
+      ? `ketidakkonsistenan pencapaian target penjualan`
+      : saleTrend === "meningkat"
+      ? `pertumbuhan penjualan yang perlu terus dipertahankan`
+      : `kestabilan penjualan yang berpotensi mengalami stagnasi`;
 
-  const consumerProblem =
+  const consumerDesc =
     consumerTrend === "menurun" || consumerTrend === "fluktuatif"
-      ? `Fluktuasi jumlah konsumen yang tercatat dalam data menunjukkan bahwa loyalitas dan ` +
-        `minat konsumen terhadap produk ${namaObjek} belum sepenuhnya terbentuk dengan kuat. `
+      ? ` disertai dengan fluktuasi pertumbuhan konsumen`
+      : consumerTrend === "meningkat"
+      ? ` yang diiringi tren positif pertumbuhan konsumen`
       : ``;
 
-  const competitorPressure = hasCompetitors
-    ? `Tekanan dari kompetitor yang semakin agresif dalam memanfaatkan berbagai kanal pemasaran ` +
-      `turut mempersempit ruang gerak ${namaObjek} dalam mempertahankan pangsa pasarnya. `
+  const competitorDesc = hasCompetitors
+    ? ` serta intensitas persaingan dari kompetitor yang terus meningkat di segmen yang sama`
     : ``;
 
-  const gapSentence =
-    `Belum tersedianya kajian ilmiah yang secara spesifik menguji pengaruh ${x1 || "variabel X1"} ` +
-    `dan ${x2 || "variabel X2"} terhadap ${y || "variabel Y"} dalam konteks ` +
-    `${namaObjek} menjadikan penelitian ini relevan dan perlu untuk dilakukan.`;
+  const fenDesc = hasFenomena
+    ? ` yang diperkuat oleh fenomena lapangan yang teridentifikasi melalui observasi dan wawancara awal`
+    : ``;
 
-  return `namun ${salesProblem}${consumerProblem}${competitorPressure}${gapSentence}`;
+  return (
+    `Relevansi penelitian ini semakin menguat jika mempertimbangkan kondisi empiris yang ` +
+    `ditemukan pada ${namaObjek}, yakni ${salesDesc}${consumerDesc}${competitorDesc}${fenDesc}. ` +
+    `Kondisi-kondisi tersebut memerlukan landasan empiris yang kuat untuk dapat dianalisis ` +
+    `secara akademis dan ditindaklanjuti secara strategis oleh pihak yang berkepentingan.`
+  );
 }
 
-function buildOlehKarenaItuClause(
+// ─── Closing Oleh Karena Itu ──────────────────────────────────────────────────
+
+function buildResearchNecessity(
   namaObjek: string,
   x1: string,
   x2: string,
@@ -96,29 +178,42 @@ function buildOlehKarenaItuClause(
   jenisUsaha: string,
   lokasi: string
 ): string {
+  const sectorStr = jenisUsaha ? `dalam konteks ${jenisUsaha}` : "dalam konteks usaha ini";
+  const lokStr = lokasi ? ` di ${lokasi}` : " di Indonesia";
+
   return (
-    `Oleh karena itu, penelitian yang mengkaji secara empiris pengaruh ${x1 || "variabel X1"} ` +
-    `dan ${x2 || "variabel X2"} terhadap ${y || "variabel Y"} pada ${namaObjek} sangat ` +
-    `diperlukan sebagai landasan ilmiah yang dapat digunakan oleh pihak manajemen dalam ` +
-    `merumuskan strategi pemasaran yang lebih efektif. Penelitian ini diharapkan mampu mengisi ` +
-    `kesenjangan penelitian yang ada dan memberikan kontribusi nyata bagi pengembangan ilmu ` +
-    `manajemen pemasaran, khususnya dalam konteks ${jenisUsaha || "usaha"}` +
-    `${lokasi ? " di " + lokasi : " di Indonesia"}.`
+    `Berdasarkan identifikasi kesenjangan penelitian dan fenomena empiris yang telah diuraikan, ` +
+    `penelitian yang mengkaji secara spesifik pengaruh ${x1 || "variabel X1"} dan ` +
+    `${x2 || "variabel X2"} terhadap ${y || "variabel Y"} pada ${namaObjek} menjadi ` +
+    `sangat relevan dan mendesak untuk dilakukan. ` +
+    `Penelitian ini diharapkan mampu mengisi kesenjangan literatur ${sectorStr}${lokStr}, ` +
+    `sekaligus memberikan kontribusi praktis berupa rekomendasi berbasis data bagi pihak ` +
+    `manajemen dalam merumuskan kebijakan pemasaran yang lebih adaptif terhadap dinamika ` +
+    `kebutuhan konsumen dan tekanan kompetitif yang dihadapi.`
   );
 }
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
 /**
- * Build a complete research gap paragraph in academic Meskipun–Namun–Oleh karena itu structure.
+ * Build a sector-specific, evidence-backed research gap — two paragraphs.
  */
 export function buildResearchGap(input: ResearchGapInput): string {
-  const { namaObjek, jenisUsaha, lokasi, x1, x2, y, saleTrend, consumerTrend, hasCompetitors } =
-    input;
+  const {
+    namaObjek, jenisUsaha, lokasi, x1, x2, y,
+    saleTrend, consumerTrend, hasCompetitors, hasFenomena,
+  } = input;
 
-  const meskipun = buildMeskipunClause(namaObjek, saleTrend, x1, x2);
-  const namun = buildNamunClause(namaObjek, saleTrend, consumerTrend, x1, x2, y, hasCompetitors);
-  const olehKarenaItu = buildOlehKarenaItuClause(namaObjek, x1, x2, y, jenisUsaha, lokasi);
+  const priorResearch = getPriorResearchContext(jenisUsaha, x1, x2, y);
+  const gapId        = buildGapIdentification(jenisUsaha, lokasi, x1, x2, y);
+  const evidence     = buildDataEvidence(namaObjek, saleTrend, consumerTrend, hasCompetitors, hasFenomena);
+  const necessity    = buildResearchNecessity(namaObjek, x1, x2, y, jenisUsaha, lokasi);
 
-  return `${meskipun}${namun}\n\n${olehKarenaItu}`;
+  // Paragraph 1: Prior research context + gap identification
+  const para1 = `${priorResearch} ${gapId}`;
+
+  // Paragraph 2: Data evidence + research necessity
+  const para2 = `${evidence} ${necessity}`;
+
+  return `${para1}\n\n${para2}`;
 }

@@ -229,12 +229,37 @@ function varRef(namaObjek: string, n: number): string {
     "perusahaan",
     "objek penelitian",
     "usaha tersebut",
-    "pelaku usaha",
+    "pelaku usaha ini",
     namaObjek,
     "perusahaan yang diteliti",
     "pihak manajemen",
+    "usaha yang bersangkutan",
   ];
   return refs[Math.abs(n) % refs.length];
+}
+
+// ─── Transition phrase rotation ────────────────────────────────────────────────
+
+const ANALYSIS_TRANSITIONS = [
+  "Kondisi tersebut menunjukkan bahwa",
+  "Hal ini mengindikasikan bahwa",
+  "Mencermati data di atas,",
+  "Realitas ini mendorong",
+  "Fenomena tersebut mencerminkan",
+  "Beranjak dari temuan tersebut,",
+  "Lebih jauh, kondisi ini mengungkap bahwa",
+  "Temuan ini memperkuat dugaan bahwa",
+];
+
+function analysisTransition(n: number): string {
+  return ANALYSIS_TRANSITIONS[Math.abs(n) % ANALYSIS_TRANSITIONS.length];
+}
+
+/** Seeded hash for deterministic-but-varied sentence selection. */
+function strhash(s: string): number {
+  let h = 0;
+  for (const ch of s) h = ((h << 5) - h + ch.charCodeAt(0)) | 0;
+  return Math.abs(h);
 }
 
 
@@ -278,21 +303,38 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
   const paragraphs: string[] = [];
   let refN = 0;
+  const hash0 = strhash(namaObjek + x1 + x2 + y);
 
   // ── 1. FENOMENA UMUM — context-aware opening (never "Di era persaingan...") ──
   paragraphs.push(selectOpening(x1, x2, y, jenisUsaha));
 
-  // ── 2. GAMBARAN OBJEK PENELITIAN ──────────────────────────────────────────────
-  paragraphs.push(
-    `${namaObjek} merupakan ${jenisUsaha || "usaha"} yang berlokasi di ${lokasi || "wilayah Indonesia"}. ` +
-    `Sebagai salah satu pelaku usaha di bidang ini, ${varRef(namaObjek, ++refN)} berkomitmen untuk ` +
-    `memberikan produk dan layanan yang berkualitas kepada konsumennya. Dalam menjalankan kegiatan ` +
-    `operasionalnya, ${varRef(namaObjek, ++refN)} menghadapi berbagai tantangan yang tidak terlepas ` +
-    `dari dinamika persaingan yang semakin ketat dan perubahan perilaku konsumen yang terus berkembang. ` +
-    `Untuk dapat mempertahankan dan meningkatkan daya saingnya, ${varRef(namaObjek, ++refN)} perlu ` +
-    `memahami secara mendalam faktor-faktor yang mempengaruhi ${y || "keputusan konsumen"} dalam ` +
-    `memilih produk atau jasa yang ditawarkan.`
-  );
+  // ── 2. GAMBARAN OBJEK PENELITIAN (concise, 3 strong sentences) ────────────────
+  // Vary the object description sentence structure based on a seed
+  const objDescVariants = [
+    `${namaObjek} adalah ${jenisUsaha || "usaha"} yang berlokasi di ${lokasi || "Indonesia"} dan ` +
+    `bergerak dalam pemenuhan kebutuhan konsumen di bidang tersebut. Sebagai pelaku usaha yang ` +
+    `beroperasi di tengah persaingan yang semakin ketat, ${varRef(namaObjek, ++refN)} dituntut ` +
+    `untuk terus berinovasi dalam strategi pemasarannya guna mempertahankan eksistensi dan ` +
+    `meningkatkan pangsa pasarnya. Identifikasi faktor-faktor yang mempengaruhi ` +
+    `${y || "keputusan konsumen"} menjadi langkah kritis yang harus dilakukan ` +
+    `${varRef(namaObjek, ++refN)} sebagai basis perancangan strategi yang tepat.`,
+
+    `${namaObjek} merupakan ${jenisUsaha || "usaha"} yang beroperasi di ${lokasi || "Indonesia"}. ` +
+    `Dalam menjalankan usahanya, ${varRef(namaObjek, ++refN)} menghadapi tantangan yang tidak ` +
+    `ringan — mulai dari perubahan perilaku konsumen yang semakin selektif hingga tekanan ` +
+    `persaingan dari pelaku usaha sejenis yang terus tumbuh. ` +
+    `Tantangan-tantangan ini menjadikan pemahaman tentang faktor penentu ` +
+    `${y || "keputusan konsumen"} sebagai kebutuhan strategis yang mendesak bagi ` +
+    `${varRef(namaObjek, ++refN)}.`,
+
+    `Sebagai ${jenisUsaha || "usaha"} yang beroperasi di ${lokasi || "Indonesia"}, ` +
+    `${namaObjek} memiliki tanggung jawab untuk tidak hanya memenuhi kebutuhan konsumennya, ` +
+    `tetapi juga mampu bersaing secara efektif dalam lanskap industri yang terus berubah. ` +
+    `Keberhasilan ${varRef(namaObjek, ++refN)} dalam mempertahankan dan memperluas basis ` +
+    `konsumennya akan sangat bergantung pada sejauh mana ${varRef(namaObjek, ++refN)} memahami ` +
+    `faktor-faktor yang mendorong ${y || "keputusan konsumen"}.`,
+  ];
+  paragraphs.push(objDescVariants[hash0 % objDescVariants.length]);
 
   // ── 3. DATA PENDUKUNG PENJUALAN ───────────────────────────────────────────────
   if (validSales.length > 0) {
@@ -319,20 +361,29 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     const achieved = validSales.filter((r) => keterangan(r.target, r.realisasi) === "Tercapai");
 
     if (notAchieved.length > 0 && notAchieved.length >= achieved.length) {
-      salesDesc +=
-        `Terdapat ${notAchieved.length} periode di mana realisasi penjualan belum memenuhi ` +
-        `target yang telah ditetapkan, yaitu pada tahun ` +
+      // Vary the miss-analysis phrasing
+      const missVariants = [
+        `${analysisTransition(hash0 + 3)}, terdapat ${notAchieved.length} periode ` +
+        `di mana realisasi penjualan belum memenuhi target, yaitu tahun ` +
         `${formatYearList(notAchieved.map((r) => r.tahun))}. ` +
-        `Kondisi ini mengindikasikan adanya permasalahan mendasar yang perlu mendapat perhatian ` +
-        `serius dari ${varRef(namaObjek, ++refN)} dalam upayanya meningkatkan kinerja penjualan. `;
+        `Hal ini merupakan sinyal yang perlu ditangani secara serius oleh ${varRef(namaObjek, ++refN)} ` +
+        `agar tidak berdampak negatif pada keberlanjutan usaha. `,
+
+        `Perlu dicatat bahwa pada tahun ${formatYearList(notAchieved.map((r) => r.tahun))}, ` +
+        `realisasi penjualan ${varRef(namaObjek, ++refN)} belum mampu menyentuh target yang ` +
+        `telah ditetapkan sebelumnya. Kondisi ini mengindikasikan adanya faktor-faktor yang ` +
+        `menghambat pertumbuhan penjualan dan perlu diidentifikasi secara lebih sistematis. `,
+      ];
+      salesDesc += missVariants[hash0 % missVariants.length];
     } else if (achieved.length > 0 && achieved.length > notAchieved.length) {
       salesDesc +=
-        `Secara umum, ${varRef(namaObjek, ++refN)} berhasil mencapai target penjualan pada ` +
-        `sebagian besar periode yang diamati, meskipun masih terdapat ruang untuk peningkatan ` +
-        `lebih lanjut guna mempertahankan momentum pertumbuhan yang ada. `;
+        `Pencapaian target penjualan pada sebagian besar periode yang diamati menjadi ` +
+        `indikator positif bagi ${varRef(namaObjek, ++refN)}, meski demikian, ` +
+        `komitmen untuk terus meningkatkan kinerja penjualan dan memperluas pangsa pasar ` +
+        `tetap menjadi agenda strategis yang tidak dapat diabaikan. `;
     }
 
-    salesDesc += `Data penjualan tersebut disajikan secara lengkap pada tabel di bawah ini.`;
+    salesDesc += `Data selengkapnya tersaji pada tabel berikut ini.`;
     paragraphs.push(salesDesc);
   } else if (salesMode === "tidak_tersedia") {
     paragraphs.push(
@@ -345,25 +396,37 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
   }
 
   // ── 5. PENGUATAN TEORI — DATA TO THEORY BRIDGE ───────────────────────────────
+  // Pass the trendKey (not the label) so the engine can vary its analysis sentences
   if (validSales.length >= 1 || salesMode === "tidak_tersedia") {
     paragraphs.push(
-      buildDataTheoryBridge(namaObjek, saleTrend, x1, x2, y)
+      buildDataTheoryBridge(namaObjek, saleTrendKey, x1, x2, y)
     );
   }
 
   // ── 6. DATA KONSUMEN ──────────────────────────────────────────────────────────
   if (validConsumers.length > 0) {
     const consumerTrendSimilar = consumerTrendKey === saleTrendKey;
-    const transitionWord = consumerTrendSimilar
-      ? "Sejalan dengan data penjualan tersebut"
-      : "Sementara itu, apabila dicermati dari sisi jumlah konsumen";
+
+    // Varied transition based on whether trends align and using hash
+    const consumerTransitions = consumerTrendSimilar
+      ? [
+          "Gambaran yang serupa juga terlihat pada data jumlah konsumen",
+          "Data konsumen menunjukkan pola yang searah dengan tren penjualan",
+          "Tidak berbeda jauh dengan kondisi penjualan, perkembangan jumlah konsumen",
+        ]
+      : [
+          "Apabila dicermati dari sisi jumlah konsumen, terdapat dinamika yang berbeda",
+          "Dari perspektif pertumbuhan konsumen, kondisi yang ditemukan sedikit berbeda",
+          "Sementara itu, data konsumen menunjukkan tren yang berbeda dari data penjualan",
+        ];
+    const transitionWord = consumerTransitions[hash0 % consumerTransitions.length];
 
     let consumerDesc = consumerMode === "estimasi"
-      ? `${transitionWord}, data konsumen ${varRef(namaObjek, ++refN)} yang telah diestimasi ` +
-        `menunjukkan jumlah konsumen yang ${consumerTrend} dalam periode yang sama. ` +
+      ? `${transitionWord} ${varRef(namaObjek, ++refN)} yang telah diestimasi, yang tercatat ` +
+        `${consumerTrend} dalam periode yang sama. ` +
         `(Catatan: Data merupakan estimasi berdasarkan gambaran umum kondisi perusahaan.) `
-      : `${transitionWord}, jumlah konsumen ${varRef(namaObjek, ++refN)} juga menunjukkan ` +
-        `tren yang ${consumerTrend} dalam periode yang diamati. `;
+      : `${transitionWord} ${varRef(namaObjek, ++refN)}, yang ${consumerTrend} ` +
+        `selama periode yang diamati. `;
 
     const rows = validConsumers.map(
       (r) =>
@@ -377,14 +440,20 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
       return kt === "Tidak Tercapai" || kt === "Belum Optimal" || kt === "Rendah";
     });
     if (notAchievedC.length > 0) {
-      consumerDesc +=
-        `Realisasi jumlah konsumen yang belum memenuhi target pada tahun ` +
-        `${formatYearList(notAchievedC.map((r) => r.tahun))} menunjukkan bahwa ` +
-        `${varRef(namaObjek, ++refN)} masih menghadapi kendala dalam menarik dan ` +
-        `mempertahankan basis konsumennya secara konsisten. `;
+      const consumerMissVariants = [
+        `Capaian jumlah konsumen yang belum memenuhi target pada tahun ` +
+        `${formatYearList(notAchievedC.map((r) => r.tahun))} mencerminkan adanya tantangan ` +
+        `dalam strategi akuisisi dan retensi konsumen yang dijalankan ${varRef(namaObjek, ++refN)}. `,
+
+        `Fakta bahwa target konsumen tidak tercapai pada tahun ` +
+        `${formatYearList(notAchievedC.map((r) => r.tahun))} mengindikasikan bahwa ` +
+        `pendekatan pemasaran ${varRef(namaObjek, ++refN)} dalam menjangkau dan ` +
+        `mempertahankan konsumen masih perlu ditingkatkan secara signifikan. `,
+      ];
+      consumerDesc += consumerMissVariants[hash0 % consumerMissVariants.length];
     }
 
-    consumerDesc += `Data konsumen tersebut disajikan pada tabel berikut.`;
+    consumerDesc += `Data tersebut selengkapnya tersaji pada tabel di bawah ini.`;
     paragraphs.push(consumerDesc);
   } else if (consumerMode === "tidak_tersedia") {
     paragraphs.push(
@@ -395,50 +464,88 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     );
   }
 
-  // ── 7. KOMPETITOR ─────────────────────────────────────────────────────────────
+  // ── 7. KOMPETITOR — with competitive analysis ─────────────────────────────────
   if (validCompetitors.length > 0) {
-    const hasEstimatedComp = validCompetitors.some((c) => c.source === "estimasi" || c.source === "google" || c.source === "marketplace");
+    const hasEstimatedComp = validCompetitors.some(
+      (c) => c.source === "estimasi" || c.source === "google" || c.source === "marketplace"
+    );
     const referensiNote = hasEstimatedComp
-      ? `Berdasarkan pengamatan awal dan data referensi yang diperoleh peneliti`
+      ? `Berdasarkan penelusuran awal yang dilakukan peneliti`
       : `Berdasarkan observasi lapangan yang dilakukan peneliti`;
 
+    const competitorCount = validCompetitors.length;
+    const intensityDesc =
+      competitorCount >= 5 ? "sangat tinggi" :
+      competitorCount >= 3 ? "cukup tinggi" :
+      "teridentifikasi";
+
+    // Check if any competitor uses digital media
+    const digitalCompetitors = validCompetitors.filter(
+      (c) => c.mediaProposi && /instagram|tiktok|shopee|tokopedia|marketplace|digital|online/i.test(c.mediaProposi)
+    );
+    const hasDigitalComp = digitalCompetitors.length > 0;
+
+    // Strategy analysis sentence
+    const stratAnalysis = hasDigitalComp
+      ? `Sebagian kompetitor teridentifikasi aktif memanfaatkan platform digital ` +
+        `seperti media sosial dan marketplace sebagai kanal promosi utama mereka, ` +
+        `menandakan bahwa persaingan tidak hanya terjadi di ruang fisik, ` +
+        `tetapi juga semakin intensif di ranah digital. `
+      : `Persaingan yang terjadi mencakup berbagai dimensi, mulai dari keunggulan produk ` +
+        `dan penetapan harga hingga kualitas layanan dan efektivitas komunikasi pemasaran ` +
+        `yang dijalankan oleh masing-masing pelaku usaha. `;
+
+    // Market position sentence
+    const positionSentence =
+      `${analysisTransition(hash0 + 7)} untuk dapat bersaing secara efektif, ` +
+      `${varRef(namaObjek, ++refN)} perlu mengembangkan keunggulan kompetitif yang ` +
+      `terdiferensiasi, terutama melalui optimalisasi strategi ${x1 || "pemasaran"} ` +
+      `dan ${x2 || "promosi"} yang ditujukan langsung pada kebutuhan dan preferensi ` +
+      `konsumen sasarannya.`;
+
     let compDesc =
-      `${referensiNote}, terdapat sejumlah usaha sejenis yang beroperasi di wilayah ` +
-      `${lokasi || "yang sama"} dan menawarkan produk atau jasa yang serupa dengan ` +
-      `${varRef(namaObjek, ++refN)}, sehingga tingkat persaingan usaha di segmen ini ` +
-      `dapat dikategorikan cukup tinggi. `;
-    compDesc +=
+      `${referensiNote}, tingkat persaingan pada segmen ${jenisUsaha || "usaha"} ` +
+      `di wilayah ${lokasi || "yang sama"} dapat dikategorikan ${intensityDesc}. ` +
       `Beberapa kompetitor yang teridentifikasi antara lain ${competitorNames}. ` +
-      `Kehadiran para pesaing ini menciptakan tekanan kompetitif yang mendorong ` +
-      `${varRef(namaObjek, ++refN)} untuk terus berinovasi dan mengoptimalkan ` +
-      `strategi pemasarannya agar tetap dapat mempertahankan pangsa pasar. `;
-    compDesc +=
-      `Persaingan yang terjadi tidak hanya pada aspek harga, tetapi juga pada dimensi ` +
-      `kualitas produk, kecepatan layanan, dan efektivitas promosi yang dijalankan ` +
-      `oleh masing-masing pelaku usaha.`;
+      `${stratAnalysis}` +
+      `${positionSentence}`;
+
     if (hasEstimatedComp) {
       compDesc +=
-        ` (Catatan: Sebagian data kompetitor bersifat referensi awal dan perlu diverifikasi lebih lanjut.)`;
+        ` (Catatan: Sebagian data kompetitor bersifat referensi awal yang perlu diverifikasi.)`;
     }
     paragraphs.push(compDesc);
   }
 
   // ── 8. FENOMENA OBJEK PENELITIAN (observasi/wawancara) ───────────────────────
   if (fenomenaLines.length > 0) {
-    let fenDesc =
-      `Selain data kuantitatif yang telah dipaparkan di atas, peneliti juga melakukan ` +
-      `observasi awal dan wawancara pendahuluan untuk memperoleh gambaran yang lebih ` +
-      `komprehensif mengenai kondisi ${varRef(namaObjek, ++refN)}. ` +
-      `Dari hasil observasi tersebut, ditemukan beberapa fenomena yang menjadi ` +
-      `permasalahan utama, antara lain: ${fenomenaLines.join("; ")}. `;
-    fenDesc +=
-      `Fenomena-fenomena tersebut mengindikasikan bahwa ${varRef(namaObjek, ++refN)} ` +
-      `perlu melakukan evaluasi strategis yang lebih mendalam untuk mengidentifikasi ` +
-      `akar permasalahan dan merancang langkah-langkah perbaikan yang terstruktur.`;
-    paragraphs.push(fenDesc);
+    // Vary the intro based on hash
+    const fenIntroVariants = [
+      `Untuk memperkaya pemahaman yang berbasis data kuantitatif di atas, peneliti melakukan ` +
+      `observasi awal dan wawancara pendahuluan secara langsung kepada pihak ${varRef(namaObjek, ++refN)}. `,
+      `Data-data di atas diperkuat oleh hasil observasi lapangan yang dilakukan peneliti ` +
+      `terhadap kondisi aktual ${varRef(namaObjek, ++refN)} selama periode penelitian berlangsung. `,
+      `Selain melalui data sekunder, peneliti juga memperoleh gambaran kondisi ${varRef(namaObjek, ++refN)} ` +
+      `melalui observasi langsung dan wawancara awal dengan pihak terkait. `,
+    ];
+    const fenIntro = fenIntroVariants[hash0 % fenIntroVariants.length];
+
+    const fenCore =
+      fenomenaLines.length === 1
+        ? `Dari hasil observasi tersebut, ditemukan fenomena yang menjadi permasalahan utama, yaitu: ${fenomenaLines[0]}. `
+        : `Dari hasil observasi dan wawancara tersebut, teridentifikasi beberapa fenomena yang ` +
+          `menjadi permasalahan utama ${varRef(namaObjek, ++refN)}, di antaranya: ` +
+          `${fenomenaLines.join("; ")}. `;
+
+    const fenClose =
+      `Keseluruhan fenomena tersebut mengindikasikan perlunya evaluasi mendalam dan ` +
+      `langkah-langkah perbaikan yang terstruktur guna meningkatkan ${y || "kinerja pemasaran"} ` +
+      `${varRef(namaObjek, ++refN)} secara berkelanjutan.`;
+
+    paragraphs.push(fenIntro + fenCore + fenClose);
   }
 
-  // ── 9. HUBUNGAN DENGAN VARIABEL X1 (Theory Bridge) ────────────────────────────
+  // ── 9. HUBUNGAN DENGAN VARIABEL X1 (Theory Bridge — Fenomena→Analisis→Teori→Aplikasi→Simpulan)
   if (x1) {
     paragraphs.push(buildTheoryBridge(x1, namaObjek, y, "x1").text);
   }
