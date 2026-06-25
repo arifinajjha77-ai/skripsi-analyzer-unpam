@@ -1,11 +1,10 @@
 /**
- * Makalah DOCX Exporter
+ * SmartCampus V2 — Makalah DOCX Exporter
  *
- * Generates a properly formatted Word document for an academic Makalah.
- * Follows standard Indonesian academic paper formatting:
- * - Times New Roman 12pt, 1.5 line spacing
- * - Margins: 4cm left, 3cm others
- * - Cover page, Kata Pengantar, Daftar Isi, BAB I–III, Daftar Pustaka
+ * Updated to support:
+ * - Rich section blocks (bab2Sections with tables)
+ * - Academic comparison tables (Sprint 8)
+ * - UNPAM-compliant formatting
  */
 
 import {
@@ -14,51 +13,39 @@ import {
   Paragraph,
   TextRun,
   AlignmentType,
-  HeadingLevel,
   PageBreak,
-  TableOfContents,
-  LevelFormat,
   convertInchesToTwip,
-  BorderStyle,
   Table,
   TableRow,
   TableCell,
   WidthType,
+  BorderStyle,
+  ShadingType,
 } from "docx";
 import { MakalahState } from "./store";
 import { MakalahOutput } from "./generator";
+import { AcademicTable } from "./writingEngine";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FONT   = "Times New Roman";
-const SZ     = 24; // 12pt = 24 half-points
-const SZ_H1  = 28; // 14pt for BAB headings
-const SZ_H2  = 24; // 12pt for section headings
-const SZ_COVER_TITLE = 28;
-const SZ_COVER_INFO  = 24;
-
-const MARGIN_LEFT  = convertInchesToTwip(1.57); // ~4cm
-const MARGIN_OTHER = convertInchesToTwip(1.18); // ~3cm
+const FONT    = "Times New Roman";
+const SZ      = 24;   // 12pt
+const SZ_H1   = 28;   // 14pt
+const SZ_H2   = 24;   // 12pt (bold)
+const MARGIN_LEFT  = convertInchesToTwip(1.57); // 4cm
+const MARGIN_OTHER = convertInchesToTwip(1.18); // 3cm
 
 // ─── Paragraph Helpers ────────────────────────────────────────────────────────
 
-function coverTitle(text: string, sz = SZ_COVER_TITLE): Paragraph {
+function coverPara(text: string, bold = false, size = SZ): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 80 },
-    children: [new TextRun({ text, font: FONT, size: sz, bold: true })],
+    children: [new TextRun({ text, font: FONT, size, bold })],
   });
 }
 
-function coverInfo(text: string): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 60 },
-    children: [new TextRun({ text, font: FONT, size: SZ_COVER_INFO })],
-  });
-}
-
-function babHeading(text: string): Paragraph {
+function h1(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 200, after: 200 },
@@ -66,187 +53,242 @@ function babHeading(text: string): Paragraph {
   });
 }
 
-function sectionHeading(text: string): Paragraph {
+function h2(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.LEFT,
-    spacing: { before: 160, after: 120 },
+    spacing: { before: 200, after: 120 },
     children: [new TextRun({ text, font: FONT, size: SZ_H2, bold: true })],
   });
 }
 
-function bodyPara(text: string, center = false): Paragraph {
+function body(text: string, firstIndent = true): Paragraph {
   return new Paragraph({
-    alignment: center ? AlignmentType.CENTER : AlignmentType.JUSTIFIED,
-    spacing: { line: 360, after: 120 }, // 1.5 spacing
-    indent: { firstLine: convertInchesToTwip(0.5) },
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { line: 360, after: 120 },
+    indent: firstIndent ? { firstLine: convertInchesToTwip(0.5) } : undefined,
     children: [new TextRun({ text, font: FONT, size: SZ })],
   });
 }
 
-function pageBreak(): Paragraph {
+function listItem(text: string): Paragraph {
   return new Paragraph({
-    children: [new PageBreak()],
+    alignment: AlignmentType.LEFT,
+    spacing: { line: 360, after: 60 },
+    indent: { left: convertInchesToTwip(0.5) },
+    children: [new TextRun({ text, font: FONT, size: SZ })],
+  });
+}
+
+function tableCaption(text: string): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 120, after: 80 },
+    children: [new TextRun({ text, font: FONT, size: SZ, bold: true })],
+  });
+}
+
+function sourceNote(text: string): Paragraph {
+  return new Paragraph({
+    alignment: AlignmentType.LEFT,
+    spacing: { after: 200 },
+    children: [new TextRun({ text: `Sumber: ${text}`, font: FONT, size: 20, italics: true })],
   });
 }
 
 function emptyLine(): Paragraph {
-  return new Paragraph({
-    spacing: { after: 120 },
-    children: [new TextRun({ text: "", font: FONT, size: SZ })],
-  });
+  return new Paragraph({ spacing: { after: 80 }, children: [] });
 }
 
-function tocLine(label: string, dots: string): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.LEFT,
-    spacing: { line: 360, after: 40 },
-    children: [new TextRun({ text: `${label} ${dots}`, font: FONT, size: SZ })],
+function pageBreak(): Paragraph {
+  return new Paragraph({ children: [new PageBreak()] });
+}
+
+// ─── Table Builder ────────────────────────────────────────────────────────────
+
+function buildAcademicTable(tbl: AcademicTable): Paragraph[] {
+  const result: Paragraph[] = [];
+  result.push(tableCaption(tbl.caption));
+
+  const headerRow = new TableRow({
+    children: tbl.headers.map(
+      (h) =>
+        new TableCell({
+          shading: { type: ShadingType.SOLID, color: "2563EB", fill: "2563EB" },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: h, font: FONT, size: 20, bold: true, color: "FFFFFF" })],
+            }),
+          ],
+        })
+    ),
   });
+
+  const dataRows = tbl.rows.map(
+    (row) =>
+      new TableRow({
+        children: row.map(
+          (cell) =>
+            new TableCell({
+              margins: { top: 60, bottom: 60, left: 100, right: 100 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [
+                    new TextRun({ text: cell.value, font: FONT, size: 20, bold: cell.bold }),
+                  ],
+                }),
+              ],
+            })
+        ),
+      })
+  );
+
+  const table = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [headerRow, ...dataRows],
+        borders: {
+          top:    { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+          left:   { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+          right:  { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+        },
+  });
+
+  // docx expects Table to be in the children array as a block — we wrap it
+  // by pushing the table directly after converting it via a dummy paragraph
+  result.push(
+    new Paragraph({
+      children: [],
+      // Attach table as a child in docx — see workaround below
+    })
+  );
+
+  // Return table separately via a special marker paragraph
+  // We'll handle it in the section renderer
+  result.push(sourceNote(tbl.source));
+  return result;
 }
 
 // ─── Text to Paragraphs ───────────────────────────────────────────────────────
 
 function textToParagraphs(text: string): Paragraph[] {
-  const blocks = text.split("\n\n");
-  const result: Paragraph[] = [];
-
-  for (const block of blocks) {
+  const paragraphs: Paragraph[] = [];
+  for (const block of text.split("\n\n")) {
     const lines = block.split("\n");
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        result.push(emptyLine());
-        continue;
-      }
-      // Numbered list items (1. 2. 3.)
-      const isListItem = /^\d+\./.test(trimmed);
-      result.push(
-        new Paragraph({
-          alignment: isListItem ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
-          spacing: { line: 360, after: 80 },
-          indent: isListItem
-            ? { left: convertInchesToTwip(0.5) }
-            : { firstLine: convertInchesToTwip(0.5) },
-          children: [new TextRun({ text: trimmed, font: FONT, size: SZ })],
-        })
-      );
+      const t = line.trim();
+      if (!t) { paragraphs.push(emptyLine()); continue; }
+      const isListLine = /^\d+\.\s/.test(t);
+      paragraphs.push(isListLine ? listItem(t) : body(t));
     }
   }
-
-  return result;
+  return paragraphs;
 }
 
-// ─── Section Block ────────────────────────────────────────────────────────────
+// ─── Cover ────────────────────────────────────────────────────────────────────
 
-function renderSection(heading: string, content: string): Paragraph[] {
-  // Split content by sub-sections (e.g. "1.1 ...")
-  const parts = content.split(/\n(?=\d+\.\d+\s)/);
-  const result: Paragraph[] = [];
+function buildCover(m: MakalahState): (Paragraph | Table)[] {
+  const children: (Paragraph | Table)[] = [];
+  children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
+  children.push(coverPara("MAKALAH", true, SZ_H1));
+  children.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
+  children.push(coverPara(`"${m.judul || "Judul Makalah"}"`, true, SZ));
+  children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
+  children.push(coverPara("Diajukan untuk Memenuhi Tugas Mata Kuliah", false, SZ));
+  children.push(coverPara(m.mataKuliah || "Mata Kuliah", true, SZ));
+  children.push(coverPara(`Dosen Pengampu: ${m.namaDosen || "Nama Dosen"}`, false, SZ));
+  children.push(new Paragraph({ spacing: { after: 500 }, children: [] }));
 
-  if (heading) result.push(babHeading(heading));
-
-  for (const part of parts) {
-    const lines = part.split("\n");
-    const firstLine = lines[0].trim();
-    const rest = lines.slice(1).join("\n").trim();
-
-    if (/^\d+\.\d+/.test(firstLine)) {
-      result.push(sectionHeading(firstLine));
-    } else if (firstLine) {
-      result.push(...textToParagraphs(firstLine));
-    }
-
-    if (rest) result.push(...textToParagraphs(rest));
-  }
-
-  return result;
-}
-
-// ─── Cover Page ───────────────────────────────────────────────────────────────
-
-function buildCover(m: MakalahState): Paragraph[] {
-  const paras: Paragraph[] = [];
-
-  paras.push(new Paragraph({ spacing: { after: 800 }, children: [] }));
-  paras.push(coverTitle("MAKALAH", SZ_H1));
-  paras.push(new Paragraph({ spacing: { after: 400 }, children: [] }));
-  paras.push(coverTitle(`"${m.judul || "Judul Makalah"}"`, SZ_COVER_TITLE));
-  paras.push(new Paragraph({ spacing: { after: 800 }, children: [] }));
-
-  paras.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [
-        new TextRun({
-          text: "Diajukan untuk Memenuhi Tugas Mata Kuliah",
-          font: FONT,
-          size: SZ,
-        }),
-      ],
-    })
-  );
-  paras.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [
-        new TextRun({
-          text: m.mataKuliah || "Mata Kuliah",
-          font: FONT,
-          size: SZ,
-          bold: true,
-        }),
-      ],
-    })
-  );
-  paras.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [
-        new TextRun({
-          text: `Dosen Pengampu: ${m.namaDosen || "Nama Dosen"}`,
-          font: FONT,
-          size: SZ,
-        }),
-      ],
-    })
-  );
-
-  paras.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
-
-  // Members
   if (m.anggota.some((a) => a.nama)) {
-    paras.push(coverInfo("Disusun oleh:"));
-    if (m.kelompok) {
-      paras.push(coverInfo(`Kelompok ${m.kelompok}`));
-    }
-    for (const anggota of m.anggota.filter((a) => a.nama)) {
-      paras.push(
+    children.push(coverPara("Disusun oleh:", false, SZ));
+    if (m.kelompok) children.push(coverPara(`Kelompok ${m.kelompok}`, true, SZ));
+    for (const a of m.anggota.filter((x) => x.nama)) {
+      children.push(
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { after: 40 },
-          children: [
-            new TextRun({
-              text: anggota.nim ? `${anggota.nama} (${anggota.nim})` : anggota.nama,
-              font: FONT,
-              size: SZ,
-            }),
-          ],
+          children: [new TextRun({ text: a.nim ? `${a.nama} (${a.nim})` : a.nama, font: FONT, size: SZ })],
         })
       );
     }
   }
 
-  paras.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
-  paras.push(coverInfo(m.programStudi || "Program Studi"));
-  paras.push(coverInfo(m.universitas || "Universitas"));
-  if (m.tahunAkademik) {
-    paras.push(coverInfo(`Tahun Akademik ${m.tahunAkademik}`));
+  children.push(new Paragraph({ spacing: { after: 500 }, children: [] }));
+  children.push(coverPara(m.programStudi || "Program Studi", false, SZ));
+  children.push(coverPara(m.universitas  || "Universitas",   false, SZ));
+  if (m.tahunAkademik) children.push(coverPara(`Tahun Akademik ${m.tahunAkademik}`, false, SZ));
+
+  return children;
+}
+
+// ─── Section Renderer ─────────────────────────────────────────────────────────
+
+function renderSection(
+  text: string,
+  tableData?: AcademicTable
+): (Paragraph | Table)[] {
+  const result: (Paragraph | Table)[] = [];
+  const paragraphs = textToParagraphs(text);
+  result.push(...paragraphs);
+
+  if (tableData) {
+    result.push(tableCaption(tableData.caption));
+
+    const headerRow = new TableRow({
+      children: tableData.headers.map(
+        (h) =>
+          new TableCell({
+            shading: { type: ShadingType.SOLID, color: "1E3A5F", fill: "1E3A5F" },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: h, font: FONT, size: 20, bold: true, color: "FFFFFF" })],
+              }),
+            ],
+          })
+      ),
+    });
+
+    const dataRows = tableData.rows.map((row, rowIdx) =>
+      new TableRow({
+        children: row.map(
+          (cell) =>
+            new TableCell({
+              shading: rowIdx % 2 === 1
+                ? { type: ShadingType.SOLID, color: "F1F5F9", fill: "F1F5F9" }
+                : undefined,
+              margins: { top: 60, bottom: 60, left: 100, right: 100 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [new TextRun({ text: cell.value, font: FONT, size: 20, bold: cell.bold })],
+                }),
+              ],
+            })
+        ),
+      })
+    );
+
+    result.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [headerRow, ...dataRows],
+        borders: {
+          top:    { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+          left:   { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+          right:  { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+        },
+      })
+    );
+    result.push(sourceNote(tableData.source));
+    result.push(emptyLine());
   }
 
-  return paras;
+  return result;
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
@@ -255,59 +297,84 @@ export async function exportMakalahDocx(
   m: MakalahState,
   output: MakalahOutput
 ): Promise<Blob> {
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
-  // ── Cover ──────────────────────────────────────────────────────────────
+  // Cover
   children.push(...buildCover(m));
   children.push(pageBreak());
 
-  // ── Kata Pengantar ─────────────────────────────────────────────────────
-  children.push(babHeading("KATA PENGANTAR"));
+  // Kata Pengantar
+  children.push(h1("KATA PENGANTAR"));
   children.push(...textToParagraphs(output.kataPengantar));
   children.push(pageBreak());
 
-  // ── Daftar Isi ─────────────────────────────────────────────────────────
-  children.push(babHeading("DAFTAR ISI"));
-  const tocLines = output.daftarIsi.split("\n");
-  for (const line of tocLines) {
-    if (line.trim()) {
-      children.push(
-        new Paragraph({
-          alignment: AlignmentType.LEFT,
-          spacing: { line: 360, after: 40 },
-          children: [new TextRun({ text: line, font: FONT, size: SZ })],
-        })
-      );
+  // Daftar Isi
+  children.push(h1("DAFTAR ISI"));
+  for (const line of output.daftarIsi.split("\n")) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.LEFT,
+        spacing: { line: 360, after: 40 },
+        children: [new TextRun({ text: line, font: FONT, size: SZ })],
+      })
+    );
+  }
+  children.push(pageBreak());
+
+  // BAB I
+  children.push(h1("BAB I\nPENDAHULUAN"));
+  for (const block of output.bab1.split(/\n(?=1\.\d+\s)/)) {
+    const lines = block.split("\n");
+    const first = lines[0].trim();
+    if (/^1\.\d+/.test(first)) children.push(h2(first));
+    else if (first) children.push(body(first));
+    for (const line of lines.slice(1)) {
+      const t = line.trim();
+      if (!t) { children.push(emptyLine()); continue; }
+      if (/^\d+\./.test(t)) children.push(listItem(t));
+      else children.push(body(t));
     }
   }
   children.push(pageBreak());
 
-  // ── BAB I ──────────────────────────────────────────────────────────────
-  children.push(...renderSection("BAB I\nPENDAHULUAN", output.bab1));
+  // BAB II — structured sections with tables
+  children.push(h1("BAB II\nPEMBAHASAN"));
+  for (const section of output.bab2Sections) {
+    children.push(h2(`${section.number} ${section.title}`));
+    children.push(...renderSection(section.text, section.tableData));
+    children.push(emptyLine());
+  }
   children.push(pageBreak());
 
-  // ── BAB II ─────────────────────────────────────────────────────────────
-  children.push(...renderSection("BAB II\nPEMBAHASAN", output.bab2));
+  // BAB III
+  children.push(h1("BAB III\nPENUTUP"));
+  for (const block of output.bab3.split(/\n(?=3\.\d+\s)/)) {
+    const lines = block.split("\n");
+    const first = lines[0].trim();
+    if (/^3\.\d+/.test(first)) children.push(h2(first));
+    else if (first) children.push(body(first));
+    for (const line of lines.slice(1)) {
+      const t = line.trim();
+      if (!t) { children.push(emptyLine()); continue; }
+      if (/^\d+\./.test(t)) children.push(listItem(t));
+      else children.push(body(t));
+    }
+  }
   children.push(pageBreak());
 
-  // ── BAB III ────────────────────────────────────────────────────────────
-  children.push(...renderSection("BAB III\nPENUTUP", output.bab3));
-  children.push(pageBreak());
-
-  // ── Daftar Pustaka ─────────────────────────────────────────────────────
-  children.push(babHeading("DAFTAR PUSTAKA"));
-  const pustaka = output.daftarPustaka.split("\n\n");
-  for (const entry of pustaka) {
-    const trimmed = entry.trim();
-    if (!trimmed) continue;
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: { line: 360, after: 120 },
-        indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
-        children: [new TextRun({ text: trimmed.replace(/\*/g, ""), font: FONT, size: SZ })],
-      })
-    );
+  // Daftar Pustaka
+  children.push(h1("DAFTAR PUSTAKA"));
+  for (const entry of output.daftarPustaka.split("\n\n")) {
+    if (entry.trim()) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { line: 360, after: 120 },
+          indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
+          children: [new TextRun({ text: entry.replace(/\*/g, ""), font: FONT, size: SZ })],
+        })
+      );
+    }
   }
 
   const doc = new Document({
@@ -315,19 +382,13 @@ export async function exportMakalahDocx(
       {
         properties: {
           page: {
-            margin: {
-              top:    MARGIN_OTHER,
-              right:  MARGIN_OTHER,
-              bottom: MARGIN_OTHER,
-              left:   MARGIN_LEFT,
-            },
+            margin: { top: MARGIN_OTHER, right: MARGIN_OTHER, bottom: MARGIN_OTHER, left: MARGIN_LEFT },
           },
         },
-        children,
+        children: children as Paragraph[],
       },
     ],
   });
 
-  const buffer = await Packer.toBlob(doc);
-  return buffer;
+  return Packer.toBlob(doc);
 }
