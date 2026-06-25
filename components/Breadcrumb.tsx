@@ -17,6 +17,7 @@ const ROUTE_MAP: Record<string, { label: string; group?: string }> = {
   "/responden":      { label: "Responden Center",     group: "Penelitian" },
   "/upload":         { label: "Upload Data",          group: "Penelitian" },
   "/mapping":        { label: "Mapping Variabel",     group: "Penelitian" },
+  "/kelayakan":      { label: "Cek Kelayakan Data",     group: "Analisis" },
   "/deskriptif":     { label: "Deskriptif",           group: "Analisis" },
   "/validitas":      { label: "Validitas",            group: "Analisis" },
   "/reliabilitas":   { label: "Reliabilitas",         group: "Analisis" },

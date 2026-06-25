@@ -37,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/mapping",   label: "Mapping Variabel",   icon: Settings2,group: "Penelitian" },
 
   // Analisis
+  { href: "/kelayakan",    label: "Cek Kelayakan", icon: CheckCircle, group: "Analisis" },
   { href: "/deskriptif",   label: "Deskriptif",   icon: BarChart2,  group: "Analisis" },
   { href: "/validitas",    label: "Validitas",    icon: CheckCircle, group: "Analisis" },
   { href: "/reliabilitas", label: "Reliabilitas", icon: ShieldCheck, group: "Analisis" },

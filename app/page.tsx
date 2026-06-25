@@ -22,8 +22,9 @@ const WIZARD_STEPS = [
   { num: 4, label: "Kerangka",    href: "/kerangka" },
   { num: 5, label: "Operasional", href: "/operasional" },
   { num: 6, label: "Responden",   href: "/responden" },
-  { num: 7, label: "Analisis",    href: "/upload" },
-  { num: 8, label: "Export",      href: "/narasi" },
+  { num: 7, label: "Kelayakan",   href: "/kelayakan" },
+  { num: 8, label: "Analisis",    href: "/upload" },
+  { num: 9, label: "Export",      href: "/narasi" },
 ];
 
 // ─── quick actions ─────────────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ const WIZARD_STEPS = [
 const QUICK_ACTIONS = [
   { label: "Buat Judul",    icon: BookOpen,   href: "/judul",       color: "bg-blue-500" },
   { label: "Upload Data",   icon: Upload,     href: "/upload",      color: "bg-violet-500" },
+  { label: "Cek Kelayakan", icon: CheckCircle,href: "/kelayakan",   color: "bg-teal-500" },
   { label: "Analisis",      icon: BarChart2,  href: "/deskriptif",  color: "bg-amber-500" },
   { label: "Responden",     icon: Users,      href: "/responden",   color: "bg-emerald-500" },
   { label: "Narasi Bab 4",  icon: FileText,   href: "/narasi",      color: "bg-rose-500" },
@@ -47,6 +49,7 @@ const NAV_CARDS = [
   { label: "Responden Center",     desc: "Import & validasi data responden",   icon: Users,         href: "/responden",       color: "border-violet-200 bg-violet-50",iconColor:"text-violet-600"},
   { label: "Upload Data",          desc: "Upload Excel/CSV analisis",          icon: Upload,        href: "/upload",          color: "border-violet-200 bg-violet-50",iconColor:"text-violet-600"},
   { label: "Mapping Variabel",     desc: "Konfigurasi kolom X1, X2, Y",       icon: Settings2,     href: "/mapping",         color: "border-violet-200 bg-violet-50",iconColor:"text-violet-600"},
+  { label: "Cek Kelayakan Data",   desc: "Laporan kelayakan & skor 0–100",     icon: CheckCircle,   href: "/kelayakan",       color: "border-amber-200 bg-amber-50",  iconColor: "text-amber-600" },
   { label: "Deskriptif",           desc: "Frekuensi, mean, kategori Likert",   icon: BarChart2,     href: "/deskriptif",      color: "border-amber-200 bg-amber-50",  iconColor: "text-amber-600" },
   { label: "Validitas",            desc: "Pearson item-total, r-tabel",        icon: CheckCircle,   href: "/validitas",       color: "border-amber-200 bg-amber-50",  iconColor: "text-amber-600" },
   { label: "Reliabilitas",         desc: "Cronbach Alpha per variabel",        icon: ShieldCheck,   href: "/reliabilitas",    color: "border-amber-200 bg-amber-50",  iconColor: "text-amber-600" },
@@ -88,9 +91,9 @@ export default function DashboardPage() {
     if (!hasJudul) return 1;
     if (!hasBab1)  return 3;
     if (!hasResp)  return 6;
-    if (!hasData)  return 7;
-    if (!hasMapping) return 7;
-    return 8;
+    if (!hasData)  return 8;
+    if (!hasMapping) return 8;
+    return 9;
   })();
 
   const statCards = [
