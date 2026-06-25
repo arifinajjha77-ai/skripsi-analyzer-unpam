@@ -22,6 +22,7 @@ import { REGISTERED_UNIVERSITIES, prefillFromUniversity, getUniversityInfo } fro
 import { fileToBase64, saveLogo, loadLogo } from "@/lib/cover/logoStore";
 import { checkCoverQuality } from "@/lib/cover/coverQuality";
 import { smartWrapTitle } from "@/lib/cover/docxCover";
+import UnpamCoverPreview from "./UnpamCoverPreview";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -538,7 +539,10 @@ export default function CoverBuilder({ cover, onChange, projectId }: CoverBuilde
 
       {/* ── Right: Live Preview ──────────────────────────────────────────────── */}
       <div>
-        <CoverPreview cover={cover} />
+        {/* UNPAM: pixel-perfect fixed layout (transform:scale A4) */}
+        {cover.universityMode === "registered" && cover.universityId === "unpam"
+          ? <UnpamCoverPreview cover={cover} />
+          : <CoverPreview cover={cover} />}
       </div>
     </div>
   );
