@@ -1,5 +1,6 @@
 import type { InsightReport, StatusLevel } from "./analyzer";
 import { getActiveTemplate, marginTwips, lineSpacingDocx } from "@/lib/templates";
+import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
 
 const STATUS_LABEL: Record<StatusLevel, string> = {
   sangat_baik:     "Sangat Baik",
@@ -95,6 +96,11 @@ export async function generateInsightDocx(
   // ── Build content ───────────────────────────────────────────────────────
 
   const children: InstanceType<typeof Paragraph>[] = [];
+
+  // Institution header with logo
+  const logoBuffer = await fetchLogoBuffer();
+  const institutionHeader = await buildInstitutionHeader({ logoBuffer, fontName: template.font, withRule: true });
+  children.push(...(institutionHeader as InstanceType<typeof Paragraph>[]));
 
   // Cover
   children.push(h1("LAPORAN KELAYAKAN DATA PENELITIAN"));

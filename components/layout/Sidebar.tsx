@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck, TrendingUp,
@@ -110,10 +111,16 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         open ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">SA</span>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center border border-slate-100">
+              <Image
+                src="/logo-unpam.png"
+                alt="Logo UNPAM"
+                width={36}
+                height={36}
+                className="object-contain w-9 h-9"
+              />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-slate-800 leading-tight">Skripsi Analyzer</p>

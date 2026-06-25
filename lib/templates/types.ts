@@ -2,6 +2,11 @@ export interface CampusTemplate {
   id: string;
   nama: string;
   namaFakultas: string;
+  programStudi: string;
+  // Branding
+  logo: string;          // path relative to /public, e.g. "/logo-unpam.png"
+  primaryColor: string;  // hex, e.g. "#0A3D91"
+  secondaryColor: string;// hex, e.g. "#F4C400"
   // Typography
   font: string;
   fontSize: number;          // pt

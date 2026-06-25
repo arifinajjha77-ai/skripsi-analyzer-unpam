@@ -14,6 +14,7 @@ import {
 } from "docx";
 import { Bab1State } from "./bab1Store";
 import { ThesisState } from "./store";
+import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
 import {
   generateLatarBelakang,
   generateManfaatPenelitian,
@@ -166,17 +167,24 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
     .filter(Boolean)
     .map((p) => bodyPara(p));
 
+  // Institution header with logo
+  const logoBuffer = await fetchLogoBuffer();
+  const institutionHeader = await buildInstitutionHeader({ logoBuffer, withRule: true });
+
   const children: (Paragraph | Table)[] = [
+    // Institution header
+    ...institutionHeader,
+
     // Cover info
     new Paragraph({
       children: [new TextRun({ text: judulText, bold: true, size: 28 })],
       alignment: AlignmentType.CENTER,
-      spacing: { before: 300, after: 200 },
+      spacing: { before: 200, after: 200 },
     }),
     new Paragraph({
       children: [new TextRun({ text: `${jenisUsaha} | ${lokasi}`, size: 22, color: "555555" })],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 600 },
+      spacing: { after: 400 },
     }),
     hr(),
 

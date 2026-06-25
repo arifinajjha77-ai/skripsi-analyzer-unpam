@@ -6,6 +6,7 @@
 import type { Reference } from "@/lib/reference-engine";
 import { dedupeRefs } from "@/lib/reference-engine";
 import { getActiveTemplate, marginTwips, lineSpacingDocx } from "@/lib/templates";
+import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
 
 export async function generateBab4Docx(
   narasiText: string,
@@ -19,6 +20,10 @@ export async function generateBab4Docx(
   const template = getActiveTemplate();
   const margins  = marginTwips(template);
   const lineVal  = lineSpacingDocx(template);
+
+  // Logo + institution header
+  const logoBuffer = await fetchLogoBuffer();
+  const institutionHeader = await buildInstitutionHeader({ logoBuffer, fontName: template.font, withRule: true });
 
   /** Helper: normal paragraph with optional indent */
   function para(
@@ -131,6 +136,7 @@ export async function generateBab4Docx(
         },
       },
       children: [
+        ...institutionHeader,
         ...narasiParas,
         ...daftarPustakaParas,
       ],

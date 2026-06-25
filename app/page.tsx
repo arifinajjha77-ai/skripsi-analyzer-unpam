@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   BookOpen, ClipboardList, Newspaper, GitFork, Table2,
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck,
@@ -109,12 +110,24 @@ export default function DashboardPage() {
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-6 py-8 text-white shadow-lg">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-blue-200 text-sm font-medium mb-1">FEB · Manajemen Pemasaran · UNPAM</p>
-            <h1 className="text-3xl font-bold leading-tight mb-2">Skripsi Analyzer UNPAM</h1>
-            <p className="text-blue-100 text-base max-w-xl">
-              Membantu penyusunan proposal, kuesioner, analisis data dan dokumen skripsi Manajemen.
-            </p>
+          <div className="flex items-start gap-4">
+            {/* UNPAM Logo */}
+            <div className="w-14 h-14 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden shrink-0">
+              <Image
+                src="/logo-unpam.png"
+                alt="Logo UNPAM"
+                width={52}
+                height={52}
+                className="object-contain w-12 h-12"
+              />
+            </div>
+            <div>
+              <p className="text-blue-200 text-sm font-medium mb-1">FEB · Manajemen Pemasaran · UNPAM</p>
+              <h1 className="text-3xl font-bold leading-tight mb-2">Skripsi Analyzer UNPAM</h1>
+              <p className="text-blue-100 text-base max-w-xl">
+                Membantu penyusunan proposal, kuesioner, analisis data dan dokumen skripsi Manajemen.
+              </p>
+            </div>
           </div>
           <Link href="/project" className="hidden sm:flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors shrink-0">
             <FolderOpen className="w-4 h-4" />

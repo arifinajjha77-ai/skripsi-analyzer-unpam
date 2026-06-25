@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -22,8 +23,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold">SA</span>
+            <div className="w-7 h-7 rounded overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
+              <Image src="/logo-unpam.png" alt="UNPAM" width={28} height={28} className="object-contain w-7 h-7" />
             </div>
             <span className="font-semibold text-slate-700 text-sm">Skripsi Analyzer UNPAM</span>
           </div>

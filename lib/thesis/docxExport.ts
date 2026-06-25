@@ -13,6 +13,7 @@ import {
   ShadingType,
 } from "docx";
 import { VariableQuestionnaire } from "./questionnaire";
+import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
 
 interface DocxExportOptions {
   judul: string;
@@ -107,6 +108,10 @@ function buildQuestionTable(items: VariableQuestionnaire["items"]): Table {
 export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
   const { judul, x1, x2, y, objek, x1Data, x2Data, yData } = opts;
 
+  // Logo + institution header
+  const logoBuffer = await fetchLogoBuffer();
+  const institutionHeader = await buildInstitutionHeader({ logoBuffer, withRule: true });
+
   const doc = new Document({
     sections: [
       {
@@ -116,16 +121,19 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
           },
         },
         children: [
+          // ─── Institution header ──────────────────────────────────────
+          ...institutionHeader,
+
           // ─── Cover ──────────────────────────────────────────────────
           new Paragraph({
             children: [bold("KUESIONER PENELITIAN", 28)],
             alignment: AlignmentType.CENTER,
-            spacing: { before: 400, after: 200 },
+            spacing: { before: 200, after: 200 },
           }),
           new Paragraph({
             children: [bold(judul.toUpperCase(), 26)],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 600 },
+            spacing: { after: 400 },
           }),
           hr(),
 
