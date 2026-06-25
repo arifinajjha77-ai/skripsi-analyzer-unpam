@@ -6,7 +6,6 @@ import {
   TableRow,
   TableCell,
   TextRun,
-  HeadingLevel,
   AlignmentType,
   WidthType,
   ShadingType,
@@ -21,25 +20,41 @@ import {
   buildSalesTable,
   buildConsumerTable,
   buildCompetitorTable,
+  buildObjectLabel,
   GeneratedTable,
 } from "./bab1Generator";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
+// BAB heading: centered, bold, uppercase, black — no Word Heading style (avoids blue color)
 function h1(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 28 })],
-    heading: HeadingLevel.HEADING_1,
+    children: [
+      new TextRun({
+        text: text.toUpperCase(),
+        bold: true,
+        size: 28,
+        color: "000000",
+      }),
+    ],
     alignment: AlignmentType.CENTER,
-    spacing: { before: 400, after: 300 },
+    spacing: { before: 480, after: 240 },
   });
 }
 
+// Sub-heading: bold, left-aligned, black
 function h2(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 26 })],
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 300, after: 200 },
+    children: [
+      new TextRun({
+        text,
+        bold: true,
+        size: 26,
+        color: "000000",
+      }),
+    ],
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 320, after: 160 },
   });
 }
 
@@ -141,9 +156,11 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
   const { namaObjek, jenisUsaha, lokasi } = bab1;
   const { x1, x2, y } = thesis;
 
+  // Build object label without duplicate location in the title
+  const objLabel = buildObjectLabel(namaObjek || "OBJEK", lokasi);
   const judulText =
     `PENGARUH ${(x1 || "VARIABEL X1").toUpperCase()} DAN ${(x2 || "VARIABEL X2").toUpperCase()} ` +
-    `TERHADAP ${(y || "VARIABEL Y").toUpperCase()} PADA ${(namaObjek || "OBJEK").toUpperCase()}`;
+    `TERHADAP ${(y || "VARIABEL Y").toUpperCase()} PADA ${objLabel.toUpperCase()}`;
 
   const latarBelakangText = generateLatarBelakang(bab1, thesis);
   const manfaatText = generateManfaatPenelitian(bab1, thesis);

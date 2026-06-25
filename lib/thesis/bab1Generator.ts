@@ -3,19 +3,68 @@ import { ThesisState } from "./store";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Parse an Indonesian-formatted number string to a JS number.
+ *
+ * Handles:
+ *   "1.000 orang"  → 1000   (dot = thousands separator)
+ *   "50.000.000"   → 50000000
+ *   "Rp 25.000"    → 25000
+ *   "1.234,56"     → 1234.56  (dot thousands, comma decimal)
+ *   "72.5%"        → 72.5    (dot = decimal, < 3 trailing digits)
+ *   "725"          → 725
+ *   "Rp5 juta"     → 5000000
+ *   "850 unit"     → 850
+ */
+export function parseIDNumber(s: string): number {
+  if (!s || !s.trim()) return NaN;
+
+  const hasJuta = /juta/i.test(s);
+  const hasMiliar = /miliar|milyar/i.test(s);
+
+  // Keep only digits, dots, and commas
+  let num = s.replace(/[^\d.,]/g, "").trim();
+  if (!num) return NaN;
+
+  let result: number;
+
+  if (num.includes(",")) {
+    // Indonesian style: 1.000,50 → dots=thousands, comma=decimal
+    num = num.replace(/\./g, "").replace(",", ".");
+    result = parseFloat(num);
+  } else {
+    const dots = (num.match(/\./g) ?? []).length;
+    if (dots > 1) {
+      // Multiple dots → all are thousands separators: 50.000.000 → 50000000
+      result = parseFloat(num.replace(/\./g, ""));
+    } else if (dots === 1 && /\.\d{3}$/.test(num)) {
+      // Single dot followed by exactly 3 digits → thousands separator: 1.000 → 1000
+      result = parseFloat(num.replace(/\./g, ""));
+    } else {
+      // Standard float: 72.5, 0.85, 725
+      result = parseFloat(num);
+    }
+  }
+
+  if (isNaN(result)) return NaN;
+  if (hasJuta)   return result * 1_000_000;
+  if (hasMiliar) return result * 1_000_000_000;
+  return result;
+}
+
 function pct(target: string, realisasi: string): string {
-  const t = parseFloat(target.replace(/[^\d.]/g, ""));
-  const r = parseFloat(realisasi.replace(/[^\d.]/g, ""));
+  const t = parseIDNumber(target);
+  const r = parseIDNumber(realisasi);
   if (!t || isNaN(t) || isNaN(r)) return "-";
   return ((r / t) * 100).toFixed(1) + "%";
 }
 
 function keterangan(target: string, realisasi: string): string {
-  const t = parseFloat(target.replace(/[^\d.]/g, ""));
-  const r = parseFloat(realisasi.replace(/[^\d.]/g, ""));
-  if (isNaN(t) || isNaN(r)) return "-";
+  const t = parseIDNumber(target);
+  const r = parseIDNumber(realisasi);
+  if (isNaN(t) || isNaN(r) || t === 0) return "-";
   const ratio = r / t;
-  if (ratio >= 1.0) return "Tercapai";
+  if (ratio >= 1.0)  return "Tercapai";
   if (ratio >= 0.80) return "Belum Optimal";
   if (ratio >= 0.60) return "Tidak Tercapai";
   return "Rendah";
@@ -23,6 +72,57 @@ function keterangan(target: string, realisasi: string): string {
 
 function formatNumber(val: string): string {
   return val.trim() || "-";
+}
+
+/**
+ * Detect trend from a numeric series.
+ * Returns: "meningkat" | "menurun" | "fluktuatif" | "stabil"
+ */
+export function detectTrend(values: number[]): "meningkat" | "menurun" | "fluktuatif" | "stabil" {
+  if (values.length < 2) return "fluktuatif";
+
+  let allUp = true;
+  let allDown = true;
+  let totalChange = 0;
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+  for (let i = 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff <= 0) allUp = false;
+    if (diff >= 0) allDown = false;
+    totalChange += Math.abs(diff);
+  }
+
+  if (allUp)   return "meningkat";
+  if (allDown) return "menurun";
+  // Stabil: total change < 8% of average
+  if (avg > 0 && totalChange / avg < 0.08 * (values.length - 1)) return "stabil";
+  return "fluktuatif";
+}
+
+/**
+ * Format a list of years with proper Indonesian conjunction.
+ *   ["2024"]           → "2024"
+ *   ["2024","2025"]    → "2024 dan 2025"
+ *   ["2024","2025","2026"] → "2024, 2025, dan 2026"
+ */
+export function formatYearList(years: string[]): string {
+  if (years.length === 0) return "";
+  if (years.length === 1) return years[0];
+  if (years.length === 2) return `${years[0]} dan ${years[1]}`;
+  return years.slice(0, -1).join(", ") + ", dan " + years[years.length - 1];
+}
+
+/**
+ * Build object label for title/judul, avoiding duplicate location.
+ *   ("GYFIN 3D Printing Depok", "Depok") → "GYFIN 3D Printing Depok"
+ *   ("Sock Energy", "Depok")             → "Sock Energy di Depok"
+ *   ("Sock Energy", "")                  → "Sock Energy"
+ */
+export function buildObjectLabel(name: string, location: string): string {
+  if (!location || !location.trim()) return name;
+  if (name.toLowerCase().includes(location.toLowerCase().trim())) return name;
+  return `${name} di ${location}`;
 }
 
 // ─── table generators (plain text, used inside DOCX and preview) ──────────────
@@ -128,22 +228,21 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     : consumerData.filter((r) => r.tahun && r.target && r.realisasi);
   const validCompetitors = competitors.filter((c) => c.nama);
 
-  // Trend analysis helpers
-  const lastSale = validSales[validSales.length - 1];
-  const firstSale = validSales[0];
-  const saleTrend = validSales.length >= 2 && lastSale && firstSale
-    ? parseFloat(lastSale.realisasi.replace(/[^\d.]/g, "")) < parseFloat(firstSale.realisasi.replace(/[^\d.]/g, ""))
-      ? "mengalami penurunan"
-      : "mengalami peningkatan"
-    : "berfluktuasi";
+  // Trend analysis — parse realisasi values and detect proper trend
+  const salesValues    = validSales.map((r) => parseIDNumber(r.realisasi)).filter((v) => !isNaN(v));
+  const consumerValues = validConsumers.map((r) => parseIDNumber(r.realisasi)).filter((v) => !isNaN(v));
 
-  const lastConsumer = validConsumers[validConsumers.length - 1];
-  const firstConsumer = validConsumers[0];
-  const consumerTrend = validConsumers.length >= 2 && lastConsumer && firstConsumer
-    ? parseFloat(lastConsumer.realisasi.replace(/[^\d.]/g, "")) < parseFloat(firstConsumer.realisasi.replace(/[^\d.]/g, ""))
-      ? "mengalami penurunan"
-      : "mengalami peningkatan"
-    : "berfluktuasi";
+  const saleTrendKey    = detectTrend(salesValues);
+  const consumerTrendKey = detectTrend(consumerValues);
+
+  const TREND_LABEL: Record<ReturnType<typeof detectTrend>, string> = {
+    meningkat:  "mengalami peningkatan",
+    menurun:    "mengalami penurunan",
+    fluktuatif: "mengalami fluktuasi",
+    stabil:     "relatif stabil",
+  };
+  const saleTrend    = TREND_LABEL[saleTrendKey];
+  const consumerTrend = TREND_LABEL[consumerTrendKey];
 
   const salesPeriod = validSales.length >= 2
     ? `${validSales[0].tahun} hingga ${validSales[validSales.length - 1].tahun}`
@@ -199,9 +298,12 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
       salesDesc += `Secara rinci, ${rows.join("; ")}. `;
     }
 
-    const notAchieved = validSales.filter((r) => keterangan(r.target, r.realisasi) === "Tidak Tercapai");
+    const notAchieved = validSales.filter((r) => {
+      const kt = keterangan(r.target, r.realisasi);
+      return kt === "Tidak Tercapai" || kt === "Belum Optimal" || kt === "Rendah";
+    });
     if (notAchieved.length > 0) {
-      salesDesc += `Terdapat ${notAchieved.length} tahun di mana realisasi penjualan tidak mencapai target yang telah ditetapkan, yaitu pada tahun ${notAchieved.map((r) => r.tahun).join(" dan ")}. `;
+      salesDesc += `Terdapat ${notAchieved.length} tahun di mana realisasi penjualan belum mencapai target yang telah ditetapkan, yaitu pada tahun ${formatYearList(notAchieved.map((r) => r.tahun))}. `;
       salesDesc += `Kondisi ini mengindikasikan adanya permasalahan yang perlu mendapatkan perhatian serius dari pihak manajemen ${namaObjek}. `;
     }
 
@@ -218,13 +320,14 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
   // 4. Data konsumen
   if (validConsumers.length > 0) {
+    const consumerTrendSimilar = consumerTrendKey === saleTrendKey;
     let consumerDesc = consumerMode === "estimasi"
       ? `Sejalan dengan data penjualan, data konsumen yang telah disamarkan menunjukkan tren yang ` +
-        `${consumerTrend === saleTrend ? "serupa dengan data penjualan" : "berbeda dengan data penjualan"}. ` +
+        `${consumerTrendSimilar ? "serupa dengan data penjualan" : "berbeda dengan data penjualan"}. ` +
         `Berdasarkan estimasi yang disusun berdasarkan gambaran umum kondisi perusahaan, ` +
         `jumlah konsumen ${namaObjek} ${consumerTrend} selama periode yang sama. `
       : `Sejalan dengan data penjualan, data konsumen ${namaObjek} juga menunjukkan tren yang ` +
-        `${consumerTrend === saleTrend ? "serupa" : "berbeda"}. ` +
+        `${consumerTrendSimilar ? "serupa" : "berbeda"}. ` +
         `Jumlah konsumen ${namaObjek} ${consumerTrend} selama periode yang sama. `;
 
     if (validConsumers.length >= 1) {
@@ -235,10 +338,13 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
       consumerDesc += `${rows.join("; ")}. `;
     }
 
-    const notAchievedC = validConsumers.filter((r) => keterangan(r.target, r.realisasi) === "Tidak Tercapai");
+    const notAchievedC = validConsumers.filter((r) => {
+      const kt = keterangan(r.target, r.realisasi);
+      return kt === "Tidak Tercapai" || kt === "Belum Optimal" || kt === "Rendah";
+    });
     if (notAchievedC.length > 0) {
       consumerDesc +=
-        `Pencapaian konsumen yang tidak memenuhi target pada tahun ${notAchievedC.map((r) => r.tahun).join(" dan ")} ` +
+        `Pencapaian konsumen yang belum memenuhi target pada tahun ${formatYearList(notAchievedC.map((r) => r.tahun))} ` +
         `menunjukkan bahwa ${namaObjek} mengalami kesulitan dalam menarik dan mempertahankan konsumennya. `;
     }
 
@@ -319,15 +425,16 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     );
   }
 
-  // 10. Penutup
+  // 10. Penutup — use buildObjectLabel to avoid duplicate location in title
+  const objectLabel = buildObjectLabel(namaObjek, lokasi);
   paragraphs.push(
     `Berdasarkan latar belakang permasalahan yang telah diuraikan di atas, peneliti tertarik untuk ` +
     `melakukan penelitian dengan judul: ` +
     `"Pengaruh ${x1 || "Variabel X1"} dan ${x2 || "Variabel X2"} Terhadap ${y || "Variabel Y"} ` +
-    `Pada ${namaObjek}${lokasi ? " di " + lokasi : ""}." ` +
+    `Pada ${objectLabel}." ` +
     `Penelitian ini diharapkan dapat memberikan kontribusi nyata bagi pengembangan ilmu manajemen ` +
     `pemasaran, khususnya dalam memahami faktor-faktor yang mempengaruhi ${y || "perilaku konsumen"} ` +
-    `pada ${jenisUsaha || "usaha"} di ${lokasi || "Indonesia"}.`
+    `pada ${jenisUsaha || "usaha"}${lokasi ? " di " + lokasi : ""}.`
   );
 
   return paragraphs.join("\n\n");

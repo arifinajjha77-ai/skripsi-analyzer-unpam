@@ -12,6 +12,7 @@
  */
 
 import type { SalesRow, ConsumerRow } from "./bab1Store";
+import { parseIDNumber } from "./bab1Generator";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,11 +30,8 @@ function roundTo(n: number, multiple: number): number {
 
 function formatReadable(n: number): string {
   if (n >= 1_000_000) return `Rp${(n / 1_000_000).toFixed(0)} juta`;
-  if (n >= 1_000) {
-    const rounded = Math.round(n / 1_000);
-    return `${rounded.toLocaleString("id-ID")} unit`;
-  }
-  return `${n} unit`;
+  // Use id-ID locale so thousands separator is "." (e.g. 1000 → "1.000 unit")
+  return `${n.toLocaleString("id-ID")} unit`;
 }
 
 function formatConsumerReadable(n: number): string {
@@ -113,19 +111,19 @@ export function generateSyncEstimation(namaObjek: string): SyncEstimation {
 // ─── Keterangan granular ──────────────────────────────────────────────────────
 
 export function keteranganGranular(target: string, realisasi: string): string {
-  const t = parseFloat(target.replace(/[^\d.]/g, ""));
-  const r = parseFloat(realisasi.replace(/[^\d.]/g, ""));
+  const t = parseIDNumber(target);
+  const r = parseIDNumber(realisasi);
   if (!t || isNaN(t) || isNaN(r)) return "-";
-  const pct = (r / t) * 100;
-  if (pct >= 100) return "Tercapai";
-  if (pct >= 80)  return "Belum Optimal";
-  if (pct >= 60)  return "Tidak Tercapai";
+  const ratio = r / t;
+  if (ratio >= 1.0)  return "Tercapai";
+  if (ratio >= 0.80) return "Belum Optimal";
+  if (ratio >= 0.60) return "Tidak Tercapai";
   return "Rendah";
 }
 
 export function pctCalc(target: string, realisasi: string): string {
-  const t = parseFloat(target.replace(/[^\d.]/g, ""));
-  const r = parseFloat(realisasi.replace(/[^\d.]/g, ""));
+  const t = parseIDNumber(target);
+  const r = parseIDNumber(realisasi);
   if (!t || isNaN(t) || isNaN(r)) return "-";
   return ((r / t) * 100).toFixed(1) + "%";
 }
