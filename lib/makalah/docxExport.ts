@@ -1,7 +1,8 @@
 /**
- * SmartCampus V2 — Makalah DOCX Exporter
+ * SmartCampus V2.2 — Makalah DOCX Exporter
  *
  * Updated to support:
+ * - Cover Builder (delegates to lib/cover/docxCover.ts)
  * - Rich section blocks (bab2Sections with tables)
  * - Academic comparison tables (Sprint 8)
  * - UNPAM-compliant formatting
@@ -22,9 +23,11 @@ import {
   BorderStyle,
   ShadingType,
 } from "docx";
-import { MakalahState } from "./store";
+import { MakalahState, stateToCoverData } from "./store";
 import { MakalahOutput } from "./generator";
 import { AcademicTable } from "./writingEngine";
+import { buildDocxCover } from "@/lib/cover/docxCover";
+import { getUniversityInfo, getTemplate } from "@/lib/cover/templates";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -187,41 +190,8 @@ function textToParagraphs(text: string): Paragraph[] {
   return paragraphs;
 }
 
-// ─── Cover ────────────────────────────────────────────────────────────────────
-
-function buildCover(m: MakalahState): (Paragraph | Table)[] {
-  const children: (Paragraph | Table)[] = [];
-  children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
-  children.push(coverPara("MAKALAH", true, SZ_H1));
-  children.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
-  children.push(coverPara(`"${m.judul || "Judul Makalah"}"`, true, SZ));
-  children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
-  children.push(coverPara("Diajukan untuk Memenuhi Tugas Mata Kuliah", false, SZ));
-  children.push(coverPara(m.mataKuliah || "Mata Kuliah", true, SZ));
-  children.push(coverPara(`Dosen Pengampu: ${m.namaDosen || "Nama Dosen"}`, false, SZ));
-  children.push(new Paragraph({ spacing: { after: 500 }, children: [] }));
-
-  if (m.anggota.some((a) => a.nama)) {
-    children.push(coverPara("Disusun oleh:", false, SZ));
-    if (m.kelompok) children.push(coverPara(`Kelompok ${m.kelompok}`, true, SZ));
-    for (const a of m.anggota.filter((x) => x.nama)) {
-      children.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 40 },
-          children: [new TextRun({ text: a.nim ? `${a.nama} (${a.nim})` : a.nama, font: FONT, size: SZ })],
-        })
-      );
-    }
-  }
-
-  children.push(new Paragraph({ spacing: { after: 500 }, children: [] }));
-  children.push(coverPara(m.programStudi || "Program Studi", false, SZ));
-  children.push(coverPara(m.universitas  || "Universitas",   false, SZ));
-  if (m.tahunAkademik) children.push(coverPara(`Tahun Akademik ${m.tahunAkademik}`, false, SZ));
-
-  return children;
-}
+// ─── Cover (delegated to lib/cover/docxCover.ts) ─────────────────────────────
+// buildCover is now async and uses the Cover Builder system
 
 // ─── Section Renderer ─────────────────────────────────────────────────────────
 
@@ -299,9 +269,10 @@ export async function exportMakalahDocx(
 ): Promise<Blob> {
   const children: (Paragraph | Table)[] = [];
 
-  // Cover
-  children.push(...buildCover(m));
-  children.push(pageBreak());
+  // ── Cover — delegated to Cover Builder engine ──────────────────────────────
+  const coverData  = stateToCoverData(m);
+  const coverPages = await buildDocxCover(coverData);
+  children.push(...coverPages);
 
   // Kata Pengantar
   children.push(h1("KATA PENGANTAR"));
@@ -377,12 +348,16 @@ export async function exportMakalahDocx(
     }
   }
 
+  // Use template margins for document
+  const uniInfo = getUniversityInfo(m.universityId ?? "unpam");
+  const tmpl    = getTemplate(uniInfo?.templateId ?? "generic");
+
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
-            margin: { top: MARGIN_OTHER, right: MARGIN_OTHER, bottom: MARGIN_OTHER, left: MARGIN_LEFT },
+            margin: tmpl.margins,
           },
         },
         children: children as Paragraph[],

@@ -2,28 +2,27 @@
 
 import { useState, useCallback } from "react";
 import {
-  ChevronRight, ChevronLeft, Plus, Trash2, FileText,
-  Download, Eye, EyeOff, CheckCircle, XCircle, AlertCircle,
-  BookOpen, Building2, Users, Hash, Sparkles, RefreshCw,
-  Cpu, BarChart2, Shield, FolderOpen,
+  ChevronRight, ChevronLeft, CheckCircle, XCircle, AlertCircle,
+  FileText, Hash, Sparkles, RefreshCw, Download, Eye, EyeOff,
+  Cpu, Shield, BookCopy,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  MakalahState, AnggotaKelompok, defaultMakalahState,
-  loadMakalahState, saveMakalahState,
+  MakalahState, defaultMakalahState, loadMakalahState, saveMakalahState,
+  stateToCoverData, coverDataToState,
 } from "@/lib/makalah/store";
 import { generateMakalah, MakalahOutput } from "@/lib/makalah/generator";
-import { checkMakalahQuality, MakalahQualityReport, QualityCheck } from "@/lib/makalah/qualityChecker";
+import { checkMakalahQuality, MakalahQualityReport } from "@/lib/makalah/qualityChecker";
+import { CoverData } from "@/lib/cover/types";
+import CoverBuilder from "./components/CoverBuilder";
 
 // ─── Wizard Config ─────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: "judul",       label: "Judul",       icon: FileText,   desc: "Judul dan topik makalah" },
-  { id: "universitas", label: "Universitas", icon: Building2,  desc: "Nama universitas & prodi" },
-  { id: "matakuliah",  label: "Mata Kuliah", icon: BookOpen,   desc: "Mata kuliah & dosen" },
-  { id: "kelompok",    label: "Kelompok",    icon: Users,      desc: "Anggota kelompok" },
-  { id: "detail",      label: "Detail",      icon: Hash,       desc: "Target halaman & preferensi" },
-  { id: "generate",    label: "Generate",    icon: Sparkles,   desc: "Preview, kualitas & export" },
+  { id: "cover",    label: "Cover",    icon: BookCopy, desc: "Universitas, logo, judul, anggota" },
+  { id: "topik",    label: "Topik",    icon: FileText, desc: "Topik dan preferensi konten" },
+  { id: "detail",   label: "Detail",   icon: Hash,     desc: "Target halaman & custom teks" },
+  { id: "generate", label: "Generate", icon: Sparkles, desc: "Preview, kualitas & export DOCX" },
 ];
 
 // ─── Input Helpers ────────────────────────────────────────────────────────────
@@ -31,86 +30,28 @@ const STEPS = [
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-sm font-semibold text-slate-700 mb-1.5">{children}</label>;
 }
-
-function Input({ value, onChange, placeholder, type = "text" }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
-}) {
+function Input({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <input
-      type={type} value={value} placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
+    <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)}
       className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white placeholder-slate-400"
     />
   );
 }
-
-function Textarea({ value, onChange, placeholder, rows = 3 }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
-}) {
+function Textarea({ value, onChange, placeholder, rows = 3 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
   return (
-    <textarea
-      value={value} placeholder={placeholder} rows={rows}
-      onChange={(e) => onChange(e.target.value)}
+    <textarea value={value} placeholder={placeholder} rows={rows} onChange={(e) => onChange(e.target.value)}
       className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white placeholder-slate-400 resize-none"
     />
   );
 }
 
-// ─── Topic Intelligence Badge ─────────────────────────────────────────────────
-
-function TopicBadge({ output }: { output: MakalahOutput }) {
-  const { analysis } = output;
-  return (
-    <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-200 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Cpu className="w-4 h-4 text-violet-600" />
-        <span className="text-sm font-bold text-violet-800">Topic Intelligence</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div>
-          <span className="text-slate-500">Bidang Ilmu</span>
-          <p className="font-semibold text-slate-800 mt-0.5">{analysis.label}</p>
-        </div>
-        <div>
-          <span className="text-slate-500">Sub-Bidang</span>
-          <p className="font-semibold text-slate-800 mt-0.5">{analysis.subbidang}</p>
-        </div>
-        <div>
-          <span className="text-slate-500">Mode</span>
-          <p className="font-semibold text-violet-700 mt-0.5">
-            {analysis.isComparison ? "📊 Komparasi" : "📝 Eksplorasi"}
-          </p>
-        </div>
-        <div>
-          <span className="text-slate-500">Entitas Terdeteksi</span>
-          <p className="font-semibold text-slate-800 mt-0.5">
-            {analysis.entities.length > 0
-              ? analysis.entities.slice(0, 3).map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(", ")
-              : "—"}
-          </p>
-        </div>
-      </div>
-      {analysis.keywords.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {analysis.keywords.slice(0, 6).map((kw) => (
-            <span key={kw} className="text-[10px] font-medium bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-              {kw}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Quality Report Panel ─────────────────────────────────────────────────────
+// ─── Quality Panel ────────────────────────────────────────────────────────────
 
 const STATUS_ICON = {
   pass: <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />,
   warn: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />,
   fail: <XCircle    className="w-4 h-4 text-rose-500 shrink-0" />,
 };
-
 const GRADE_COLORS: Record<string, string> = {
   A: "text-emerald-700 bg-emerald-100 border-emerald-300",
   B: "text-blue-700 bg-blue-100 border-blue-300",
@@ -134,8 +75,6 @@ function QualityPanel({ report }: { report: MakalahQualityReport }) {
           <span className="text-xs text-slate-400">/100</span>
         </div>
       </div>
-
-      {/* Score bar */}
       <div className="px-4 pt-3">
         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
@@ -149,8 +88,6 @@ function QualityPanel({ report }: { report: MakalahQualityReport }) {
         </div>
         <p className="text-xs text-slate-500 mt-1.5">{report.summary}</p>
       </div>
-
-      {/* Check items */}
       <div className="p-4 space-y-2">
         {report.checks.map((check) => (
           <div key={check.id} className="flex items-start gap-2.5">
@@ -165,9 +102,7 @@ function QualityPanel({ report }: { report: MakalahQualityReport }) {
             <span className={`ml-auto text-[10px] font-bold shrink-0 ${
               check.score >= 80 ? "text-emerald-600" :
               check.score >= 60 ? "text-amber-600" : "text-rose-600"
-            }`}>
-              {check.score}%
-            </span>
+            }`}>{check.score}%</span>
           </div>
         ))}
       </div>
@@ -177,7 +112,9 @@ function QualityPanel({ report }: { report: MakalahQualityReport }) {
 
 // ─── Preview Panel ────────────────────────────────────────────────────────────
 
-const SECTIONS: Array<{ key: keyof Omit<MakalahOutput, "bab2Sections" | "analysis" | "authors" | "citationCount">; label: string }> = [
+type PreviewKey = "kataPengantar" | "daftarIsi" | "bab1" | "bab2" | "bab3" | "daftarPustaka";
+
+const SECTIONS: Array<{ key: PreviewKey; label: string }> = [
   { key: "kataPengantar", label: "Kata Pengantar" },
   { key: "daftarIsi",     label: "Daftar Isi" },
   { key: "bab1",          label: "BAB I — Pendahuluan" },
@@ -189,15 +126,12 @@ const SECTIONS: Array<{ key: keyof Omit<MakalahOutput, "bab2Sections" | "analysi
 function PreviewPanel({ output }: { output: MakalahOutput }) {
   const [open, setOpen] = useState<Set<string>>(new Set(["bab2"]));
   const toggle = (k: string) => setOpen((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-
   return (
     <div className="space-y-2">
       {SECTIONS.map(({ key, label }) => (
         <div key={key} className="border border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggle(key)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
-          >
+          <button onClick={() => toggle(key)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
             <span className="text-sm font-semibold text-slate-700">{label}</span>
             {open.has(key) ? <EyeOff className="w-4 h-4 text-slate-400" /> : <Eye className="w-4 h-4 text-slate-400" />}
           </button>
@@ -210,6 +144,34 @@ function PreviewPanel({ output }: { output: MakalahOutput }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Topic Badge ──────────────────────────────────────────────────────────────
+
+function TopicBadge({ output }: { output: MakalahOutput }) {
+  const { analysis } = output;
+  return (
+    <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-200 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Cpu className="w-4 h-4 text-violet-600" />
+        <span className="text-sm font-bold text-violet-800">Topic Intelligence</span>
+        <span className="ml-auto text-xs font-bold text-violet-600">
+          {output.citationCount} sitasi
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div><span className="text-slate-500">Bidang</span><p className="font-semibold text-slate-800">{analysis.label}</p></div>
+        <div><span className="text-slate-500">Mode</span><p className="font-semibold text-violet-700">{analysis.isComparison ? "📊 Komparasi" : "📝 Eksplorasi"}</p></div>
+      </div>
+      {analysis.keywords.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {analysis.keywords.slice(0, 6).map((kw) => (
+            <span key={kw} className="text-[10px] font-medium bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">{kw}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -232,22 +194,24 @@ export default function MakalahPage() {
     });
   }, []);
 
-  function updateAnggota(idx: number, field: keyof AnggotaKelompok, val: string) {
-    const anggota = [...state.anggota];
-    anggota[idx] = { ...anggota[idx], [field]: val };
-    update({ anggota });
+  // Cover Builder <-> State bridge
+  const coverData: CoverData = stateToCoverData(state);
+  function onCoverChange(patch: Partial<CoverData>) {
+    const merged: CoverData = { ...coverData, ...patch };
+    const statePatch = coverDataToState(merged, state);
+    update(statePatch);
   }
 
   function handleGenerate() {
-    if (!state.judul) { toast.error("Isi judul makalah terlebih dahulu"); return; }
+    if (!state.judul) { toast.error("Isi judul di step Cover terlebih dahulu"); return; }
     setLoading(true);
     setTimeout(() => {
       try {
-        const result = generateMakalah(state);
+        const result  = generateMakalah(state);
         const quality = checkMakalahQuality(result, result.analysis);
         setOutput(result);
         setReport(quality);
-        toast.success(`Makalah selesai di-generate! Score: ${quality.smartCampusScore}/100`);
+        toast.success(`Makalah selesai! Score: ${quality.smartCampusScore}/100`);
       } catch (e) {
         toast.error("Gagal generate: " + String(e));
       } finally {
@@ -279,41 +243,30 @@ export default function MakalahPage() {
   // ─── Step Content ────────────────────────────────────────────────────────────
 
   const stepContent: Record<string, React.ReactNode> = {
-    judul: (
+
+    // Step 0 — Cover Builder
+    cover: (
+      <CoverBuilder
+        cover={coverData}
+        onChange={onCoverChange}
+        projectId={state.universityId || "default"}
+      />
+    ),
+
+    // Step 1 — Topik & Konten
+    topik: (
       <div className="space-y-4">
         <div>
-          <Label>Judul Makalah</Label>
-          <Textarea
-            value={state.judul}
-            onChange={(v) => update({ judul: v })}
-            placeholder='Contoh: "Perbandingan Investasi Saham, Emas, dan Deposito"'
-            rows={3}
-          />
-          <p className="text-xs text-slate-400 mt-1.5">
-            Topic Intelligence akan mendeteksi bidang ilmu otomatis dari judul ini.
-          </p>
-        </div>
-        <div>
-          <Label>Topik Ringkas (Opsional)</Label>
+          <Label>Topik Ringkas</Label>
           <Textarea
             value={state.topikRingkas}
             onChange={(v) => update({ topikRingkas: v })}
-            placeholder="Deskripsikan singkat topik agar konten lebih relevan..."
-            rows={2}
+            placeholder="Deskripsi singkat topik agar konten makalah lebih relevan dan spesifik..."
+            rows={3}
           />
-        </div>
-      </div>
-    ),
-
-    universitas: (
-      <div className="space-y-4">
-        <div>
-          <Label>Nama Universitas</Label>
-          <Input value={state.universitas} onChange={(v) => update({ universitas: v })} placeholder="Universitas Pamulang" />
-        </div>
-        <div>
-          <Label>Program Studi</Label>
-          <Input value={state.programStudi} onChange={(v) => update({ programStudi: v })} placeholder="Manajemen Pemasaran" />
+          <p className="text-xs text-slate-400 mt-1.5">
+            Topic Intelligence akan mendeteksi bidang ilmu dari judul & topik ini secara otomatis.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -325,68 +278,18 @@ export default function MakalahPage() {
             <Input value={state.tahunAkademik} onChange={(v) => update({ tahunAkademik: v })} placeholder="2025/2026" />
           </div>
         </div>
-        <div>
-          <Label>Kota</Label>
-          <Input value={state.kota} onChange={(v) => update({ kota: v })} placeholder="Tangerang Selatan" />
-        </div>
       </div>
     ),
 
-    matakuliah: (
-      <div className="space-y-4">
-        <div>
-          <Label>Mata Kuliah</Label>
-          <Input value={state.mataKuliah} onChange={(v) => update({ mataKuliah: v })} placeholder="Manajemen Keuangan" />
-        </div>
-        <div>
-          <Label>Nama Dosen Pengampu</Label>
-          <Input value={state.namaDosen} onChange={(v) => update({ namaDosen: v })} placeholder="Dr. Ahmad Fauzi, M.M." />
-        </div>
-      </div>
-    ),
-
-    kelompok: (
-      <div className="space-y-4">
-        <div>
-          <Label>Nama / Nomor Kelompok</Label>
-          <Input value={state.kelompok} onChange={(v) => update({ kelompok: v })} placeholder="1" />
-        </div>
-        <div>
-          <Label>Anggota Kelompok</Label>
-          <div className="space-y-2">
-            {state.anggota.map((a, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center shrink-0">
-                  {idx + 1}
-                </div>
-                <Input value={a.nim}  onChange={(v) => updateAnggota(idx, "nim",  v)} placeholder="NIM" />
-                <Input value={a.nama} onChange={(v) => updateAnggota(idx, "nama", v)} placeholder="Nama Lengkap" />
-                <button onClick={() => {
-                  const anggota = state.anggota.filter((_, i) => i !== idx);
-                  update({ anggota: anggota.length ? anggota : [{ nim: "", nama: "" }] });
-                }} className="p-2 text-slate-300 hover:text-rose-500 transition-colors shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => update({ anggota: [...state.anggota, { nim: "", nama: "" }] })}
-            className="mt-2 flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-700 font-medium"
-          >
-            <Plus className="w-4 h-4" /> Tambah Anggota
-          </button>
-        </div>
-      </div>
-    ),
-
+    // Step 2 — Detail
     detail: (
       <div className="space-y-4">
         <div>
           <Label>Target Jumlah Halaman</Label>
           <div className="flex items-center gap-3">
             <input
-              type="range" min={5} max={30} step={1} value={state.targetHalaman}
+              type="range" min={5} max={30} step={1}
+              value={state.targetHalaman}
               onChange={(e) => update({ targetHalaman: Number(e.target.value) })}
               className="flex-1"
             />
@@ -416,18 +319,19 @@ export default function MakalahPage() {
       </div>
     ),
 
+    // Step 3 — Generate
     generate: (
       <div className="space-y-4">
         {/* Summary */}
         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-xs space-y-1.5">
-          <p className="font-bold text-slate-700 mb-2 text-sm">Ringkasan</p>
+          <p className="font-bold text-slate-700 mb-2 text-sm">Ringkasan Makalah</p>
           {[
             ["Judul", state.judul || "—"],
             ["Universitas", state.universitas || "—"],
+            ["Fakultas", state.fakultas || "—"],
             ["Prodi", state.programStudi || "—"],
             ["Mata Kuliah", state.mataKuliah || "—"],
             ["Dosen", state.namaDosen || "—"],
-            ["Kelompok", state.kelompok ? `Kelompok ${state.kelompok}` : "—"],
             ["Anggota", `${state.anggota.filter((a) => a.nama).length} orang`],
             ["Target", `${state.targetHalaman} halaman`],
           ].map(([l, v]) => (
@@ -438,9 +342,10 @@ export default function MakalahPage() {
           ))}
         </div>
 
-        {/* Generate */}
+        {/* Generate button */}
         <button
-          onClick={handleGenerate} disabled={loading || !state.judul}
+          onClick={handleGenerate}
+          disabled={loading || !state.judul}
           className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-md shadow-violet-200"
         >
           {loading
@@ -451,23 +356,17 @@ export default function MakalahPage() {
         {/* Results */}
         {output && report && (
           <>
-            {/* Topic Intelligence */}
             <TopicBadge output={output} />
-
-            {/* Quality Check */}
             <QualityPanel report={report} />
-
-            {/* Export */}
             <button
-              onClick={handleExport} disabled={exporting}
+              onClick={handleExport}
+              disabled={exporting}
               className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-md shadow-emerald-200"
             >
               {exporting
                 ? <><RefreshCw className="w-4 h-4 animate-spin" />Mengekspor...</>
                 : <><Download className="w-4 h-4" />Unduh DOCX</>}
             </button>
-
-            {/* Preview */}
             <div>
               <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
                 <Eye className="w-4 h-4 text-slate-400" /> Preview Konten
@@ -481,39 +380,41 @@ export default function MakalahPage() {
   };
 
   const current = STEPS[step];
+  const isCover = step === 0;
   const isFirst = step === 0;
   const isLast  = step === STEPS.length - 1;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={`mx-auto space-y-6 ${isCover ? "max-w-5xl" : "max-w-2xl"}`}>
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <span className="text-3xl">📚</span>
         <div>
           <h1 className="text-xl font-extrabold text-slate-900">Modul Makalah</h1>
-          <p className="text-sm text-slate-500">Topic Intelligence Engine V2 — bidang ilmu terdeteksi otomatis</p>
+          <p className="text-sm text-slate-500">Cover Builder + Topic Intelligence V2.2</p>
         </div>
         <span className="ml-auto text-[10px] font-bold bg-violet-500 text-white px-2 py-1 rounded-full uppercase">
-          V2
+          V2.2
         </span>
       </div>
 
       {/* Step indicators */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between max-w-md mx-auto">
           {STEPS.map((s, i) => {
             const Icon = s.icon;
             const isDone   = i < step;
             const isActive = i === step;
             return (
               <button key={s.id} onClick={() => setStep(i)} className="flex flex-col items-center gap-1 group">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all
                   ${isDone   ? "bg-emerald-500 text-white"
                   : isActive ? "bg-violet-600 text-white ring-4 ring-violet-100"
                   : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"}`}>
-                  {isDone ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                  {isDone ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                 </div>
-                <span className={`text-[9px] font-medium hidden sm:block
+                <span className={`text-[10px] font-semibold hidden sm:block
                   ${isDone ? "text-emerald-600" : isActive ? "text-violet-700" : "text-slate-400"}`}>
                   {s.label}
                 </span>
@@ -532,10 +433,12 @@ export default function MakalahPage() {
           <h2 className="text-base font-bold text-slate-800">{current.label}</h2>
           <p className="text-xs text-slate-500">{current.desc}</p>
         </div>
-        <div className="p-5">{stepContent[current.id]}</div>
+        <div className={isCover ? "p-5" : "p-5"}>
+          {stepContent[current.id]}
+        </div>
       </div>
 
-      {/* Nav */}
+      {/* Navigation */}
       <div className="flex justify-between gap-3">
         <button
           onClick={() => setStep((s) => Math.max(0, s - 1))}
@@ -553,6 +456,7 @@ export default function MakalahPage() {
           </button>
         )}
       </div>
+
     </div>
   );
 }
