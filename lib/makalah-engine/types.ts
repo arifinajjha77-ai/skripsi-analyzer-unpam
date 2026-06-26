@@ -14,7 +14,24 @@ export interface MakalahEngineInput {
   pedoman: string;
   mode: MakalahGenerationMode;
   assignmentAnalysis?: AssignmentAnalysis | null;
+  dynamicValues?: Record<string, string>;
 }
+
+export type DynamicField = {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "image" | "select";
+  required: boolean;
+  placeholder: string;
+  defaultValue?: string;
+  options?: string[];
+};
+
+export type DynamicFormSchema = {
+  title: string;
+  description: string;
+  fields: DynamicField[];
+};
 
 export type MakalahGenerationMode = "fast" | "complete";
 

@@ -26,6 +26,7 @@ export function normalizeInput(input: Partial<MakalahEngineInput>): MakalahEngin
     pedoman: clean(input.pedoman),
     mode: input.mode === "complete" ? "complete" : "fast",
     assignmentAnalysis: input.assignmentAnalysis || null,
+    dynamicValues: input.dynamicValues || {},
   };
 }
 
@@ -92,6 +93,7 @@ function inputContext(input: MakalahEngineInput): string {
     `Target halaman: ${input.targetHalaman}`,
     `Mode generate: ${input.mode === "complete" ? "Mode Lengkap" : "Mode Cepat"}`,
     `Catatan pedoman: ${input.pedoman || "-"}`,
+    `Data form dinamis: ${input.dynamicValues ? JSON.stringify(input.dynamicValues) : "-"}`,
     `Analisis tugas dosen: ${input.assignmentAnalysis ? JSON.stringify(input.assignmentAnalysis) : "-"}`,
   ].join("\n");
 }

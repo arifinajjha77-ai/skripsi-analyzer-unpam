@@ -11,6 +11,8 @@ export type {
   ReviewReport,
   AssignmentAnalysis,
   AssignmentDeliverableType,
+  DynamicField,
+  DynamicFormSchema,
 } from "./types";
 export { normalizeInput, DEFAULT_MODEL } from "./prompts";
 export { generateOutline } from "./planner";
@@ -19,3 +21,4 @@ export { reviewMakalah } from "./reviewer";
 export { exportMakalahEngineDocx } from "./exportDocx";
 export { parseAssignmentFile } from "./assignmentParser";
 export { analyzeAssignmentText } from "./assignmentAnalyzer";
+export { buildDynamicFormSchema } from "./formBuilder";

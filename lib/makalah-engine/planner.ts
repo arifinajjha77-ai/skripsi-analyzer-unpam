@@ -223,6 +223,7 @@ function isClickoraProposal(input: MakalahEngineInput): boolean {
     input.tema,
     input.mataKuliah,
     input.pedoman,
+    JSON.stringify(input.dynamicValues || {}),
     JSON.stringify(input.assignmentAnalysis || {}),
   ].join(" ").toLowerCase();
   return /proposal|mini project|week\s*1|social media marketing|clickora|custom clicker/.test(text);
