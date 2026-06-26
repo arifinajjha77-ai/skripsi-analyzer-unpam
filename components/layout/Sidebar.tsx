@@ -6,7 +6,7 @@ import {
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck, TrendingUp,
   FileText, LayoutDashboard, X, BookOpen, ClipboardList, Newspaper,
   GitFork, Table2, Users, Settings, FolderOpen, Layers, BookMarked,
-  GraduationCap, BookCopy, ChevronDown, ChevronRight,
+  GraduationCap, BookCopy, ChevronDown, ChevronRight, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/lib/context";
@@ -64,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
     defaultOpen: false,
     items: [
       { href: "/makalah", label: "Buat Makalah", icon: BookCopy, alwaysEnabled: true, badge: "Beta" },
+      { href: "/makalah-engine", label: "MakalahEngine V2", icon: Sparkles, alwaysEnabled: true, badge: "V2" },
     ],
   },
 ];
