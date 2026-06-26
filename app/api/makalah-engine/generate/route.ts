@@ -5,6 +5,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const input = normalizeInput(body.input || body);
+    if (body.assignmentAnalysis) input.assignmentAnalysis = body.assignmentAnalysis;
+    if (body.mode === "complete" || body.mode === "fast") input.mode = body.mode;
     const outlineResult = body.outline
       ? { data: body.outline as MakalahOutline, meta: { model: "provided", fallback: false } }
       : await generateOutline(input);

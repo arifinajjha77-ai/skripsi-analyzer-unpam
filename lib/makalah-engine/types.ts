@@ -12,7 +12,54 @@ export interface MakalahEngineInput {
   jumlahBab: number;
   targetHalaman: number;
   pedoman: string;
+  mode: MakalahGenerationMode;
+  assignmentAnalysis?: AssignmentAnalysis | null;
 }
+
+export type MakalahGenerationMode = "fast" | "complete";
+
+export type AssignmentDeliverableType =
+  | "proposal"
+  | "weekly_report"
+  | "final_report"
+  | "presentation"
+  | "makalah"
+  | "other";
+
+export type AssignmentAnalysis = {
+  title: string;
+  course?: string;
+  deadline?: string;
+  summaryForStudent: string;
+  requiredDeliverables: Array<{
+    name: string;
+    type: AssignmentDeliverableType;
+    description: string;
+    estimatedPages?: number;
+    requiredSections: string[];
+    priority: "high" | "medium" | "low";
+  }>;
+  writingRules: {
+    font?: string;
+    fontSize?: number;
+    spacing?: string;
+    margin?: string;
+    citationStyle?: string;
+    languageStyle?: string;
+  };
+  gradingRubric: Array<{
+    aspect: string;
+    weight?: string;
+    description?: string;
+  }>;
+  timelineRequirements: string[];
+  missingInfoQuestions: string[];
+  suggestedWorkflow: Array<{
+    step: number;
+    title: string;
+    description: string;
+  }>;
+};
 
 export interface MakalahSubsection {
   id: string;
@@ -44,7 +91,14 @@ export interface MakalahChapter {
 }
 
 export interface ReviewIssue {
-  type: "duplicate-paragraph" | "empty-heading" | "short-subsection" | "incomplete-structure";
+  type:
+    | "duplicate-paragraph"
+    | "empty-heading"
+    | "short-subsection"
+    | "incomplete-structure"
+    | "misaligned-objectives"
+    | "conclusion-mismatch"
+    | "generic-sentences";
   severity: "info" | "warning" | "error";
   message: string;
   location?: string;

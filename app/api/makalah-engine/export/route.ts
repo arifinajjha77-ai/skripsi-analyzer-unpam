@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const document = await request.json() as MakalahDocument;
     const buffer = await exportMakalahEngineDocx(document);
-    const fileName = safeFileName(document.input.judul || "Makalah-SmartCampus");
+    const fileName = `Makalah_${safeFileName(document.input.judul || "SmartCampus")}_${dateStamp()}`;
 
     return new Response(new Uint8Array(buffer), {
       headers: {
@@ -23,4 +23,8 @@ export async function POST(request: Request) {
 
 function safeFileName(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "-").slice(0, 70) || "Makalah-SmartCampus";
+}
+
+function dateStamp(): string {
+  return new Date().toISOString().slice(0, 10);
 }

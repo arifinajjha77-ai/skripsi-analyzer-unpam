@@ -1,6 +1,5 @@
 import type { MakalahChapterOutline, MakalahEngineInput, MakalahOutline } from "./types";
-
-export const DEFAULT_MODEL = process.env.SMARTCAMPUS_DEFAULT_MODEL || "gpt-5.4-mini";
+export { DEFAULT_MODEL } from "@/lib/ai/models";
 
 export function normalizeInput(input: Partial<MakalahEngineInput>): MakalahEngineInput {
   return {
@@ -17,6 +16,8 @@ export function normalizeInput(input: Partial<MakalahEngineInput>): MakalahEngin
     jumlahBab: clamp(Number(input.jumlahBab) || 5, 5, 5),
     targetHalaman: clamp(Number(input.targetHalaman) || 10, 5, 30),
     pedoman: clean(input.pedoman),
+    mode: input.mode === "complete" ? "complete" : "fast",
+    assignmentAnalysis: input.assignmentAnalysis || null,
   };
 }
 
@@ -27,6 +28,8 @@ export function buildOutlinePrompt(input: MakalahEngineInput): string {
     "Struktur JSON: {\"title\":\"...\",\"chapters\":[{\"id\":\"bab1\",\"number\":\"BAB I\",\"title\":\"PENDAHULUAN\",\"purpose\":\"...\",\"subsections\":[{\"id\":\"1.1\",\"title\":\"...\",\"bullets\":[\"...\"]}]}],\"bibliographyPlan\":[\"...\"],\"appendixPlan\":[\"...\"]}.",
     "Wajib ada tepat 5 bab: BAB I Pendahuluan, BAB II Landasan Teori, BAB III Pembahasan / Profil Objek, BAB IV Strategi / Analisis, BAB V Penutup.",
     "Setiap bab memiliki 2-4 subbab, judul subbab tidak kosong, dan bullet antar subbab tidak berulang.",
+    "Jika analisis tugas dosen meminta proposal, jadikan outline sebagai proposal akademik yang tetap memakai struktur BAB.",
+    "Jangan membuat deliverable di luar instruksi tugas dosen; deliverable non-DOCX cukup dicatat sebagai checklist.",
     inputContext(input),
   ].join("\n\n");
 }
@@ -41,6 +44,10 @@ export function buildChapterPrompt(
     "Output wajib JSON valid tanpa markdown: {\"subsections\":[{\"id\":\"...\",\"title\":\"...\",\"content\":\"...\"}]}",
     "Setiap content berisi 2-4 paragraf unik, saling terhubung, bukan gaya blog, bukan promosi, dan tidak mengulang kalimat dari subbab lain.",
     "Gunakan istilah akademik secukupnya. Jangan mengarang data numerik spesifik jika tidak diberikan.",
+    "Jika membahas data performa, engagement, biaya, atau capaian yang tidak diberikan user, tulis sebagai simulasi perencanaan.",
+    input.mode === "fast"
+      ? "Mode Cepat: ringkas, jelas, cukup untuk dikumpulkan besok, tanpa uraian yang melebar."
+      : "Mode Lengkap: lebih detail, argumentasi lebih kuat, dan transisi antarbagian lebih lengkap.",
     inputContext(input),
     `Outline lengkap: ${JSON.stringify(outline)}`,
     `Bab yang ditulis: ${JSON.stringify(chapter)}`,
@@ -71,7 +78,9 @@ function inputContext(input: MakalahEngineInput): string {
     `Tema/produk/studi kasus: ${input.tema}`,
     `Jumlah bab: ${input.jumlahBab}`,
     `Target halaman: ${input.targetHalaman}`,
+    `Mode generate: ${input.mode === "complete" ? "Mode Lengkap" : "Mode Cepat"}`,
     `Catatan pedoman: ${input.pedoman || "-"}`,
+    `Analisis tugas dosen: ${input.assignmentAnalysis ? JSON.stringify(input.assignmentAnalysis) : "-"}`,
   ].join("\n");
 }
 

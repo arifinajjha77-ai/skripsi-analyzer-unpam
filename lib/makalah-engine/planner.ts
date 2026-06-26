@@ -1,42 +1,19 @@
 import type { EngineResult, MakalahEngineInput, MakalahOutline } from "./types";
 import { buildOutlinePrompt, DEFAULT_MODEL } from "./prompts";
+import { generateJsonWithOpenAI } from "@/lib/ai/openai";
 
 export async function generateOutline(input: MakalahEngineInput): Promise<EngineResult<MakalahOutline>> {
   const aiOutline = await callOpenAI<MakalahOutline>(buildOutlinePrompt(input));
 
   if (aiOutline) {
-    return { data: normalizeOutline(aiOutline, input), meta: { model: DEFAULT_MODEL, fallback: false } };
+    return { data: normalizeOutline(aiOutline.data, input), meta: { model: aiOutline.model, fallback: false } };
   }
 
   return { data: buildFallbackOutline(input), meta: { model: DEFAULT_MODEL, fallback: true } };
 }
 
-export async function callOpenAI<T>(prompt: string): Promise<T | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        input: prompt,
-        text: { format: { type: "json_object" } },
-      }),
-    });
-
-    if (!response.ok) return null;
-    const payload = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> };
-    const text = payload.output_text || payload.output?.flatMap((item) => item.content || []).map((item) => item.text).filter(Boolean).join("\n");
-    if (!text) return null;
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
+export async function callOpenAI<T>(prompt: string): Promise<{ data: T; model: string } | null> {
+  return generateJsonWithOpenAI<T>(prompt);
 }
 
 function normalizeOutline(outline: MakalahOutline, input: MakalahEngineInput): MakalahOutline {
@@ -63,9 +40,14 @@ function normalizeOutline(outline: MakalahOutline, input: MakalahEngineInput): M
 
 function buildFallbackOutline(input: MakalahEngineInput): MakalahOutline {
   const focus = input.tema || input.judul;
+  const primary = input.assignmentAnalysis?.requiredDeliverables.find((item) => item.type === "proposal" || item.type === "makalah")
+    || input.assignmentAnalysis?.requiredDeliverables[0];
+  const isProposal = primary?.type === "proposal";
+  const bab3Title = isProposal ? "PROFIL OBJEK DAN RENCANA PROYEK" : "PEMBAHASAN / PROFIL OBJEK";
+  const bab4Title = isProposal ? "STRATEGI DAN RENCANA IMPLEMENTASI" : "STRATEGI / ANALISIS";
 
   return {
-    title: input.judul,
+    title: input.judul || input.assignmentAnalysis?.title || "Makalah Akademik",
     chapters: [
       {
         id: "bab1",
@@ -92,23 +74,23 @@ function buildFallbackOutline(input: MakalahEngineInput): MakalahOutline {
       {
         id: "bab3",
         number: "BAB III",
-        title: "PEMBAHASAN / PROFIL OBJEK",
+        title: bab3Title,
         purpose: "Menguraikan objek, konteks, dan temuan pembahasan utama.",
         subsections: [
           { id: "3.1", title: "Gambaran Umum Objek", bullets: [`Deskripsi ${focus}`, "Karakteristik objek"] },
-          { id: "3.2", title: "Kondisi dan Permasalahan", bullets: ["Gejala utama", "Faktor yang memengaruhi"] },
-          { id: "3.3", title: "Pembahasan Tematik", bullets: ["Analisis awal", "Keterkaitan dengan teori"] },
+          { id: "3.2", title: isProposal ? "Rencana Mini Project" : "Kondisi dan Permasalahan", bullets: ["Gejala utama", "Faktor yang memengaruhi"] },
+          { id: "3.3", title: isProposal ? "Kebutuhan dan Batasan Pelaksanaan" : "Pembahasan Tematik", bullets: ["Analisis awal", "Keterkaitan dengan teori"] },
         ],
       },
       {
         id: "bab4",
         number: "BAB IV",
-        title: "STRATEGI / ANALISIS",
+        title: bab4Title,
         purpose: "Menyusun analisis dan rekomendasi strategi secara terarah.",
         subsections: [
           { id: "4.1", title: "Analisis Masalah", bullets: ["Akar masalah", "Dampak akademik atau praktis"] },
-          { id: "4.2", title: "Alternatif Strategi", bullets: ["Opsi penyelesaian", "Pertimbangan implementasi"] },
-          { id: "4.3", title: "Rekomendasi", bullets: ["Rekomendasi utama", "Alasan pemilihan"] },
+          { id: "4.2", title: isProposal ? "Strategi Pelaksanaan" : "Alternatif Strategi", bullets: ["Opsi penyelesaian", "Pertimbangan implementasi"] },
+          { id: "4.3", title: isProposal ? "Timeline dan Indikator Evaluasi" : "Rekomendasi", bullets: ["Rekomendasi utama", "Alasan pemilihan"] },
         ],
       },
       {
@@ -127,6 +109,8 @@ function buildFallbackOutline(input: MakalahEngineInput): MakalahOutline {
       "Artikel jurnal tentang tema makalah",
       "Sumber institusional atau laporan resmi bila diperlukan",
     ],
-    appendixPlan: input.pedoman ? ["Ringkasan pedoman penulisan"] : [],
+    appendixPlan: input.assignmentAnalysis?.requiredDeliverables.length
+      ? ["Checklist deliverable tugas dosen", "Catatan data asli atau simulasi perencanaan"]
+      : input.pedoman ? ["Ringkasan pedoman penulisan"] : [],
   };
 }
