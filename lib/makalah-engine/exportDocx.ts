@@ -95,25 +95,30 @@ export async function exportMakalahEngineDocx(document: MakalahDocument): Promis
 }
 
 function buildCover(input: MakalahEngineInput): Array<Paragraph | Table> {
+  const isProposal = /proposal|mini project|clickora|custom clicker|social media marketing/i.test([
+    input.judul,
+    input.tema,
+    input.mataKuliah,
+  ].join(" "));
   return [
-    center("MAKALAH", 32, true, 300),
+    center(isProposal ? "PROPOSAL MINI PROJECT" : "MAKALAH", 32, true, 300),
     center(input.judul.toUpperCase(), 30, true, 520),
-    center(`Disusun untuk memenuhi tugas mata kuliah ${input.mataKuliah}`, SIZE, false, 360),
-    center(`Dosen Pengampu: ${input.namaDosen}`, SIZE, false, 360),
+    center(`Disusun untuk memenuhi tugas mata kuliah ${displayValue(input.mataKuliah, "[Mata Kuliah]")}`, SIZE, false, 360),
+    center(`Dosen Pengampu: ${displayValue(input.namaDosen, "[Nama Dosen]")}`, SIZE, false, 360),
     metadataTable(input),
-    center(input.namaKampus.toUpperCase(), SIZE, true, 80),
-    center(input.fakultas.toUpperCase(), SIZE, true, 80),
-    center(input.programStudi.toUpperCase(), SIZE, true, 80),
+    center(displayValue(input.namaKampus, "[Nama Kampus]").toUpperCase(), SIZE, true, 80),
+    center(displayValue(input.fakultas, "[Nama Fakultas]").toUpperCase(), SIZE, true, 80),
+    center(displayValue(input.programStudi, "[Program Studi]").toUpperCase(), SIZE, true, 80),
     center(String(new Date().getFullYear()), SIZE, true, 0),
   ];
 }
 
 function metadataTable(input: MakalahEngineInput): Table {
   const rows = [
-    ["Nama Mahasiswa/Kelompok", input.namaMahasiswa],
-    ["NIM", input.nim],
-    ["Kelas", input.kelas],
-    ["Tema/Produk/Studi Kasus", input.tema],
+    ["Nama Mahasiswa/Kelompok", displayValue(input.namaMahasiswa, "[Nama Mahasiswa/Kelompok]")],
+    ["NIM", displayValue(input.nim, "[NIM]")],
+    ["Kelas", displayValue(input.kelas, "[Kelas]")],
+    ["Tema/Produk/Studi Kasus", displayValue(input.tema, "[Tema/Produk/Studi Kasus]")],
   ];
 
   return new Table({
@@ -185,4 +190,12 @@ function center(text: string, size: number, bold: boolean, after: number): Parag
 
 function pageBreak(): Paragraph {
   return new Paragraph({ children: [new PageBreak()] });
+}
+
+function displayValue(value: string, placeholder: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed || /^nama /i.test(trimmed) || /^program studi$/i.test(trimmed) || /^fakultas$/i.test(trimmed) || /^mata kuliah$/i.test(trimmed)) {
+    return placeholder;
+  }
+  return trimmed;
 }

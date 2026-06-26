@@ -69,7 +69,7 @@ export interface MakalahSubsection {
 }
 
 export interface MakalahChapterOutline {
-  id: "bab1" | "bab2" | "bab3" | "bab4" | "bab5";
+  id: "bab1" | "bab2" | "bab3" | "bab4" | "bab5" | "bab6" | "bab7";
   number: string;
   title: string;
   purpose: string;

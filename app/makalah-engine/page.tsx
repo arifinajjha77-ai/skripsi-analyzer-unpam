@@ -156,7 +156,7 @@ export default function MakalahEnginePage() {
       mataKuliah: form.mataKuliah || assignmentAnalysis.course || "",
       tema: form.tema || primary?.description || assignmentAnalysis.summaryForStudent,
       pedoman: compact([form.pedoman, writingRules, assignmentAnalysis.summaryForStudent]).join("\n\n"),
-      jumlahBab: 5,
+      jumlahBab: /proposal|mini project|social media marketing|clickora|custom clicker/i.test(`${assignmentAnalysis.title} ${primary?.description || ""}`) ? 7 : 5,
       targetHalaman: mode === "fast" ? Math.min(Math.max(target, 12), 18) : Math.min(Math.max(target, 25), 40),
       mode,
       assignmentAnalysis,
@@ -514,7 +514,7 @@ function FieldControl({
         <input
           value={String(value)}
           min={field.key === "jumlahBab" ? 5 : 5}
-          max={field.key === "jumlahBab" ? 5 : 40}
+          max={field.key === "jumlahBab" ? 7 : 40}
           type={field.type || "text"}
           onChange={(event) => update(field.key, (field.type === "number" ? Number(event.target.value) : event.target.value) as never)}
           placeholder={field.placeholder}
