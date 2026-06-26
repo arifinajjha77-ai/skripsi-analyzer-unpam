@@ -8,7 +8,6 @@ import {
   Paragraph,
   Table,
   TableCell,
-  TableOfContents,
   TableRow,
   TextRun,
   WidthType,
@@ -20,14 +19,14 @@ const FONT = "Times New Roman";
 const SIZE = 24;
 
 export async function exportMakalahEngineDocx(document: MakalahDocument): Promise<Buffer> {
-  const children: Array<Paragraph | Table | TableOfContents> = [
+  const children: Array<Paragraph | Table> = [
     ...buildCover(document.input),
     pageBreak(),
     heading("KATA PENGANTAR", HeadingLevel.HEADING_1, AlignmentType.CENTER),
     ...paragraphs(document.kataPengantar),
     pageBreak(),
     heading("DAFTAR ISI", HeadingLevel.HEADING_1, AlignmentType.CENTER),
-    new TableOfContents("Daftar Isi", { hyperlink: true, headingStyleRange: "1-3" }),
+    ...tocParagraphs(document.daftarIsi),
     pageBreak(),
   ];
 
@@ -107,8 +106,8 @@ function buildCover(input: MakalahEngineInput): Array<Paragraph | Table> {
     center(`Dosen Pengampu: ${displayValue(input.namaDosen, "[Nama Dosen]")}`, SIZE, false, 360),
     metadataTable(input),
     center(displayValue(input.namaKampus, "[Nama Kampus]").toUpperCase(), SIZE, true, 80),
-    center(displayValue(input.fakultas, "[Nama Fakultas]").toUpperCase(), SIZE, true, 80),
-    center(displayValue(input.programStudi, "[Program Studi]").toUpperCase(), SIZE, true, 80),
+    center(displayValue(input.fakultas, "FAKULTAS EKONOMI DAN BISNIS").toUpperCase(), SIZE, true, 80),
+    center(displayValue(input.programStudi, "PROGRAM STUDI MANAJEMEN").toUpperCase(), SIZE, true, 80),
     center(String(new Date().getFullYear()), SIZE, true, 0),
   ];
 }
@@ -147,6 +146,18 @@ function tableCell(text: string, bold: boolean): TableCell {
 
 function paragraphs(text: string): Paragraph[] {
   return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean).map((part) => body(part));
+}
+
+function tocParagraphs(text: string): Paragraph[] {
+  return text.split("\n").map((line) => {
+    const trimmed = line.trimEnd();
+    const isSubsection = /^\d+\.\d+/.test(trimmed.trim());
+    return new Paragraph({
+      spacing: { line: 360, after: 80 },
+      indent: isSubsection ? { left: convertInchesToTwip(0.35) } : undefined,
+      children: [new TextRun({ text: trimmed, font: FONT, size: SIZE, bold: /^BAB|^DAFTAR|^KATA|^LAMPIRAN/.test(trimmed) })],
+    });
+  });
 }
 
 function body(text: string): Paragraph {

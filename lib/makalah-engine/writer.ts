@@ -62,21 +62,22 @@ export async function generateMakalahDocument(
 }
 
 export function buildDaftarIsi(outline: MakalahOutline): string {
-  const rows = ["KATA PENGANTAR", "DAFTAR ISI"];
+  const rows = ["KATA PENGANTAR .......................................................... i", "DAFTAR ISI ............................................................... ii"];
   for (const chapter of outline.chapters) {
-    rows.push(`${chapter.number} ${chapter.title}`);
-    for (const subsection of chapter.subsections) rows.push(`  ${subsection.id} ${subsection.title}`);
+    rows.push(`${chapter.number} ${chapter.title} ........................................ [hal]`);
+    for (const subsection of chapter.subsections) rows.push(`  ${subsection.id} ${subsection.title} ..................................... [hal]`);
   }
-  rows.push("DAFTAR PUSTAKA");
-  if (outline.appendixPlan.length > 0) rows.push("LAMPIRAN");
+  rows.push("DAFTAR PUSTAKA ..................................................... [hal]");
+  if (outline.appendixPlan.length > 0) rows.push("LAMPIRAN ............................................................. [hal]");
   return rows.join("\n");
 }
 
 function fallbackKataPengantar(input: MakalahEngineInput): string {
   if (isClickoraProposal(input)) {
+    const data = getMiniProjectData(input);
     return [
-      `Puji syukur penulis panjatkan ke hadirat Tuhan Yang Maha Esa karena proposal mini project berjudul "${input.judul}" dapat disusun sebagai rancangan kegiatan pada mata kuliah ${input.mataKuliah}. Proposal ini membahas pengembangan brand Clickora dengan produk Custom Clicker Nama yang mengusung tagline "Klik Namamu, Tunjukkan Gayamu".`,
-      `Proposal ini disusun untuk merancang dasar branding, target market, marketing mix, strategi media sosial, serta timeline pelaksanaan Week 1 sampai Week 14. Platform utama yang digunakan dalam perencanaan adalah Instagram, TikTok, dan Shopee agar strategi komunikasi, promosi, dan distribusi produk saling terhubung.`,
+      `Puji syukur penulis panjatkan ke hadirat Tuhan Yang Maha Esa karena proposal mini project berjudul "${input.judul}" dapat disusun sebagai rancangan kegiatan pada mata kuliah ${input.mataKuliah}. Proposal ini membahas pengembangan brand ${data.brand} dengan produk ${data.product} yang mengusung tagline "${data.tagline}".`,
+      `Proposal ini disusun untuk merancang dasar branding, target market, marketing mix, strategi media sosial, serta timeline pelaksanaan Week 1 sampai Week 14. Platform utama yang digunakan dalam perencanaan adalah ${data.platforms} agar strategi komunikasi, promosi, dan distribusi produk saling terhubung.`,
       `Penulis menyampaikan terima kasih kepada ${input.namaDosen} selaku dosen pengampu atas arahan pembelajaran yang diberikan. Penulis menyadari proposal ini masih dapat disempurnakan, terutama setelah data produk, visual, dan respons audiens diperoleh selama pelaksanaan mini project.`,
     ].join("\n\n");
   }
@@ -96,7 +97,7 @@ function fallbackSubsectionContent(
   chapterId: string
 ): string {
   if (isClickoraProposal(input)) {
-    return clickoraSubsectionContent(subsectionTitle);
+    return miniProjectSubsectionContent(input, subsectionTitle);
   }
 
   const focus = input.tema || input.judul;
@@ -143,10 +144,11 @@ function buildDaftarPustaka(input: MakalahEngineInput): string[] {
 
 function buildLampiran(input: MakalahEngineInput): string[] {
   if (isClickoraProposal(input)) {
+    const data = getMiniProjectData(input);
     return [
-      "Konsep visual brand: Clickora menggunakan gaya visual cerah, playful, dan personal dengan fokus pada nama pelanggan sebagai elemen utama desain.",
-      "Foto produk placeholder: [Masukkan foto Custom Clicker Nama dari beberapa variasi warna, bentuk, dan contoh personalisasi nama].",
-      "Contoh caption: Klik namamu, tunjukkan gayamu. Custom Clicker Nama dari Clickora siap bikin aksesori kecilmu terasa lebih personal. Pesan via Shopee atau DM Instagram.",
+      `Konsep visual brand: ${data.brand} menggunakan gaya visual cerah, playful, dan personal dengan fokus pada nama pelanggan sebagai elemen utama desain.`,
+      `Foto produk placeholder: [Masukkan foto ${data.product} dari beberapa variasi model, warna, dan contoh personalisasi nama].`,
+      `Contoh caption: ${data.tagline}. ${data.product} dari ${data.brand} siap membuat aksesori kecil terasa lebih personal. Pesan melalui ${data.platforms}.`,
       "Contoh content calendar: Week 1 pengenalan brand, Week 2 teaser produk, Week 3 behind the scenes, Week 4 edukasi personalisasi, Week 5 promo launching, Week 6 testimoni, Week 7 evaluasi konten awal.",
     ];
   }
@@ -173,6 +175,168 @@ function rewriteDuplicateParagraphsOnce(chapters: MakalahChapter[]): MakalahChap
       return { ...subsection, content: rewritten.join("\n\n") };
     }),
   }));
+}
+
+type MiniProjectData = {
+  brand: string;
+  product: string;
+  tagline: string;
+  platforms: string;
+  productDescription: string;
+  targetMarket: string;
+};
+
+function getMiniProjectData(input: MakalahEngineInput): MiniProjectData {
+  const values = input.dynamicValues || {};
+  return {
+    brand: clean(values.brandName) || extractFromTema(input.tema, "Brand") || "Clickora",
+    product: clean(values.productName) || extractFromTema(input.tema, "Produk") || "Custom Clicker Nama",
+    tagline: clean(values.tagline) || extractFromTema(input.tema, "Tagline") || "Klik Namamu, Tunjukkan Gayamu",
+    platforms: clean(values.socialPlatforms) || extractFromTema(input.tema, "Platform") || "Instagram, TikTok, Shopee",
+    productDescription: clean(values.productDescription) || "Produk dibuat menggunakan mesin 3D printing, tersedia dalam berbagai model dan warna, berbentuk seperti keyboard mini, dan menghasilkan bunyi klik saat ditekan.",
+    targetMarket: clean(values.targetMarket) || "Pelajar dan mahasiswa yang menyukai aksesori personal, unik, dan mudah dibagikan di media sosial.",
+  };
+}
+
+function miniProjectSubsectionContent(input: MakalahEngineInput, subsectionTitle: string): string {
+  const data = getMiniProjectData(input);
+  const paragraphs: Record<string, string[]> = {
+    "Latar Belakang": [
+      `Perkembangan media sosial membuat produk personalisasi semakin mudah dikenalkan kepada konsumen muda. ${data.product} dari brand ${data.brand} memiliki peluang karena menawarkan aksesori kecil yang dapat disesuaikan dengan identitas pemiliknya. Produk ini ${data.productDescription.toLowerCase()} Karakter tersebut membuat ${data.product} tidak hanya dilihat sebagai aksesori, tetapi juga sebagai media ekspresi diri yang cocok untuk konten visual di ${data.platforms}.`,
+      `Mini project ini dirancang untuk membangun ${data.brand} sebagai brand yang mudah dikenali melalui tagline "${data.tagline}". Strategi pemasaran tidak hanya berfokus pada penjualan, tetapi juga pada pengenalan cerita produk, cara pemesanan, variasi model, pilihan warna, dan pengalaman saat tombol menghasilkan bunyi klik. Dengan pendekatan tersebut, proposal ini menempatkan ${data.product} sebagai produk personal yang relevan bagi pelajar dan mahasiswa.`,
+    ],
+    "Rumusan Masalah": [
+      `Rumusan masalah proposal ini berangkat dari kebutuhan ${data.brand} untuk memperkenalkan ${data.product} secara jelas kepada target market. Produk yang dibuat dengan 3D printing dan berbentuk seperti keyboard mini perlu dijelaskan agar calon konsumen memahami fungsi, nilai personalisasi, pilihan warna, serta pengalaman bunyi klik saat digunakan. Tanpa strategi komunikasi yang tepat, keunggulan produk berisiko tidak terlihat dalam konten media sosial.`,
+      `Masalah berikutnya adalah bagaimana ${data.brand} menggunakan ${data.platforms} secara saling mendukung. Instagram dapat menampilkan visual produk dan katalog warna, TikTok dapat memperlihatkan proses pembuatan serta bunyi klik melalui video pendek, sedangkan Shopee menjadi kanal transaksi. Rumusan ini menjadi dasar untuk menyusun target market, positioning, marketing mix, strategi engagement, dan timeline mingguan.`,
+    ],
+    "Tujuan Penulisan": [
+      `Tujuan penulisan proposal ini adalah menyusun rancangan mini project Social Media Marketing untuk ${data.brand}. Proposal diarahkan untuk menjelaskan identitas brand, memperkenalkan ${data.product}, menentukan target market pelajar dan mahasiswa, serta merancang penggunaan ${data.platforms} sebagai kanal promosi dan penjualan.`,
+      `Tujuan lainnya adalah membuat rencana kerja Week 1 sampai Week 14 agar kegiatan branding dan pemasaran berjalan terukur. Timeline tersebut mencakup persiapan konsep visual, produksi konten, pengenalan produk 3D printing, simulasi target engagement, pengelolaan Shopee, serta evaluasi konten. Dengan rencana ini, tim memiliki panduan kerja yang jelas sejak awal mini project.`,
+    ],
+    "Manfaat Penulisan": [
+      `Secara akademik, proposal ini bermanfaat sebagai penerapan konsep social media marketing pada produk nyata. Mahasiswa dapat melihat bagaimana segmentasi pasar, positioning, marketing mix 4P, dan strategi engagement digunakan untuk membangun brand ${data.brand} yang menjual ${data.product}.`,
+      `Secara praktis, proposal ini membantu tim menyusun arah kerja yang lebih rapi. Informasi tentang produk 3D printing, variasi model dan warna, bentuk keyboard mini, bunyi klik, target pelajar dan mahasiswa, serta penggunaan ${data.platforms} dapat dijadikan dasar dalam membuat konten, mengatur etalase, dan membagi tugas tim.`,
+    ],
+    "Nama Brand": [
+      `Nama brand yang digunakan dalam mini project ini adalah ${data.brand}. Nama ini menjadi identitas utama yang akan muncul pada konten, caption, katalog produk, dan etalase marketplace. Konsistensi penggunaan nama ${data.brand} penting agar audiens tidak bingung saat berpindah dari Instagram atau TikTok menuju Shopee.`,
+      `${data.brand} diposisikan sebagai brand aksesori personal yang dekat dengan gaya anak muda. Melalui tagline "${data.tagline}", brand ini menegaskan bahwa konsumen dapat menunjukkan identitasnya melalui produk kecil yang dibuat sesuai nama, warna, dan model pilihan mereka.`,
+    ],
+    "Deskripsi Brand": [
+      `${data.brand} adalah brand yang berfokus pada aksesori personal berbasis custom. Produk utamanya adalah ${data.product}, yaitu clicker berbentuk keyboard mini yang dapat dibuat dengan nama pelanggan. Brand ini membawa kesan playful, kreatif, dan dekat dengan keseharian pelajar serta mahasiswa.`,
+      `Karakter komunikasi ${data.brand} perlu menonjolkan proses personalisasi dan pengalaman produk saat ditekan. Konten dapat memperlihatkan detail 3D printing, pilihan warna, model keyboard mini, serta suara klik yang menjadi daya tarik sensorik. Dengan begitu, ${data.brand} memiliki identitas yang lebih spesifik dibanding aksesori custom biasa.`,
+    ],
+    "Visi, Misi, dan Nilai Brand": [
+      `Visi ${data.brand} adalah menjadi brand aksesori personal yang membantu konsumen menampilkan identitas melalui produk custom yang kreatif dan mudah dijangkau. Visi ini sesuai dengan ${data.product} karena produk dibuat berdasarkan nama dan preferensi warna pelanggan.`,
+      `Misi ${data.brand} meliputi menyediakan desain clicker yang variatif, menjaga kualitas hasil 3D printing, membuat proses pemesanan mudah, dan membangun komunikasi aktif di ${data.platforms}. Nilai yang diutamakan adalah personal, kreatif, responsif, terjangkau, dan menyenangkan.`,
+    ],
+    "Deskripsi Produk Custom Clicker Nama": [
+      `${data.product} adalah produk clicker custom yang diproduksi menggunakan mesin 3D printing. Produk ini tersedia dalam berbagai model dan warna, sehingga pelanggan dapat memilih tampilan yang sesuai dengan gaya mereka. Bentuknya menyerupai keyboard mini dan memberikan pengalaman bunyi klik saat tombol ditekan.`,
+      `Keunikan produk terletak pada personalisasi nama dan pengalaman penggunaannya. Nama pelanggan dapat menjadi elemen visual utama, sedangkan bunyi klik memberi kesan interaktif yang mudah ditampilkan dalam konten video. Detail ini membuat ${data.product} cocok dipasarkan melalui Instagram Reels, TikTok, dan etalase Shopee.`,
+    ],
+    "Keunggulan Produk": [
+      `Keunggulan utama ${data.product} adalah kombinasi antara personalisasi, bentuk keyboard mini, dan proses produksi 3D printing. Produk tidak hanya dapat dibuat sesuai nama, tetapi juga dapat dikembangkan dalam berbagai model dan warna. Fleksibilitas ini memberi ruang bagi ${data.brand} untuk membuat katalog desain yang menarik.`,
+      `Keunggulan lainnya adalah daya tarik konten. Saat produk ditekan dan menghasilkan bunyi klik, ${data.brand} dapat membuat video demonstrasi singkat yang mudah dipahami audiens. Unsur visual dan audio tersebut membantu produk lebih menonjol di ${data.platforms}, terutama bagi pelajar dan mahasiswa yang menyukai aksesori unik.`,
+    ],
+    "Segmentasi Pasar": [
+      `Segmentasi pasar ${data.brand} mencakup pelajar dan mahasiswa yang aktif menggunakan media sosial. Mereka cenderung menyukai produk personal, lucu, terjangkau, dan memiliki nilai ekspresi diri. ${data.product} sesuai dengan segmen ini karena dapat menampilkan nama, warna favorit, serta bentuk keyboard mini yang dekat dengan budaya digital.`,
+      `Dari sisi perilaku, target konsumen sering mencari inspirasi produk melalui Instagram dan TikTok sebelum membeli di marketplace. Karena itu, segmentasi ${data.brand} tidak cukup hanya berdasarkan usia, tetapi juga kebiasaan digital, ketertarikan terhadap produk custom, dan kecenderungan membeli aksesori kecil melalui Shopee.`,
+    ],
+    "Targeting": [
+      `Target utama ${data.brand} adalah pelajar dan mahasiswa yang ingin memiliki aksesori personal dengan harga terjangkau. Mereka cocok menjadi sasaran awal karena mudah merespons konten visual, menyukai barang custom, dan sering menggunakan produk kecil sebagai bagian dari gaya pribadi.`,
+      `Target sekunder adalah pembeli hadiah untuk teman, pasangan, atau anggota keluarga. ${data.product} dapat diposisikan sebagai hadiah sederhana namun personal karena nama penerima dapat ditampilkan pada produk. Strategi targeting ini membuat ${data.brand} dapat mengembangkan konten untuk kebutuhan pribadi dan gifting.`,
+    ],
+    "Positioning": [
+      `${data.brand} diposisikan sebagai brand custom clicker yang membantu pelajar dan mahasiswa menunjukkan identitas melalui produk berbentuk keyboard mini. Positioning ini membedakan ${data.product} dari aksesori biasa karena menonjolkan personalisasi nama, variasi warna, serta pengalaman bunyi klik.`,
+      `Tagline "${data.tagline}" memperkuat posisi brand sebagai produk yang berkaitan dengan ekspresi diri. Dalam komunikasi pemasaran, ${data.brand} perlu konsisten menampilkan hasil custom, proses 3D printing, dan cara pemesanan agar audiens memahami nilai produk sebelum diarahkan ke Shopee.`,
+    ],
+    "Persona Pelanggan": [
+      `Persona pertama adalah mahasiswa yang aktif di TikTok dan Instagram, menyukai aksesori unik, serta ingin barang yang menampilkan namanya. Persona ini tertarik pada konten before-after dari desain nama menjadi produk ${data.product}. Mereka membutuhkan contoh warna, model, dan cara order yang singkat.`,
+      `Persona kedua adalah pelajar yang mencari hadiah personal untuk teman. Mereka membutuhkan produk yang terlihat menarik, mudah dipesan, dan memiliki harga yang masuk akal. Untuk persona ini, ${data.brand} perlu menampilkan foto produk, video bunyi klik, pilihan warna, dan link Shopee yang mudah ditemukan.`,
+    ],
+    "Product": [
+      `Produk utama dalam marketing mix ${data.brand} adalah ${data.product}. Produk ini dibuat menggunakan mesin 3D printing, tersedia dalam berbagai model dan warna, berbentuk seperti keyboard mini, serta menghasilkan bunyi klik saat ditekan. Fitur tersebut harus menjadi inti komunikasi produk.`,
+      `Pengembangan produk dapat mencakup pilihan warna populer, variasi bentuk tombol, opsi nama pendek, dan kemasan sederhana. Konten produk perlu menampilkan detail permukaan hasil 3D printing, ukuran, contoh nama, serta pengalaman menekan tombol agar calon pembeli memahami bentuk dan fungsi produk.`,
+    ],
+    "Price": [
+      `Strategi harga ${data.brand} perlu mempertimbangkan biaya bahan 3D printing, waktu produksi, tingkat kesulitan desain, dan nilai personalisasi. Karena data biaya aktual belum tersedia, harga dalam proposal dapat diposisikan sebagai simulasi perencanaan untuk membantu tim menentukan rentang harga awal.`,
+      `Harga sebaiknya dikomunikasikan bersama manfaat produk, bukan hanya angka. Konsumen membeli ${data.product} karena nama, pilihan warna, bentuk keyboard mini, dan pengalaman bunyi kliknya. Oleh karena itu, ${data.brand} dapat menyiapkan harga reguler, paket bundling, dan promo launching di Shopee.`,
+    ],
+    "Place": [
+      `Place atau saluran distribusi ${data.brand} difokuskan pada ${data.platforms}. Instagram digunakan untuk katalog visual, TikTok untuk video pendek yang menampilkan proses dan bunyi klik, sedangkan Shopee menjadi tempat transaksi utama. Ketiga platform harus saling mengarahkan agar perjalanan pelanggan jelas.`,
+      `Alur yang disarankan adalah audiens menemukan konten di TikTok atau Instagram, melihat detail warna dan model, lalu diarahkan ke Shopee untuk membeli. Dengan sistem ini, ${data.brand} dapat membangun awareness sekaligus menyediakan kanal checkout yang familiar bagi pelajar dan mahasiswa.`,
+    ],
+    "Promotion": [
+      `Promosi ${data.brand} dapat dimulai dari konten demonstrasi ${data.product}. Video singkat dapat menampilkan nama pelanggan, proses 3D printing, pilihan warna, bentuk keyboard mini, dan bunyi klik saat ditekan. Konten seperti ini mudah dipahami dan cocok untuk format Reels maupun TikTok.`,
+      `Strategi promosi juga dapat memakai promo launching, bundling untuk pembelian beberapa nama, dan ajakan user generated content. Contohnya, audiens diminta menulis nama mereka di komentar untuk dibuatkan contoh desain. Cara ini membuat promosi terasa interaktif dan tetap terhubung dengan karakter produk custom.`,
+    ],
+    "Gaya Komunikasi": [
+      `Gaya komunikasi ${data.brand} sebaiknya ramah, ekspresif, dan dekat dengan bahasa pelajar serta mahasiswa. Brand perlu terdengar antusias saat menjelaskan pilihan warna, model, dan personalisasi nama, tetapi tetap jelas ketika menjelaskan harga, cara order, dan estimasi pengerjaan.`,
+      `Tagline "${data.tagline}" dapat menjadi dasar gaya komunikasi. Caption, balasan komentar, dan konten video sebaiknya menonjolkan gagasan bahwa nama pelanggan dapat menjadi bagian dari gaya personal. Dengan tone tersebut, ${data.brand} terasa lebih dekat dengan target marketnya.`,
+    ],
+    "Jenis Konten": [
+      `Jenis konten utama ${data.brand} meliputi product showcase, video proses 3D printing, demonstrasi bunyi klik, katalog warna, dan contoh nama pelanggan. Konten ini penting karena calon pembeli perlu melihat bentuk produk dan memahami pengalaman saat tombol ditekan.`,
+      `Konten pendukung dapat berupa polling warna, rekomendasi model untuk nama tertentu, ide hadiah, dan behind the scenes pengemasan. Variasi konten tersebut membantu ${data.brand} menjaga interaksi tanpa mengulang pesan yang sama di ${data.platforms}.`,
+    ],
+    "Platform yang Digunakan": [
+      `${data.platforms} digunakan sebagai platform utama mini project ${data.brand}. Instagram berfungsi untuk membangun identitas visual dan katalog produk. TikTok berfungsi memperluas awareness melalui video pendek yang menampilkan proses, bentuk keyboard mini, dan bunyi klik. Shopee berfungsi sebagai kanal transaksi.`,
+      `Setiap platform memiliki peran berbeda sehingga kontennya perlu disesuaikan. Instagram menekankan visual rapi, TikTok menekankan demonstrasi dan storytelling singkat, sedangkan Shopee menekankan informasi produk, variasi warna, harga, dan kemudahan checkout.`,
+    ],
+    "Strategi Engagement": [
+      `Strategi engagement ${data.brand} dapat memanfaatkan unsur nama pelanggan. Konten seperti "tulis nama kamu, nanti dibuatkan contoh clicker" dapat mendorong komentar. Polling warna dan model juga dapat membuat audiens merasa terlibat dalam proses desain produk.`,
+      `Engagement juga dapat dibangun melalui video reaksi saat tombol ditekan dan menghasilkan bunyi klik. Karena pengalaman audio menjadi ciri produk, ${data.brand} dapat membuat konten yang mengajak audiens memilih suara, warna, atau desain favorit sebelum diarahkan ke Shopee.`,
+    ],
+    "Timeline Week 1 sampai Week 14": [
+      `Week 1 difokuskan pada finalisasi proposal, identitas ${data.brand}, dan konsep produk ${data.product}. Week 2 sampai Week 3 digunakan untuk membuat desain awal, menentukan warna, membuat akun Instagram dan TikTok, serta menyiapkan etalase Shopee. Week 4 sampai Week 6 diarahkan untuk produksi konten pengenalan produk.`,
+      `Week 7 sampai Week 10 digunakan untuk promosi rutin, interaksi komentar, dan evaluasi konten awal. Week 11 sampai Week 13 diarahkan pada perbaikan konten, optimasi Shopee, dan pengumpulan insight. Week 14 menjadi tahap evaluasi akhir dan penyusunan laporan mini project.`,
+    ],
+    "Target Mingguan": [
+      `Target mingguan ${data.brand} dimulai dari penyelesaian identitas brand, contoh desain, dan materi visual. Setelah itu, target beralih ke jumlah konten, konsistensi posting, respons komentar, dan kesiapan katalog Shopee. Target ini harus dicatat agar perkembangan mini project dapat dievaluasi.`,
+      `Jika data performa asli belum tersedia, angka engagement ditulis sebagai simulasi perencanaan. Setelah konten dipublikasikan, tim dapat menggantinya dengan data aktual dari Instagram Insight, TikTok Analytics, dan statistik Shopee agar laporan akhir lebih valid.`,
+    ],
+    "Pembagian Tugas Tim": [
+      `Pembagian tugas tim ${data.brand} dapat dibagi menjadi konten, desain, produksi, marketplace, dan evaluasi. Tim konten menyusun ide dan caption, tim desain membuat visual, tim produksi menyiapkan contoh ${data.product}, tim marketplace mengatur Shopee, dan tim evaluasi mencatat performa.`,
+      `Pembagian tugas ini membantu mini project berjalan lebih teratur. Setiap anggota memiliki tanggung jawab yang jelas, mulai dari menampilkan detail produk 3D printing sampai memastikan calon pembeli memahami cara memesan ${data.product}.`,
+    ],
+    "Kesimpulan": [
+      `Proposal mini project ini menunjukkan bahwa ${data.brand} memiliki peluang untuk memperkenalkan ${data.product} sebagai aksesori personal bagi pelajar dan mahasiswa. Produk memiliki nilai unik karena dibuat dengan 3D printing, tersedia dalam berbagai model dan warna, berbentuk seperti keyboard mini, dan menghasilkan bunyi klik saat ditekan.`,
+      `Strategi ${data.brand} menghubungkan identitas brand, target market, marketing mix 4P, media sosial, dan timeline mingguan. Dengan memanfaatkan ${data.platforms}, mini project ini dapat membangun awareness, engagement, dan jalur pembelian yang lebih terarah.`,
+    ],
+    "Saran": [
+      `${data.brand} disarankan menjaga konsistensi visual, warna, dan gaya komunikasi sejak awal. Setiap konten perlu menampilkan keunikan ${data.product}, terutama personalisasi nama, proses 3D printing, bentuk keyboard mini, dan bunyi klik yang menjadi pembeda produk.`,
+      `Tim juga disarankan segera mengumpulkan data aktual setelah konten dipublikasikan. Data dari ${data.platforms} dapat digunakan untuk menilai jenis konten paling efektif, memperbaiki jadwal posting, dan memperkuat laporan akhir mini project.`,
+    ],
+  };
+
+  const extra: Record<string, string> = {
+    "Visi, Misi, dan Nilai Brand": `Dalam pelaksanaannya, nilai responsif harus terlihat dari balasan komentar, kecepatan menjawab pertanyaan order, dan kemampuan ${data.brand} memberi pilihan model sesuai permintaan pelanggan.`,
+    "Targeting": `Prioritas targeting awal sebaiknya diarahkan pada audiens yang mudah dijangkau melalui jaringan kampus, komunitas kelas, dan teman sebaya agar validasi minat terhadap ${data.product} dapat dilakukan lebih cepat.`,
+    "Positioning": `Positioning ini perlu dijaga dalam setiap visual: nama pelanggan harus tampak jelas, bentuk keyboard mini perlu terlihat, dan manfaat personalisasi harus langsung terbaca dalam tiga detik pertama konten.`,
+    "Price": `Tim dapat membandingkan beberapa skenario harga dengan mempertimbangkan ukuran produk, durasi cetak 3D, tingkat detail nama, dan biaya kemasan agar harga tetap realistis bagi pelajar dan mahasiswa.`,
+    "Place": `Bio Instagram dan TikTok sebaiknya memuat tautan Shopee, sedangkan halaman Shopee perlu menampilkan variasi model dan warna secara rapi agar calon pembeli tidak perlu bertanya ulang sebelum checkout.`,
+    "Gaya Komunikasi": `Contoh gaya komunikasi yang dapat digunakan adalah ajakan singkat seperti memilih warna nama, meminta contoh desain, atau menanyakan model favorit tanpa membuat audiens merasa sedang melihat iklan yang kaku.`,
+    "Jenis Konten": `Setiap jenis konten sebaiknya memiliki tujuan berbeda: showcase untuk memperjelas produk, proses cetak untuk membangun kepercayaan, dan konten interaktif untuk meningkatkan komentar serta ide desain baru.`,
+    "Platform yang Digunakan": `Pembagian peran platform ini membuat konten tidak sekadar diunggah ulang, melainkan disesuaikan dengan kebiasaan pengguna pada masing-masing kanal digital.`,
+    "Strategi Engagement": `Interaksi yang masuk perlu dicatat sebagai bahan evaluasi, misalnya nama yang paling sering diminta, warna favorit audiens, dan pertanyaan yang berulang tentang cara order.`,
+    "Target Mingguan": `Target mingguan tidak harus langsung berupa penjualan, karena pada tahap awal brand membutuhkan awareness, bukti minat, dan katalog konten yang cukup untuk meyakinkan calon pembeli.`,
+    "Pembagian Tugas Tim": `Koordinasi tim dapat dilakukan melalui daftar kerja mingguan sehingga setiap konten, desain, dan pembaruan Shopee memiliki tenggat yang jelas sebelum jadwal posting.`,
+    "Kesimpulan": `Dengan fokus tersebut, proposal ini dapat menjadi dasar pelaksanaan yang konkret karena setiap strategi langsung mengarah pada produk, audiens, platform, dan jadwal kerja mini project.`,
+    "Saran": `Saran ini penting agar keputusan berikutnya tidak hanya berdasarkan asumsi, tetapi juga berdasarkan respons nyata dari audiens dan calon pembeli selama mini project berjalan.`,
+  };
+
+  if (paragraphs[subsectionTitle]) {
+    return [...paragraphs[subsectionTitle], extra[subsectionTitle]].filter(Boolean).join("\n\n");
+  }
+
+  return `${subsectionTitle} membahas bagian proposal ${data.brand} yang berkaitan langsung dengan produk ${data.product}, target pelajar dan mahasiswa, serta strategi pemasaran melalui ${data.platforms}.`;
+}
+
+function extractFromTema(tema: string, key: string): string {
+  const match = tema.match(new RegExp(`${key}:\\s*([^;\\n.]+)`, "i"));
+  return match?.[1]?.trim() || "";
+}
+
+function clean(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function clickoraSubsectionContent(subsectionTitle: string): string {

@@ -16,8 +16,8 @@ export function buildDynamicFormSchema(analysis: AssignmentAnalysis): DynamicFor
         field("brandName", "Nama Brand", "text", true, "Contoh: Clickora", "Clickora"),
         field("productName", "Produk", "text", true, "Contoh: Custom Clicker Nama", "Custom Clicker Nama"),
         field("tagline", "Tagline", "text", false, "Contoh: Klik Namamu, Tunjukkan Gayamu", "Klik Namamu, Tunjukkan Gayamu"),
-        field("productDescription", "Deskripsi Produk", "textarea", true, "Jelaskan produk, fungsi, bahan, variasi, dan alasan produk menarik."),
-        field("targetMarket", "Target Market", "textarea", true, "Contoh: pelajar, mahasiswa, pembeli hadiah personal, pengguna aktif TikTok."),
+        field("productDescription", "Deskripsi Produk", "textarea", true, "Jelaskan produk, fungsi, bahan, variasi, dan alasan produk menarik.", "Custom Clicker Nama diproduksi menggunakan mesin 3D printing, tersedia berbagai model dan warna, berbentuk seperti keyboard mini, dan saat ditekan menghasilkan bunyi klik."),
+        field("targetMarket", "Target Market", "textarea", true, "Contoh: pelajar, mahasiswa, pembeli hadiah personal, pengguna aktif TikTok.", "Pelajar dan mahasiswa yang menyukai aksesori personal, unik, dan mudah dipamerkan di media sosial."),
         field("socialPlatforms", "Platform Media Sosial", "text", true, "Contoh: Instagram, TikTok, Shopee", "Instagram, TikTok, Shopee"),
         field("logo", "Logo (opsional)", "image", false, "Upload logo bila sudah ada."),
         field("productPhoto", "Foto Produk (opsional)", "image", false, "Upload foto produk bila sudah ada."),
@@ -27,8 +27,8 @@ export function buildDynamicFormSchema(analysis: AssignmentAnalysis): DynamicFor
         field("className", "Kelas", "text", true, "Contoh: 06SMJP001"),
         field("lecturerName", "Nama Dosen", "text", true, "Contoh: [Nama Dosen]"),
         field("campusName", "Nama Kampus", "text", false, "Contoh: Universitas Pamulang"),
-        field("faculty", "Fakultas", "text", false, "Contoh: Fakultas Ekonomi dan Bisnis"),
-        field("studyProgram", "Program Studi", "text", false, "Contoh: Manajemen"),
+        field("faculty", "Fakultas", "text", false, "Contoh: Fakultas Ekonomi dan Bisnis", "Fakultas Ekonomi dan Bisnis"),
+        field("studyProgram", "Program Studi", "text", false, "Contoh: Manajemen", "Program Studi Manajemen"),
       ]
     );
   }

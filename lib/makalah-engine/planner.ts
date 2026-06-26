@@ -122,30 +122,31 @@ function buildFallbackOutline(input: MakalahEngineInput): MakalahOutline {
 }
 
 function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline {
+  const data = getMiniProjectData(input);
   return {
-    title: input.judul || "Proposal Mini Project Social Media Marketing Clickora",
+    title: input.judul || `Proposal Mini Project Social Media Marketing ${data.brand}`,
     chapters: [
       {
         id: "bab1",
         number: "BAB I",
         title: "PENDAHULUAN",
-        purpose: "Menjelaskan dasar penyusunan proposal mini project Custom Clicker Nama.",
+        purpose: `Menjelaskan dasar penyusunan proposal mini project ${data.product}.`,
         subsections: [
-          { id: "1.1", title: "Latar Belakang", bullets: ["Peluang produk personalisasi", "Relevansi Clickora di media sosial"] },
+          { id: "1.1", title: "Latar Belakang", bullets: ["Peluang produk personalisasi", `Relevansi ${data.brand} di media sosial`] },
           { id: "1.2", title: "Rumusan Masalah", bullets: ["Masalah branding", "Masalah pemasaran digital"] },
           { id: "1.3", title: "Tujuan Penulisan", bullets: ["Tujuan proposal", "Tujuan strategi media sosial"] },
-          { id: "1.4", title: "Manfaat Penulisan", bullets: ["Manfaat akademik", "Manfaat praktis untuk Clickora"] },
+          { id: "1.4", title: "Manfaat Penulisan", bullets: ["Manfaat akademik", `Manfaat praktis untuk ${data.brand}`] },
         ],
       },
       {
         id: "bab2",
         number: "BAB II",
         title: "BRAND & PRODUK",
-        purpose: "Menguraikan identitas brand Clickora dan produk Custom Clicker Nama.",
+        purpose: `Menguraikan identitas brand ${data.brand} dan produk ${data.product}.`,
         subsections: [
-          { id: "2.1", title: "Nama Brand", bullets: ["Clickora sebagai nama brand", "Makna nama"] },
-          { id: "2.2", title: "Deskripsi Brand", bullets: ["Karakter brand", "Tagline Klik Namamu, Tunjukkan Gayamu"] },
-          { id: "2.3", title: "Visi, Misi, dan Nilai Brand", bullets: ["Visi Clickora", "Misi dan nilai"] },
+          { id: "2.1", title: "Nama Brand", bullets: [`${data.brand} sebagai nama brand`, "Makna nama"] },
+          { id: "2.2", title: "Deskripsi Brand", bullets: ["Karakter brand", `Tagline ${data.tagline}`] },
+          { id: "2.3", title: "Visi, Misi, dan Nilai Brand", bullets: [`Visi ${data.brand}`, "Misi dan nilai"] },
           { id: "2.4", title: "Deskripsi Produk Custom Clicker Nama", bullets: ["Fungsi produk", "Personalisasi nama"] },
           { id: "2.5", title: "Keunggulan Produk", bullets: ["Unik", "Terjangkau", "Cocok untuk gaya personal"] },
         ],
@@ -154,11 +155,11 @@ function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline
         id: "bab3",
         number: "BAB III",
         title: "TARGET MARKET",
-        purpose: "Menentukan segmen dan persona pelanggan Clickora.",
+        purpose: `Menentukan segmen dan persona pelanggan ${data.brand}.`,
         subsections: [
           { id: "3.1", title: "Segmentasi Pasar", bullets: ["Demografis", "Psikografis", "Perilaku digital"] },
           { id: "3.2", title: "Targeting", bullets: ["Target utama", "Target sekunder"] },
-          { id: "3.3", title: "Positioning", bullets: ["Posisi Clickora", "Pembeda brand"] },
+          { id: "3.3", title: "Positioning", bullets: [`Posisi ${data.brand}`, "Pembeda brand"] },
           { id: "3.4", title: "Persona Pelanggan", bullets: ["Persona pelajar/mahasiswa", "Persona pembeli hadiah"] },
         ],
       },
@@ -166,9 +167,9 @@ function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline
         id: "bab4",
         number: "BAB IV",
         title: "MARKETING MIX 4P",
-        purpose: "Menyusun strategi Product, Price, Place, dan Promotion untuk Clickora.",
+        purpose: `Menyusun strategi Product, Price, Place, dan Promotion untuk ${data.brand}.`,
         subsections: [
-          { id: "4.1", title: "Product", bullets: ["Custom Clicker Nama", "Variasi desain"] },
+          { id: "4.1", title: "Product", bullets: [data.product, "Variasi desain"] },
           { id: "4.2", title: "Price", bullets: ["Simulasi harga", "Nilai personalisasi"] },
           { id: "4.3", title: "Place", bullets: ["Instagram", "TikTok", "Shopee"] },
           { id: "4.4", title: "Promotion", bullets: ["Konten organik", "Promo launching", "UGC"] },
@@ -178,7 +179,7 @@ function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline
         id: "bab5",
         number: "BAB V",
         title: "STRATEGI BRANDING & MEDIA SOSIAL",
-        purpose: "Merancang gaya komunikasi dan strategi engagement Clickora.",
+        purpose: `Merancang gaya komunikasi dan strategi engagement ${data.brand}.`,
         subsections: [
           { id: "5.1", title: "Gaya Komunikasi", bullets: ["Friendly", "Ekspresif", "Anak muda"] },
           { id: "5.2", title: "Jenis Konten", bullets: ["Product showcase", "Behind the scenes", "Testimoni"] },
@@ -201,7 +202,7 @@ function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline
         id: "bab7",
         number: "BAB VII",
         title: "PENUTUP",
-        purpose: "Merumuskan kesimpulan dan saran proposal Clickora.",
+        purpose: `Merumuskan kesimpulan dan saran proposal ${data.brand}.`,
         subsections: [
           { id: "7.1", title: "Kesimpulan", bullets: ["Inti proposal", "Kelayakan strategi"] },
           { id: "7.2", title: "Saran", bullets: ["Pengembangan konten", "Validasi data asli"] },
@@ -215,6 +216,24 @@ function buildClickoraProposalOutline(input: MakalahEngineInput): MakalahOutline
     ],
     appendixPlan: ["Konsep visual brand", "Foto produk placeholder", "Contoh caption", "Contoh content calendar"],
   };
+}
+
+function getMiniProjectData(input: MakalahEngineInput): { brand: string; product: string; tagline: string } {
+  const values = input.dynamicValues || {};
+  return {
+    brand: clean(values.brandName) || extractFromTema(input.tema, "Brand") || "Clickora",
+    product: clean(values.productName) || extractFromTema(input.tema, "Produk") || "Custom Clicker Nama",
+    tagline: clean(values.tagline) || extractFromTema(input.tema, "Tagline") || "Klik Namamu, Tunjukkan Gayamu",
+  };
+}
+
+function extractFromTema(tema: string, key: string): string {
+  const match = tema.match(new RegExp(`${key}:\\s*([^;\\n.]+)`, "i"));
+  return match?.[1]?.trim() || "";
+}
+
+function clean(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isClickoraProposal(input: MakalahEngineInput): boolean {
