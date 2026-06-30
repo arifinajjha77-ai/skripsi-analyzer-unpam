@@ -79,10 +79,32 @@ export const assignmentReportSectionSchema = z.object({
   body: z.string(),
 });
 
+export const assignmentTimelineRowSchema = z.object({
+  week: z.string(),
+  activity: z.string(),
+  target: z.string(),
+});
+
+export const assignmentAcademicSectionSchema = z.object({
+  heading: z.string(),
+  level: z.enum(["chapter", "subheading"]),
+  body: z.string().optional(),
+  timelineRows: z.array(assignmentTimelineRowSchema).optional(),
+});
+
 export const assignmentRubricCheckSchema = z.object({
   aspect: z.string(),
   status: z.enum(["met", "partial", "missing"]),
   note: z.string(),
+});
+
+export const assignmentQualityReviewSchema = z.object({
+  passed: z.boolean(),
+  warnings: z.array(z.string()),
+  checks: z.array(z.object({
+    label: z.string(),
+    passed: z.boolean(),
+  })),
 });
 
 export const assignmentReportSchema = z.object({
@@ -91,9 +113,11 @@ export const assignmentReportSchema = z.object({
   outputType: z.string(),
   executiveSummary: z.string(),
   sections: z.array(assignmentReportSectionSchema),
+  academicSections: z.array(assignmentAcademicSectionSchema).optional(),
   references: z.array(z.string()),
   appendices: z.array(z.string()),
   rubricChecks: z.array(assignmentRubricCheckSchema),
+  qualityReview: assignmentQualityReviewSchema.optional(),
   generatedWith: z.object({
     model: z.string(),
     fallback: z.boolean(),
@@ -102,7 +126,10 @@ export const assignmentReportSchema = z.object({
 
 export type AssignmentReport = z.infer<typeof assignmentReportSchema>;
 export type AssignmentReportSection = z.infer<typeof assignmentReportSectionSchema>;
+export type AssignmentAcademicSection = z.infer<typeof assignmentAcademicSectionSchema>;
+export type AssignmentTimelineRow = z.infer<typeof assignmentTimelineRowSchema>;
 export type AssignmentRubricCheck = z.infer<typeof assignmentRubricCheckSchema>;
+export type AssignmentQualityReview = z.infer<typeof assignmentQualityReviewSchema>;
 
 export type AssignmentAnalyzeResult = {
   state: AssignmentWorkspaceState;

@@ -1,5 +1,6 @@
 import { generateJsonWithOpenAI } from "@/lib/ai/openai";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
+import { canWriteAcademicMiniProject, writeAcademicMiniProjectProposal } from "./academicWriter";
 import { buildAnsweredFacts } from "./missingData";
 import { assignmentReportSchema, type AssignmentAnalysis, type AssignmentAnswers, type AssignmentReport } from "./types";
 
@@ -12,6 +13,10 @@ export async function generateAssignmentReport(
   answers: AssignmentAnswers,
   optionalNotes = ""
 ): Promise<AssignmentReport> {
+  if (canWriteAcademicMiniProject(analysis, answers)) {
+    return writeAcademicMiniProjectProposal(analysis, answers);
+  }
+
   const ai = await generateJsonWithOpenAI<ReportPayload>(buildPrompt(analysis, answers, optionalNotes));
   if (ai) {
     const parsed = assignmentReportSchema.safeParse(ai.data.report);
@@ -87,12 +92,12 @@ function buildFallbackSection(
 ): string {
   const factText = facts.length > 0
     ? facts.map((fact) => `${fact.label}: ${fact.value}`).join("; ")
-    : "Data detail masih terbatas sehingga pembahasan memakai asumsi akademik yang wajar.";
+    : "Informasi detail masih terbatas, sehingga narasi memakai asumsi akademik yang wajar dan dapat diperbarui.";
   const rubric = analysis.gradingRubric.map((item) => item.aspect).join(", ");
   const paragraphs = [
-    `${title} membahas ${object} dalam konteks ${course}. Bagian ini disusun agar dokumen tetap mengikuti instruksi tugas, terutama output ${analysis.requestedOutput.join(", ")} dan struktur yang diminta dosen.`,
-    `Data yang digunakan pada bagian ini meliputi ${factText}. Apabila ada data yang belum tersedia, informasi tersebut tidak dinyatakan sebagai hasil aktual, melainkan sebagai rencana, asumsi, atau simulasi yang dapat diperbarui setelah data asli tersedia.`,
-    `Fokus penulisan pada bagian ini diarahkan pada ${analysis.gradingRubric[index % Math.max(1, analysis.gradingRubric.length)]?.aspect || "kelengkapan pembahasan"}. Dengan demikian, pembahasan tetap terhubung dengan rubrik penilaian seperti ${rubric || "kesesuaian instruksi dan kualitas analisis"}.`,
+    `${title} ditempatkan dalam konteks ${course} dengan objek utama ${object}. Narasi mengikuti output ${analysis.requestedOutput.join(", ")} dan struktur yang diminta dosen agar dokumen tetap relevan dengan kebutuhan tugas.`,
+    `Informasi dasar yang sudah tersedia meliputi ${factText}. Apabila ada informasi yang belum lengkap, narasi tidak menyatakannya sebagai hasil aktual, melainkan sebagai rencana, asumsi, atau simulasi yang dapat diperbarui setelah data asli tersedia.`,
+    `Rubrik seperti ${rubric || "kesesuaian instruksi dan kualitas analisis"} menjadi pengarah kualitas dokumen. Karena itu, uraian disusun dengan alur yang runtut, bahasa akademik, dan batasan yang jelas.`,
   ];
   return paragraphs.join("\n\n");
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Download, FileQuestion, FileText, Loader2, Send, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeAssignmentAction, exportAssignmentAction, generateAssignmentAction } from "./actions";
-import type { AssignmentAnalysis, AssignmentAnswers, AssignmentQuestion, AssignmentReport, AssignmentWorkspaceState } from "@/lib/assignment/types";
+import type { AssignmentAcademicSection, AssignmentAnalysis, AssignmentAnswers, AssignmentQuestion, AssignmentReport, AssignmentWorkspaceState } from "@/lib/assignment/types";
 import { getCurrentQuestion, getNextStateAfterAnswers, getQuestionProgress } from "@/lib/assignment/questionEngine";
 import { mergeAnswer } from "@/lib/assignment/missingData";
 
@@ -480,6 +480,16 @@ function ReportPreview({ report }: { report: AssignmentReport | null }) {
         <p className="mt-1 text-sm text-slate-500">{report.title}</p>
       </div>
       <div className="max-h-[680px] space-y-4 overflow-y-auto pr-2">
+        {report.qualityReview && !report.qualityReview.passed && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <h3 className="text-sm font-bold text-amber-950">Quality Review Warning</h3>
+            <div className="mt-2 space-y-1">
+              {report.qualityReview.warnings.map((warning) => (
+                <p key={warning} className="text-xs text-amber-900">{warning}</p>
+              ))}
+            </div>
+          </div>
+        )}
         <PreviewBlock title="Ringkasan" body={report.executiveSummary} />
         {report.rubricChecks.length > 0 && (
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
@@ -493,9 +503,59 @@ function ReportPreview({ report }: { report: AssignmentReport | null }) {
             </div>
           </div>
         )}
-        {report.sections.map((section) => <PreviewBlock key={section.title} title={section.title} body={section.body} />)}
+        {report.academicSections?.length
+          ? <AcademicDocumentPreview sections={report.academicSections} references={report.references} />
+          : report.sections.map((section) => <PreviewBlock key={section.title} title={section.title} body={section.body} />)
+        }
       </div>
     </section>
+  );
+}
+
+function AcademicDocumentPreview({ sections, references }: { sections: AssignmentAcademicSection[]; references: string[] }) {
+  return (
+    <div className="space-y-4">
+      {sections.map((section, index) => (
+        <div key={`${section.heading}-${index}`}>
+          {section.level === "chapter" ? (
+            <h3 className="mt-5 text-base font-extrabold uppercase text-slate-950">{section.heading}</h3>
+          ) : (
+            <h4 className="mt-3 text-sm font-bold text-slate-900">{section.heading}</h4>
+          )}
+          {section.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-600">{section.body}</p>}
+          {section.timelineRows && (
+            <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700">
+                  <tr>
+                    <th className="border-b border-slate-200 px-3 py-2">Minggu</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Kegiatan</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.timelineRows.map((row) => (
+                    <tr key={row.week} className="align-top">
+                      <td className="border-b border-slate-100 px-3 py-2 font-semibold text-slate-700">{row.week}</td>
+                      <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.activity}</td>
+                      <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.target}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ))}
+      {references.length > 0 && (
+        <div>
+          <h3 className="mt-5 text-base font-extrabold uppercase text-slate-950">DAFTAR PUSTAKA</h3>
+          <div className="mt-2 space-y-2">
+            {references.map((reference) => <p key={reference} className="text-sm leading-6 text-slate-600">{reference}</p>)}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
