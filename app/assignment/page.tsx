@@ -12,8 +12,10 @@ const STORAGE_KEY = "smartcampus.assignment.workspace.v1";
 const SMARTSCAN_STORAGE_KEY = "smartcampus.smartscan.latestPdf";
 const PRODUCT_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 const PRODUCT_IMAGE_ERROR_MESSAGE = "Gambar produk tidak bisa diproses. Gunakan JPG/PNG/WebP maksimal 5MB.";
+const ASSIGNMENT_SESSION_RECOVERY_MESSAGE = "Sesi tugas lama berisi data gambar besar dan sudah dibersihkan otomatis. Silakan upload ulang foto produk jika diperlukan.";
 const PRODUCT_IMAGE_ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const PRODUCT_IMAGE_KEYS = new Set(["productImageData", "productImageName", "productPhotoData", "productPhotoName", "fotoProdukData", "fotoProdukName"]);
+const UNSAFE_IMAGE_FIELD_PATTERN = /(image|photo|foto|logo).*(data|url|base64|blob|file)|dataUrl|previewUrl|objectUrl/i;
 
 type PersistedWorkspace = {
   state: AssignmentWorkspaceState;
@@ -55,6 +57,7 @@ export default function AssignmentWorkspacePage() {
   const [smartScanPdf, setSmartScanPdf] = useState<StoredSmartScanPdf | null>(null);
   const [productImage, setProductImageDraft] = useState<ProductImageDraft | null>(null);
   const [productImageError, setProductImageError] = useState("");
+  const [sessionWarning, setSessionWarning] = useState("");
   const [productImagePreviewFailed, setProductImagePreviewFailed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -63,37 +66,62 @@ export default function AssignmentWorkspacePage() {
   const canGenerate = Boolean(analysis && state === "READY_TO_GENERATE" && !isPending);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+      storageLoadedRef.current = true;
+      return;
+    }
     if (!raw) {
       storageLoadedRef.current = true;
       return;
     }
     try {
       const saved = JSON.parse(raw) as PersistedWorkspace;
+      const { workspace, changed } = sanitizePersistedWorkspace(saved, containsUnsafePersistedPayload(raw));
       window.setTimeout(() => {
-        setState(saved.state === "ANALYZE" || saved.state === "GENERATING" ? "READY_TO_GENERATE" : saved.state);
-        setUserNotes(saved.userNotes || "");
-        setAnalysis(saved.analysis);
-        setAnswers(stripProductImageAnswers(saved.answers || {}));
-        setCurrentAnswer(saved.currentAnswer || "");
-        setReport(stripReportProductImage(saved.report));
-        setMeta(saved.meta);
+        setState(normalizePersistedState(workspace.state));
+        setUserNotes(workspace.userNotes || "");
+        setAnalysis(workspace.analysis);
+        setAnswers(workspace.answers);
+        setCurrentAnswer(workspace.currentAnswer || "");
+        setReport(workspace.report);
+        setMeta(workspace.meta);
+        if (changed) {
+          setSessionWarning(ASSIGNMENT_SESSION_RECOVERY_MESSAGE);
+          toast.warning(ASSIGNMENT_SESSION_RECOVERY_MESSAGE);
+        }
         storageLoadedRef.current = true;
       }, 0);
     } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Ignore storage access failures during recovery.
+      }
+      setSessionWarning("Sesi tugas tidak bisa dibaca dan sudah direset. Silakan mulai ulang analisis tugas.");
       storageLoadedRef.current = true;
     }
   }, []);
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem(SMARTSCAN_STORAGE_KEY);
+    let raw: string | null = null;
+    try {
+      raw = window.sessionStorage.getItem(SMARTSCAN_STORAGE_KEY);
+    } catch {
+      return;
+    }
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as StoredSmartScanPdf;
       window.setTimeout(() => setSmartScanPdf(parsed), 0);
     } catch {
-      window.sessionStorage.removeItem(SMARTSCAN_STORAGE_KEY);
+      try {
+        window.sessionStorage.removeItem(SMARTSCAN_STORAGE_KEY);
+      } catch {
+        // Ignore storage access failures during recovery.
+      }
     }
   }, []);
 
@@ -103,9 +131,9 @@ export default function AssignmentWorkspacePage() {
       state,
       userNotes,
       analysis,
-      answers: stripProductImageAnswers(answers),
+      answers: sanitizeAssignmentAnswers(answers),
       currentAnswer,
-      report: stripReportProductImage(report),
+      report: sanitizeAssignmentReport(report),
       meta,
     };
     try {
@@ -130,8 +158,13 @@ export default function AssignmentWorkspacePage() {
     setReport(null);
     setMeta(null);
     setError("");
+    setSessionWarning("");
     clearProductImageDraft();
-    window.localStorage.removeItem(STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore storage access failures during reset.
+    }
   }
 
   function analyze() {
@@ -229,7 +262,7 @@ export default function AssignmentWorkspacePage() {
     setError("");
 
     startTransition(async () => {
-      const generationAnswers = await buildGenerationAnswers(answers, productImage);
+      const generationAnswers = sanitizeAssignmentAnswers(answers);
       const result = await generateAssignmentAction({ analysis, answers: generationAnswers, optionalNotes: userNotes });
       if (!result.ok) {
         setState("READY_TO_GENERATE");
@@ -238,33 +271,44 @@ export default function AssignmentWorkspacePage() {
         return;
       }
 
-      setReport(result.data);
+      setReport(sanitizeAssignmentReport(result.data));
       setState("DONE");
       toast.success("Proposal/laporan selesai.");
     });
   }
 
   function setProductImage(file: File | null) {
-    if (!file) {
-      clearProductImageDraft();
-      return;
-    }
+    try {
+      if (!file) {
+        clearProductImageDraft();
+        return;
+      }
 
-    if (!isValidProductImage(file)) {
+      if (!isValidProductImage(file)) {
+        clearProductImageDraft(PRODUCT_IMAGE_ERROR_MESSAGE);
+        toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
+        return;
+      }
+
+      if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+        clearProductImageDraft(PRODUCT_IMAGE_ERROR_MESSAGE);
+        toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
+        return;
+      }
+
+      revokeProductImageUrl(productImageUrlRef);
+      const previewUrl = URL.createObjectURL(file);
+      productImageUrlRef.current = previewUrl;
+      setProductImageDraft({ file, previewUrl, name: file.name });
+      setProductImageError("");
+      setProductImagePreviewFailed(false);
+      setAnswers((current) => sanitizeAssignmentAnswers(current));
+      setReport(null);
+      toast.success("Foto produk ditambahkan.");
+    } catch {
       clearProductImageDraft(PRODUCT_IMAGE_ERROR_MESSAGE);
       toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
-      return;
     }
-
-    revokeProductImageUrl(productImageUrlRef);
-    const previewUrl = URL.createObjectURL(file);
-    productImageUrlRef.current = previewUrl;
-    setProductImageDraft({ file, previewUrl, name: file.name });
-    setProductImageError("");
-    setProductImagePreviewFailed(false);
-    setAnswers((current) => stripProductImageAnswers(current));
-    setReport(null);
-    toast.success("Foto produk ditambahkan.");
   }
 
   function clearProductImageDraft(nextError = "") {
@@ -272,14 +316,15 @@ export default function AssignmentWorkspacePage() {
     setProductImageDraft(null);
     setProductImageError(nextError);
     setProductImagePreviewFailed(false);
-    setAnswers((current) => stripProductImageAnswers(current));
+    setAnswers((current) => sanitizeAssignmentAnswers(current));
     setReport(null);
   }
 
   function exportDocx() {
     if (!report) return;
     startTransition(async () => {
-      const result = await exportAssignmentAction({ report });
+      const exportReport = await buildExportReport(report, productImage);
+      const result = await exportAssignmentAction({ report: exportReport });
       if (!result.ok) {
         setError(result.error);
         toast.error("Gagal export DOCX.");
@@ -305,6 +350,13 @@ export default function AssignmentWorkspacePage() {
         <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {sessionWarning && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{sessionWarning}</span>
         </div>
       )}
 
@@ -816,38 +868,93 @@ function PreviewBlock({ title, body }: { title: string; body: string }) {
   );
 }
 
-async function buildGenerationAnswers(answers: AssignmentAnswers, productImage: ProductImageDraft | null): Promise<AssignmentAnswers> {
-  const generationAnswers = stripProductImageAnswers(answers);
-  if (!productImage || !isValidProductImage(productImage.file)) return generationAnswers;
+async function buildExportReport(report: AssignmentReport, productImage: ProductImageDraft | null): Promise<AssignmentReport> {
+  const safeReport = sanitizeAssignmentReport(report) || report;
+  if (!productImage || !isValidProductImage(productImage.file)) return safeReport;
 
   try {
     const dataUrl = await readFileAsDataUrl(productImage.file);
-    if (!dataUrl.startsWith("data:image/")) return generationAnswers;
+    if (!isSafeProductImageDataUrl(dataUrl)) return safeReport;
     return {
-      ...generationAnswers,
-      productImageData: dataUrl,
-      productImageName: productImage.name,
+      ...safeReport,
+      productImage: {
+        name: productImage.name,
+        dataUrl,
+      },
     };
   } catch {
     toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
-    return generationAnswers;
+    return safeReport;
   }
 }
 
-function stripProductImageAnswers(answers: AssignmentAnswers): AssignmentAnswers {
-  return Object.fromEntries(Object.entries(answers).filter(([key]) => !PRODUCT_IMAGE_KEYS.has(key))) as AssignmentAnswers;
+function sanitizePersistedWorkspace(value: Partial<PersistedWorkspace> | null | undefined, forceDropReport = false): { workspace: PersistedWorkspace; changed: boolean } {
+  const answers = sanitizeAssignmentAnswers(value?.answers || {});
+  const report = forceDropReport ? null : sanitizeAssignmentReport(value?.report || null);
+  const currentAnswer = typeof value?.currentAnswer === "string" && !isUnsafeImageString(value.currentAnswer) ? value.currentAnswer : "";
+  const changed =
+    forceDropReport ||
+    JSON.stringify(value?.answers || {}) !== JSON.stringify(answers) ||
+    JSON.stringify(value?.report || null) !== JSON.stringify(report) ||
+    value?.currentAnswer !== currentAnswer;
+  return {
+    workspace: {
+      state: normalizePersistedState(value?.state),
+      userNotes: typeof value?.userNotes === "string" ? value.userNotes : "",
+      analysis: value?.analysis || null,
+      answers,
+      currentAnswer,
+      report,
+      meta: value?.meta || null,
+    },
+    changed,
+  };
 }
 
-function stripReportProductImage(report: AssignmentReport | null): AssignmentReport | null {
+function normalizePersistedState(value: unknown): AssignmentWorkspaceState {
+  if (value === "ANALYZE" || value === "GENERATING") return "READY_TO_GENERATE";
+  if (value === "UPLOAD" || value === "WAITING_DATA" || value === "READY_TO_GENERATE" || value === "DONE") return value;
+  return "UPLOAD";
+}
+
+function sanitizeAssignmentAnswers(answers: AssignmentAnswers): AssignmentAnswers {
+  return Object.fromEntries(
+    Object.entries(answers).filter(([key, value]) => !isUnsafeImageField(key, value)),
+  ) as AssignmentAnswers;
+}
+
+function sanitizeAssignmentReport(report: AssignmentReport | null): AssignmentReport | null {
   if (!report?.productImage) return report;
   const { productImage: _productImage, ...safeReport } = report;
   return safeReport;
+}
+
+function isUnsafeImageField(key: string, value: unknown): boolean {
+  if (PRODUCT_IMAGE_KEYS.has(key) || UNSAFE_IMAGE_FIELD_PATTERN.test(key)) return true;
+  if (typeof value !== "string") return true;
+  return isUnsafeImageString(value);
+}
+
+function isUnsafeImageString(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/^(data:image\/|blob:|filesystem:)/i.test(trimmed)) return true;
+  if (trimmed.length > 10000 && /^(iVBORw0KGgo|\/9j\/|UklGR|R0lGOD|Qk)/.test(trimmed)) return true;
+  return false;
+}
+
+function containsUnsafePersistedPayload(raw: string): boolean {
+  return /data:image\/|blob:|filesystem:|productImageData|productPhotoData|fotoProdukData|previewUrl|objectUrl/i.test(raw);
 }
 
 function isValidProductImage(file: File): boolean {
   const lowerName = file.name.toLowerCase();
   const isHeic = lowerName.endsWith(".heic") || lowerName.endsWith(".heif") || file.type === "image/heic" || file.type === "image/heif";
   return !isHeic && PRODUCT_IMAGE_ALLOWED_TYPES.has(file.type) && file.size <= PRODUCT_IMAGE_MAX_SIZE;
+}
+
+function isSafeProductImageDataUrl(value: string): boolean {
+  return /^data:image\/(png|jpe?g|webp);base64,/i.test(value) && value.length <= PRODUCT_IMAGE_MAX_SIZE * 2;
 }
 
 function revokeProductImageUrl(ref: MutableRefObject<string | null>) {
