@@ -2,10 +2,12 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  Footer,
   HeadingLevel,
   ImageRun,
   Packer,
   PageBreak,
+  PageNumber,
   Paragraph,
   Table,
   TableCell,
@@ -69,15 +71,26 @@ export async function exportAssignmentDocx(report: AssignmentReport): Promise<Bu
         },
       ],
     },
+    features: {
+      updateFields: true,
+    },
     sections: [
       {
+        footers: {
+          first: blankFooter(),
+          default: pageNumberFooter(),
+        },
         properties: {
+          titlePage: true,
           page: {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
               bottom: convertInchesToTwip(1),
               left: convertInchesToTwip(1.18),
+            },
+            pageNumbers: {
+              start: 0,
             },
           },
         },
@@ -286,6 +299,33 @@ function buildWordToc(): Array<Paragraph | TableOfContents> {
       headingStyleRange: "1-2",
     }),
   ];
+}
+
+function blankFooter(): Footer {
+  return new Footer({
+    children: [
+      new Paragraph({
+        children: [],
+      }),
+    ],
+  });
+}
+
+function pageNumberFooter(): Footer {
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            children: [PageNumber.CURRENT],
+            font: FONT,
+            size: BODY_SIZE,
+          }),
+        ],
+      }),
+    ],
+  });
 }
 
 function timelineTable(rows: AssignmentTimelineRow[]): Table {
