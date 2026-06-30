@@ -9,6 +9,7 @@ import { getCurrentQuestion, getNextStateAfterAnswers, getQuestionProgress } fro
 import { mergeAnswer } from "@/lib/assignment/missingData";
 
 const STORAGE_KEY = "smartcampus.assignment.workspace.v1";
+const SMARTSCAN_STORAGE_KEY = "smartcampus.smartscan.latestPdf";
 
 type PersistedWorkspace = {
   state: AssignmentWorkspaceState;
@@ -18,6 +19,14 @@ type PersistedWorkspace = {
   currentAnswer: string;
   report: AssignmentReport | null;
   meta: { model: string; fallback: boolean; extractedCharacters: number } | null;
+};
+
+type StoredSmartScanPdf = {
+  fileName: string;
+  mimeType: string;
+  base64: string;
+  createdAt: string;
+  pageCount: number;
 };
 
 export default function AssignmentWorkspacePage() {
@@ -32,6 +41,7 @@ export default function AssignmentWorkspacePage() {
   const [report, setReport] = useState<AssignmentReport | null>(null);
   const [error, setError] = useState("");
   const [meta, setMeta] = useState<{ model: string; fallback: boolean; extractedCharacters: number } | null>(null);
+  const [smartScanPdf, setSmartScanPdf] = useState<StoredSmartScanPdf | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const currentQuestion = useMemo(() => analysis ? getCurrentQuestion(analysis, answers) : null, [analysis, answers]);
@@ -59,6 +69,17 @@ export default function AssignmentWorkspacePage() {
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
       storageLoadedRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem(SMARTSCAN_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as StoredSmartScanPdf;
+      window.setTimeout(() => setSmartScanPdf(parsed), 0);
+    } catch {
+      window.sessionStorage.removeItem(SMARTSCAN_STORAGE_KEY);
     }
   }, []);
 
@@ -112,6 +133,39 @@ export default function AssignmentWorkspacePage() {
       });
       setState(result.data.state);
       toast.success("Tugas berhasil dipahami.");
+    });
+  }
+
+  function analyzeSmartScanPdf() {
+    if (!smartScanPdf) return;
+    const scannedFile = base64ToFile(smartScanPdf.base64, smartScanPdf.fileName, smartScanPdf.mimeType);
+    setFile(scannedFile);
+    const formData = new FormData();
+    formData.append("assignmentFile", scannedFile);
+    formData.append("userNotes", userNotes);
+    setState("ANALYZE");
+    setError("");
+
+    startTransition(async () => {
+      const result = await analyzeAssignmentAction(formData);
+      if (!result.ok) {
+        setState("UPLOAD");
+        setError(result.error);
+        toast.error("Gagal memahami PDF SmartScan.");
+        return;
+      }
+
+      setAnalysis(result.data.analysis);
+      setAnswers({});
+      setCurrentAnswer("");
+      setReport(null);
+      setMeta({
+        model: result.data.model,
+        fallback: result.data.fallback,
+        extractedCharacters: result.data.extractedText.length,
+      });
+      setState(result.data.state);
+      toast.success("PDF SmartScan berhasil dianalisis.");
     });
   }
 
@@ -207,6 +261,28 @@ export default function AssignmentWorkspacePage() {
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
+      )}
+
+      {smartScanPdf && (
+        <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-emerald-950">PDF SmartScan siap digunakan</h2>
+              <p className="mt-1 text-xs text-emerald-800">
+                {smartScanPdf.fileName} berisi {smartScanPdf.pageCount} halaman. Klik tombol ini untuk menganalisis PDF hasil scan.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={analyzeSmartScanPdf}
+              disabled={state === "ANALYZE" || isPending}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {state === "ANALYZE" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Analisis PDF SmartScan
+            </button>
+          </div>
+        </section>
       )}
 
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
@@ -658,4 +734,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error || new Error("Gagal membaca gambar."));
     reader.readAsDataURL(file);
   });
+}
+
+function base64ToFile(base64: string, fileName: string, mimeType: string): File {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], fileName, { type: mimeType });
 }

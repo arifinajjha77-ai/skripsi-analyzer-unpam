@@ -6,8 +6,8 @@ import {
   Upload, Settings2, BarChart2, CheckCircle, ShieldCheck, TrendingUp,
   FileText, LayoutDashboard, X, BookOpen, ClipboardList, Newspaper,
   GitFork, Table2, Users, Settings, FolderOpen, Layers, BookMarked,
-  GraduationCap, BookCopy, ChevronDown, ChevronRight, Sparkles,
-  FileQuestion,
+  BookCopy, ChevronDown, ChevronRight, Sparkles,
+  FileQuestion, ScanLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/lib/context";
@@ -160,6 +160,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           {[
             { href: "/",        label: "Beranda",  icon: LayoutDashboard },
             { href: "/project", label: "Project",  icon: FolderOpen },
+            { href: "/smartscan", label: "SmartScan", icon: ScanLine },
           ].map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
