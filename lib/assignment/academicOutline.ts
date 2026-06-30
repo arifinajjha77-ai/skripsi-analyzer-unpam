@@ -39,8 +39,8 @@ export function buildAcademicOutline(analysis: AssignmentAnalysis, answers: Assi
 export function buildMiniProjectProposalOutline(analysis: AssignmentAnalysis): AcademicOutline {
   return {
     kind: "mini_project_proposal",
-    title: `Proposal Mini Project Week 1${analysis.course ? ` - ${analysis.course}` : ""}`,
-    outputType: "Proposal Mini Project Week 1",
+    title: `Proposal Mini Project${analysis.course ? ` - ${analysis.course}` : ""}`,
+    outputType: "Proposal Mini Project",
     sections: [
       chapter("BAB I PENDAHULUAN"),
       sub("1.1 Latar Belakang"),
@@ -83,7 +83,7 @@ export function buildMiniProjectProposalOutline(analysis: AssignmentAnalysis): A
 
 export function buildMiniProjectTimeline(): AssignmentTimelineRow[] {
   return [
-    { week: "1", activity: "Finalisasi ide usaha, identitas brand, deskripsi produk, dan proposal awal.", target: "Proposal Week 1 selesai dan arah proyek disepakati kelompok." },
+    { week: "1", activity: "Finalisasi ide usaha, identitas brand, deskripsi produk, dan proposal awal.", target: "Proposal awal selesai dan arah proyek disepakati kelompok." },
     { week: "2", activity: "Penyusunan visual brand, akun media sosial, dan konsep katalog produk.", target: "Logo sederhana, bio akun, dan template konten awal tersedia." },
     { week: "3", activity: "Pembuatan contoh produk, foto produk, dan materi pengenalan brand.", target: "Minimal beberapa materi visual siap dipakai untuk konten." },
     { week: "4", activity: "Publikasi konten perkenalan produk dan edukasi nilai personalisasi.", target: "Audiens memahami fungsi, manfaat, dan cara pemesanan produk." },
@@ -95,8 +95,8 @@ export function buildMiniProjectTimeline(): AssignmentTimelineRow[] {
     { week: "10", activity: "Penguatan engagement dengan challenge, giveaway kecil, atau konten komentar audiens.", target: "Interaksi audiens lebih aktif dan akun terlihat hidup." },
     { week: "11", activity: "Pengumpulan insight media sosial dan catatan performa konten.", target: "Data like, komentar, jangkauan, dan insight awal terdokumentasi." },
     { week: "12", activity: "Penyusunan evaluasi strategi pemasaran dan kendala pelaksanaan.", target: "Kelebihan, kelemahan, dan peluang perbaikan tersusun jelas." },
-    { week: "13", activity: "Penyempurnaan laporan akhir, lampiran konten, dan bukti aktivitas media sosial.", target: "Draft laporan akhir siap direview." },
-    { week: "14", activity: "Finalisasi laporan, presentasi hasil, dan refleksi mini project.", target: "Laporan akhir dan bahan presentasi siap dikumpulkan." },
+    { week: "13", activity: "Penyusunan evaluasi akhir, lampiran konten, dan bukti aktivitas media sosial.", target: "Evaluasi proyek siap direview." },
+    { week: "14", activity: "Finalisasi evaluasi, rangkuman hasil, dan refleksi mini project.", target: "Dokumentasi akhir proyek siap dikumpulkan." },
   ];
 }
 

@@ -34,6 +34,8 @@ function buildPrompt(analysis: AssignmentAnalysis, answers: AssignmentAnswers, o
     "Generate proposal/laporan berdasarkan analisis instruksi tugas dan jawaban user. Jangan hardcode produk tertentu.",
     "Jika data performa, angka penjualan, atau engagement tidak diberikan, tulis sebagai simulasi/rencana, bukan fakta aktual.",
     "Gunakan Bahasa Indonesia formal akademik. Buat isi siap diekspor ke DOCX.",
+    "Gunakan requestedOutput dan deliverables hanya untuk menentukan jenis dokumen yang sedang dibuat. Jangan menulis paragraf yang menjelaskan daftar output tugas seperti proposal, laporan mingguan, laporan akhir, atau presentasi, kecuali dokumen yang dipilih memang jenis output tersebut.",
+    "Jika dokumen yang dibuat adalah proposal atau makalah, mulai langsung dari isi akademik dan jangan menulis meta text seperti \"Tugas ini meminta\", \"Output yang diminta\", atau \"Pada Week 1 mahasiswa harus\".",
     "Balas JSON valid tanpa markdown dengan bentuk:",
     JSON.stringify({
       report: {
@@ -95,7 +97,7 @@ function buildFallbackSection(
     : "Informasi detail masih terbatas, sehingga narasi memakai asumsi akademik yang wajar dan dapat diperbarui.";
   const rubric = analysis.gradingRubric.map((item) => item.aspect).join(", ");
   const paragraphs = [
-    `${title} ditempatkan dalam konteks ${course} dengan objek utama ${object}. Narasi mengikuti output ${analysis.requestedOutput.join(", ")} dan struktur yang diminta dosen agar dokumen tetap relevan dengan kebutuhan tugas.`,
+    `${title} ditempatkan dalam konteks ${course} dengan objek utama ${object}. Narasi disusun sebagai isi akademik yang langsung membahas topik, mengikuti struktur utama dokumen tanpa menjelaskan daftar output tugas.`,
     `Informasi dasar yang sudah tersedia meliputi ${factText}. Apabila ada informasi yang belum lengkap, narasi tidak menyatakannya sebagai hasil aktual, melainkan sebagai rencana, asumsi, atau simulasi yang dapat diperbarui setelah data asli tersedia.`,
     `Rubrik seperti ${rubric || "kesesuaian instruksi dan kualitas analisis"} menjadi pengarah kualitas dokumen. Karena itu, uraian disusun dengan alur yang runtut, bahasa akademik, dan batasan yang jelas.`,
   ];

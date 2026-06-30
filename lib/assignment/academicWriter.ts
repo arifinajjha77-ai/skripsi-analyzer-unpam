@@ -54,7 +54,7 @@ export function writeAcademicMiniProjectProposal(analysis: AssignmentAnalysis, a
     sections,
     academicSections,
     references,
-    appendices: buildDeferredDeliverables(analysis),
+    appendices: [],
     rubricChecks: analysis.gradingRubric.map((rubric) => ({
       aspect: rubric.aspect,
       status: "met",
@@ -93,7 +93,7 @@ const SECTION_WRITERS: Record<string, (data: MiniProjectData) => string> = {
   ].join("\n\n"),
   "1.4 Tujuan Proposal": (data) => [
     `Tujuan proposal ini adalah menyusun rancangan akademik untuk pengembangan ${data.brand} sebagai usaha mini project yang menawarkan ${data.product}. Proposal ini menjadi dasar bagi kelompok dalam menentukan arah brand, segmentasi konsumen, strategi operasional, serta strategi pemasaran media sosial.`,
-    `Tujuan lainnya adalah menghasilkan pedoman kerja yang dapat digunakan selama pelaksanaan proyek. Dengan proposal ini, kelompok memiliki acuan mengenai kegiatan mingguan, kebutuhan biaya, bentuk konten, dan indikator keberhasilan yang dapat dievaluasi pada tahap laporan berikutnya.`,
+    `Tujuan lainnya adalah menghasilkan pedoman kerja yang dapat digunakan selama pelaksanaan proyek. Dengan proposal ini, kelompok memiliki acuan mengenai kegiatan mingguan, kebutuhan biaya, bentuk konten, dan indikator keberhasilan yang dapat dievaluasi berdasarkan data aktual selama proyek berlangsung.`,
   ].join("\n\n"),
   "1.5 Manfaat Proposal": (data) => [
     `Bagi mahasiswa, proposal ini bermanfaat sebagai sarana penerapan teori pemasaran ke dalam rancangan usaha yang konkret. Konsep seperti segmentasi, targeting, positioning, SWOT, marketing mix, dan engagement media sosial dapat dipahami melalui produk ${data.product} yang menjadi objek mini project.`,
@@ -123,7 +123,7 @@ const SECTION_WRITERS: Record<string, (data: MiniProjectData) => string> = {
   "4.3 Estimasi Biaya": (data) => costIntro(data),
   "4.4 Timeline Pelaksanaan": (data) => timelineIntro(data),
   "5.1 Identitas Brand": (data) => `Identitas brand ${data.brand} dibangun melalui nama, warna visual, gaya komunikasi, dan konsistensi tampilan konten. Identitas yang kuat membantu audiens mengenali brand meskipun hanya melihat sekilas unggahan. Gaya komunikasi yang digunakan perlu ramah, jelas, dan sesuai dengan karakter target konsumen agar interaksi tidak terasa kaku.`,
-  "5.2 Tujuan Penggunaan Media Sosial": (data) => `Media sosial digunakan untuk membangun awareness, memperkenalkan ${data.product}, menjelaskan cara pemesanan, dan mengumpulkan respons audiens. Tujuan lainnya adalah mendokumentasikan proses mini project agar kelompok memiliki bukti kegiatan yang dapat digunakan dalam laporan akhir. Dengan pengelolaan yang konsisten, media sosial dapat menjadi alat promosi sekaligus sumber data evaluasi.`,
+  "5.2 Tujuan Penggunaan Media Sosial": (data) => `Media sosial digunakan untuk membangun awareness, memperkenalkan ${data.product}, menjelaskan cara pemesanan, dan mengumpulkan respons audiens. Tujuan lainnya adalah mendokumentasikan proses mini project agar kelompok memiliki bukti kegiatan dan bahan evaluasi strategi. Dengan pengelolaan yang konsisten, media sosial dapat menjadi alat promosi sekaligus sumber data evaluasi.`,
   "5.3 Platform Media Sosial": (data) => `Platform yang digunakan adalah ${data.platforms}. Setiap platform perlu memiliki peran yang jelas. Platform visual dapat digunakan untuk katalog dan foto produk, platform video pendek untuk demonstrasi dan konten ringan, sedangkan kanal komunikasi atau marketplace digunakan untuk menjawab pertanyaan dan memproses pesanan. Keterhubungan antarplatform membuat perjalanan konsumen lebih mudah dipahami.`,
   "5.4 Marketing Mix 4P": (data) => [
     `Product yang ditawarkan adalah ${data.product}, yaitu produk custom yang mengutamakan nilai personalisasi dan tampilan visual. Informasi produk harus menjelaskan manfaat, variasi, cara custom, dan contoh hasil agar calon konsumen dapat membayangkan produk yang akan diterima.`,
@@ -187,7 +187,7 @@ function normalize(value: string): string {
 }
 
 function buildExecutiveSummary(data: MiniProjectData): string {
-  return `Proposal Mini Project Week 1 ini menyusun rancangan awal pengembangan ${data.brand} sebagai usaha yang menawarkan ${data.product}. Proposal mencakup pendahuluan, brand dan produk, analisis bisnis, rencana operasional, strategi pemasaran, serta penutup. Dokumen ini disusun oleh ${data.members} dari ${data.className} untuk mata kuliah ${data.course} di bawah arahan ${data.lecturerName}.`;
+  return `Proposal Mini Project ini menyusun rancangan awal pengembangan ${data.brand} sebagai usaha yang menawarkan ${data.product}. Proposal mencakup pendahuluan, brand dan produk, analisis bisnis, rencana operasional, strategi pemasaran, serta penutup. Dokumen ini disusun oleh ${data.members} dari ${data.className} untuk mata kuliah ${data.course} di bawah arahan ${data.lecturerName}.`;
 }
 
 function buildReferences(): string[] {
@@ -198,11 +198,4 @@ function buildReferences(): string[] {
     "Tuten, T. L., & Solomon, M. R. (2018). Social media marketing. SAGE Publications.",
     "Zimmerer, T. W., Scarborough, N. M., & Wilson, D. (2008). Essentials of entrepreneurship and small business management. Pearson.",
   ];
-}
-
-function buildDeferredDeliverables(analysis: AssignmentAnalysis): string[] {
-  const deferred = analysis.deliverables
-    .filter((item) => !/proposal/i.test(item.name) && item.type !== "proposal")
-    .map((item) => `${item.name}: akan dibuat pada sprint berikutnya.`);
-  return deferred.length ? deferred : ["Deliverable selain Proposal Mini Project Week 1 akan dibuat pada sprint berikutnya bila dibutuhkan."];
 }
