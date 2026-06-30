@@ -3,6 +3,7 @@ import {
   BorderStyle,
   Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   PageBreak,
   Paragraph,
@@ -14,6 +15,8 @@ import {
   WidthType,
   convertInchesToTwip,
 } from "docx";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { reviewAcademicReport } from "./academicReview";
 import type { AssignmentCostRow, AssignmentReport, AssignmentTimelineRow } from "./types";
 
@@ -88,10 +91,7 @@ export async function exportAssignmentDocx(report: AssignmentReport): Promise<Bu
 
 function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Table | TableOfContents> {
   const children: Array<Paragraph | Table | TableOfContents> = [
-    center("PROPOSAL MINI PROJECT", 32, true, 280),
-    center(report.title.toUpperCase(), 30, true, 460),
-    center(`Mata Kuliah: ${report.course}`, BODY_SIZE, false, 260),
-    center(String(new Date().getFullYear()), BODY_SIZE, true, 0),
+    ...buildProposalCover(report),
     pageBreak(),
     heading("KATA PENGANTAR", HeadingLevel.HEADING_1, AlignmentType.CENTER),
     ...paragraphs(buildKataPengantar(report)),
@@ -107,6 +107,7 @@ function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Tabl
     }
     children.push(heading(section.heading, HeadingLevel.HEADING_2, AlignmentType.LEFT));
     if (section.body) children.push(...paragraphs(section.body));
+    if (section.heading === "2.3 Deskripsi Produk") children.push(...productImageSection(report));
     if (section.timelineRows?.length) children.push(timelineTable(section.timelineRows));
     if (section.costRows?.length) children.push(costTable(section.costRows));
   }
@@ -115,6 +116,75 @@ function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Tabl
   for (const reference of report.references) children.push(referenceParagraph(reference));
 
   return children;
+}
+
+function buildProposalCover(report: AssignmentReport): Paragraph[] {
+  const meta = report.proposalMeta;
+  const university = meta?.university || "Universitas Pamulang";
+  const title = meta?.title || "PROPOSAL MINI PROJECT";
+  const brandOrProduct = meta?.brandOrProduct || stripWeekOne(report.title);
+  const groupName = meta?.groupName || "Kelompok Mini Project";
+  const members = meta?.members || "Anggota kelompok";
+  const course = meta?.course || report.course;
+  const lecturer = meta?.lecturer || "Dosen pengampu";
+  const studyProgram = meta?.studyProgram || "Program Studi Manajemen";
+  const year = meta?.year || new Date().getFullYear().toString();
+  return [
+    ...logoParagraphs(),
+    center(university.toUpperCase(), 28, true, 260),
+    center(title.toUpperCase(), 32, true, 180),
+    center("Nama Brand / Produk", BODY_SIZE, true, 60),
+    center(brandOrProduct.toUpperCase(), 28, true, 420),
+    center("Nama Kelompok", BODY_SIZE, true, 60),
+    center(groupName, BODY_SIZE, true, 140),
+    center("Nama Anggota", BODY_SIZE, true, 60),
+    ...members.split(/\n|,/).map((member) => center(member.trim(), BODY_SIZE, false, 60)).filter((paragraph) => paragraph),
+    center(`Mata Kuliah: ${course}`, BODY_SIZE, false, 140),
+    center(`Dosen Pengampu: ${lecturer}`, BODY_SIZE, false, 320),
+    center(studyProgram.toUpperCase(), BODY_SIZE, true, 80),
+    center(year, BODY_SIZE, true, 0),
+  ];
+}
+
+function logoParagraphs(): Paragraph[] {
+  const logoPath = join(process.cwd(), "public", "logo-unpam.png");
+  if (existsSync(logoPath)) {
+    return [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 180 },
+        children: [
+          new ImageRun({
+            type: "png",
+            data: readFileSync(logoPath),
+            transformation: { width: 92, height: 92 },
+          }),
+        ],
+      }),
+    ];
+  }
+  return [center("[Logo Universitas Pamulang]", BODY_SIZE, false, 180)];
+}
+
+function productImageSection(report: AssignmentReport): Paragraph[] {
+  const image = report.productImage;
+  if (!image?.dataUrl) return [];
+  const parsed = parseDataUrlImage(image.dataUrl);
+  if (!parsed) return [];
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: 80 },
+      children: [
+        new ImageRun({
+          type: parsed.type,
+          data: parsed.data,
+          transformation: { width: 360, height: 240 },
+        }),
+      ],
+    }),
+    center(`Gambar produk: ${image.name}`, 20, false, 120),
+  ];
 }
 
 function buildGenericDocument(report: AssignmentReport): Array<Paragraph | Table | TableOfContents> {
@@ -178,6 +248,19 @@ function center(text: string, size: number, bold: boolean, after: number): Parag
     spacing: { after },
     children: [new TextRun({ text, font: FONT, size, bold })],
   });
+}
+
+function stripWeekOne(value: string): string {
+  return value.replace(/week\s*1/gi, "").replace(/\s{2,}/g, " ").replace(/\s+:/g, ":").trim();
+}
+
+function parseDataUrlImage(dataUrl: string): { type: "png" | "jpg" | "gif" | "bmp"; data: Buffer } | null {
+  const match = dataUrl.match(/^data:image\/(png|jpe?g|gif|bmp);base64,(.+)$/i);
+  if (!match) return null;
+  const rawType = match[1].toLowerCase();
+  const type = rawType === "jpeg" ? "jpg" : rawType;
+  if (type !== "png" && type !== "jpg" && type !== "gif" && type !== "bmp") return null;
+  return { type, data: Buffer.from(match[2], "base64") };
 }
 
 function pageBreak(): Paragraph {

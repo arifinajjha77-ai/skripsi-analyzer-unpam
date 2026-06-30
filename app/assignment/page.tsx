@@ -156,6 +156,27 @@ export default function AssignmentWorkspacePage() {
     });
   }
 
+  async function setProductImage(file: File | null) {
+    if (!file) {
+      setAnswers((current) => {
+        const next = { ...current };
+        delete next.productImageData;
+        delete next.productImageName;
+        return next;
+      });
+      setReport(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Upload file gambar produk.");
+      return;
+    }
+    const dataUrl = await readFileAsDataUrl(file);
+    setAnswers((current) => ({ ...current, productImageData: dataUrl, productImageName: file.name }));
+    setReport(null);
+    toast.success("Foto produk ditambahkan.");
+  }
+
   function exportDocx() {
     if (!report) return;
     startTransition(async () => {
@@ -267,7 +288,7 @@ export default function AssignmentWorkspacePage() {
                 onSkip={skipOptional}
               />
               <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <PreGenerateReview analysis={analysis} answers={answers} canGenerate={canGenerate} state={state} onGenerate={generate} />
+                <PreGenerateReview analysis={analysis} answers={answers} canGenerate={canGenerate} state={state} onGenerate={generate} onProductImageChange={setProductImage} />
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
@@ -354,12 +375,14 @@ function PreGenerateReview({
   canGenerate,
   state,
   onGenerate,
+  onProductImageChange,
 }: {
   analysis: AssignmentAnalysis;
   answers: AssignmentAnswers;
   canGenerate: boolean;
   state: AssignmentWorkspaceState;
   onGenerate: () => void;
+  onProductImageChange: (file: File | null) => void;
 }) {
   const collected = analysis.missingData
     .map((question) => ({ label: question.label, value: answers[question.id]?.trim() || "" }))
@@ -397,6 +420,20 @@ function PreGenerateReview({
         <InfoBlock title="Struktur Dokumen" items={analysis.reportStructure} />
         <InfoBlock title="Data Terkumpul" items={collected.length ? collected.map((item) => `${item.label}: ${item.value}`) : ["Belum ada data mahasiswa yang tersimpan."]} />
         <InfoBlock title="Diasumsikan/Kosong" items={assumed.length ? assumed : ["Tidak ada asumsi atau data kosong terdeteksi."]} />
+      </div>
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600">Foto Produk</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {answers.productImageName ? `Terpasang: ${answers.productImageName}` : "Opsional. Jika ada, foto akan masuk ke BAB II Deskripsi Produk."}
+            </p>
+          </div>
+          <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+            Upload Foto
+            <input type="file" accept="image/*" className="hidden" onChange={(event) => onProductImageChange(event.target.files?.item(0) || null)} />
+          </label>
+        </div>
       </div>
     </div>
   );
@@ -612,4 +649,13 @@ function downloadBase64(base64: string, mimeType: string, fileName: string) {
   anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Gagal membaca gambar."));
+    reader.readAsDataURL(file);
+  });
 }

@@ -16,6 +16,10 @@ type MiniProjectData = {
   lecturerName: string;
   date: string;
   course: string;
+  groupName: string;
+  studyProgram: string;
+  productImageDataUrl: string;
+  productImageName: string;
 };
 
 export function canWriteAcademicMiniProject(analysis: AssignmentAnalysis, answers: AssignmentAnswers): boolean {
@@ -35,6 +39,18 @@ export function writeAcademicMiniProjectProposal(analysis: AssignmentAnalysis, a
     course: data.course,
     outputType: outline.outputType,
     executiveSummary: buildExecutiveSummary(data),
+    proposalMeta: {
+      university: "Universitas Pamulang",
+      title: "PROPOSAL MINI PROJECT",
+      brandOrProduct: `${data.brand} / ${data.product}`,
+      groupName: data.groupName,
+      members: data.members,
+      course: data.course,
+      lecturer: data.lecturerName,
+      studyProgram: data.studyProgram,
+      year: new Date().getFullYear().toString(),
+    },
+    productImage: data.productImageDataUrl ? { name: data.productImageName || "Foto Produk", dataUrl: data.productImageDataUrl } : undefined,
     sections,
     academicSections,
     references,
@@ -148,6 +164,10 @@ function collectMiniProjectData(analysis: AssignmentAnalysis, answers: Assignmen
     lecturerName: value("lecturerName", "dosen", "namaDosen") || "dosen pengampu",
     date: value("date", "tanggal", "deadline") || new Date().toLocaleDateString("id-ID"),
     course: analysis.course || value("course", "mataKuliah") || "Social Media Marketing",
+    groupName: value("groupName", "kelompok", "namaKelompok") || "Kelompok Mini Project",
+    studyProgram: value("studyProgram", "programStudi", "prodi") || "Program Studi Manajemen",
+    productImageDataUrl: value("productImageData", "productPhotoData", "fotoProdukData"),
+    productImageName: value("productImageName", "productPhotoName", "fotoProdukName") || "Foto Produk",
   };
 }
 

@@ -115,11 +115,30 @@ export const assignmentQualityReviewSchema = z.object({
   })),
 });
 
+export const assignmentProposalMetaSchema = z.object({
+  university: z.string(),
+  title: z.string(),
+  brandOrProduct: z.string(),
+  groupName: z.string(),
+  members: z.string(),
+  course: z.string(),
+  lecturer: z.string(),
+  studyProgram: z.string(),
+  year: z.string(),
+});
+
+export const assignmentReportImageSchema = z.object({
+  name: z.string(),
+  dataUrl: z.string(),
+});
+
 export const assignmentReportSchema = z.object({
   title: z.string(),
   course: z.string(),
   outputType: z.string(),
   executiveSummary: z.string(),
+  proposalMeta: assignmentProposalMetaSchema.optional(),
+  productImage: assignmentReportImageSchema.optional(),
   sections: z.array(assignmentReportSectionSchema),
   academicSections: z.array(assignmentAcademicSectionSchema).optional(),
   references: z.array(z.string()),
@@ -139,6 +158,7 @@ export type AssignmentTimelineRow = z.infer<typeof assignmentTimelineRowSchema>;
 export type AssignmentCostRow = z.infer<typeof assignmentCostRowSchema>;
 export type AssignmentRubricCheck = z.infer<typeof assignmentRubricCheckSchema>;
 export type AssignmentQualityReview = z.infer<typeof assignmentQualityReviewSchema>;
+export type AssignmentProposalMeta = z.infer<typeof assignmentProposalMetaSchema>;
 
 export type AssignmentAnalyzeResult = {
   state: AssignmentWorkspaceState;
