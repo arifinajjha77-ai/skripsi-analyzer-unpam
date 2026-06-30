@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { type MutableRefObject, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Download, FileQuestion, FileText, Loader2, Send, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeAssignmentAction, exportAssignmentAction, generateAssignmentAction } from "./actions";
@@ -10,6 +10,10 @@ import { mergeAnswer } from "@/lib/assignment/missingData";
 
 const STORAGE_KEY = "smartcampus.assignment.workspace.v1";
 const SMARTSCAN_STORAGE_KEY = "smartcampus.smartscan.latestPdf";
+const PRODUCT_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const PRODUCT_IMAGE_ERROR_MESSAGE = "Gambar produk tidak bisa diproses. Gunakan JPG/PNG/WebP maksimal 5MB.";
+const PRODUCT_IMAGE_ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const PRODUCT_IMAGE_KEYS = new Set(["productImageData", "productImageName", "productPhotoData", "productPhotoName", "fotoProdukData", "fotoProdukName"]);
 
 type PersistedWorkspace = {
   state: AssignmentWorkspaceState;
@@ -29,8 +33,15 @@ type StoredSmartScanPdf = {
   pageCount: number;
 };
 
+type ProductImageDraft = {
+  file: File;
+  previewUrl: string;
+  name: string;
+};
+
 export default function AssignmentWorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const productImageUrlRef = useRef<string | null>(null);
   const storageLoadedRef = useRef(false);
   const [state, setState] = useState<AssignmentWorkspaceState>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
@@ -42,6 +53,9 @@ export default function AssignmentWorkspacePage() {
   const [error, setError] = useState("");
   const [meta, setMeta] = useState<{ model: string; fallback: boolean; extractedCharacters: number } | null>(null);
   const [smartScanPdf, setSmartScanPdf] = useState<StoredSmartScanPdf | null>(null);
+  const [productImage, setProductImageDraft] = useState<ProductImageDraft | null>(null);
+  const [productImageError, setProductImageError] = useState("");
+  const [productImagePreviewFailed, setProductImagePreviewFailed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const currentQuestion = useMemo(() => analysis ? getCurrentQuestion(analysis, answers) : null, [analysis, answers]);
@@ -60,9 +74,9 @@ export default function AssignmentWorkspacePage() {
         setState(saved.state === "ANALYZE" || saved.state === "GENERATING" ? "READY_TO_GENERATE" : saved.state);
         setUserNotes(saved.userNotes || "");
         setAnalysis(saved.analysis);
-        setAnswers(saved.answers || {});
+        setAnswers(stripProductImageAnswers(saved.answers || {}));
         setCurrentAnswer(saved.currentAnswer || "");
-        setReport(saved.report);
+        setReport(stripReportProductImage(saved.report));
         setMeta(saved.meta);
         storageLoadedRef.current = true;
       }, 0);
@@ -85,9 +99,27 @@ export default function AssignmentWorkspacePage() {
 
   useEffect(() => {
     if (!storageLoadedRef.current) return;
-    const payload: PersistedWorkspace = { state, userNotes, analysis, answers, currentAnswer, report, meta };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    const payload: PersistedWorkspace = {
+      state,
+      userNotes,
+      analysis,
+      answers: stripProductImageAnswers(answers),
+      currentAnswer,
+      report: stripReportProductImage(report),
+      meta,
+    };
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
   }, [state, userNotes, analysis, answers, currentAnswer, report, meta]);
+
+  useEffect(() => {
+    return () => {
+      revokeProductImageUrl(productImageUrlRef);
+    };
+  }, []);
 
   function resetForFile(nextFile: File | null) {
     setFile(nextFile);
@@ -98,6 +130,7 @@ export default function AssignmentWorkspacePage() {
     setReport(null);
     setMeta(null);
     setError("");
+    clearProductImageDraft();
     window.localStorage.removeItem(STORAGE_KEY);
   }
 
@@ -196,7 +229,8 @@ export default function AssignmentWorkspacePage() {
     setError("");
 
     startTransition(async () => {
-      const result = await generateAssignmentAction({ analysis, answers, optionalNotes: userNotes });
+      const generationAnswers = await buildGenerationAnswers(answers, productImage);
+      const result = await generateAssignmentAction({ analysis, answers: generationAnswers, optionalNotes: userNotes });
       if (!result.ok) {
         setState("READY_TO_GENERATE");
         setError(result.error);
@@ -210,25 +244,36 @@ export default function AssignmentWorkspacePage() {
     });
   }
 
-  async function setProductImage(file: File | null) {
+  function setProductImage(file: File | null) {
     if (!file) {
-      setAnswers((current) => {
-        const next = { ...current };
-        delete next.productImageData;
-        delete next.productImageName;
-        return next;
-      });
-      setReport(null);
+      clearProductImageDraft();
       return;
     }
-    if (!file.type.startsWith("image/")) {
-      toast.error("Upload file gambar produk.");
+
+    if (!isValidProductImage(file)) {
+      clearProductImageDraft(PRODUCT_IMAGE_ERROR_MESSAGE);
+      toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
       return;
     }
-    const dataUrl = await readFileAsDataUrl(file);
-    setAnswers((current) => ({ ...current, productImageData: dataUrl, productImageName: file.name }));
+
+    revokeProductImageUrl(productImageUrlRef);
+    const previewUrl = URL.createObjectURL(file);
+    productImageUrlRef.current = previewUrl;
+    setProductImageDraft({ file, previewUrl, name: file.name });
+    setProductImageError("");
+    setProductImagePreviewFailed(false);
+    setAnswers((current) => stripProductImageAnswers(current));
     setReport(null);
     toast.success("Foto produk ditambahkan.");
+  }
+
+  function clearProductImageDraft(nextError = "") {
+    revokeProductImageUrl(productImageUrlRef);
+    setProductImageDraft(null);
+    setProductImageError(nextError);
+    setProductImagePreviewFailed(false);
+    setAnswers((current) => stripProductImageAnswers(current));
+    setReport(null);
   }
 
   function exportDocx() {
@@ -364,7 +409,22 @@ export default function AssignmentWorkspacePage() {
                 onSkip={skipOptional}
               />
               <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <PreGenerateReview analysis={analysis} answers={answers} canGenerate={canGenerate} state={state} onGenerate={generate} onProductImageChange={setProductImage} />
+                <PreGenerateReview
+                  analysis={analysis}
+                  answers={answers}
+                  canGenerate={canGenerate}
+                  state={state}
+                  productImageName={productImage?.name || ""}
+                  productImagePreviewUrl={productImage?.previewUrl || ""}
+                  productImageError={productImageError}
+                  productImagePreviewFailed={productImagePreviewFailed}
+                  onGenerate={generate}
+                  onProductImageChange={setProductImage}
+                  onProductImagePreviewError={() => {
+                    setProductImagePreviewFailed(true);
+                    setProductImageError(PRODUCT_IMAGE_ERROR_MESSAGE);
+                  }}
+                />
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
@@ -450,15 +510,25 @@ function PreGenerateReview({
   answers,
   canGenerate,
   state,
+  productImageName,
+  productImagePreviewUrl,
+  productImageError,
+  productImagePreviewFailed,
   onGenerate,
   onProductImageChange,
+  onProductImagePreviewError,
 }: {
   analysis: AssignmentAnalysis;
   answers: AssignmentAnswers;
   canGenerate: boolean;
   state: AssignmentWorkspaceState;
+  productImageName: string;
+  productImagePreviewUrl: string;
+  productImageError: string;
+  productImagePreviewFailed: boolean;
   onGenerate: () => void;
   onProductImageChange: (file: File | null) => void;
+  onProductImagePreviewError: () => void;
 }) {
   const collected = analysis.missingData
     .map((question) => ({ label: question.label, value: answers[question.id]?.trim() || "" }))
@@ -498,17 +568,49 @@ function PreGenerateReview({
         <InfoBlock title="Diasumsikan/Kosong" items={assumed.length ? assumed : ["Tidak ada asumsi atau data kosong terdeteksi."]} />
       </div>
       <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-600">Foto Produk</h3>
             <p className="mt-1 text-xs text-slate-500">
-              {answers.productImageName ? `Terpasang: ${answers.productImageName}` : "Opsional. Jika ada, foto akan masuk ke BAB II Deskripsi Produk."}
+              {productImageName ? `Terpasang: ${productImageName}` : "Opsional. Jika ada, foto akan masuk ke BAB II Deskripsi Produk."}
             </p>
+            {productImageError && <p className="mt-2 text-xs font-semibold text-rose-700">{productImageError}</p>}
+            {productImagePreviewUrl && !productImagePreviewFailed ? (
+              <img
+                src={productImagePreviewUrl}
+                alt={productImageName || "Preview foto produk"}
+                onError={onProductImagePreviewError}
+                className="mt-3 h-28 w-28 rounded-lg border border-slate-200 bg-white object-contain"
+              />
+            ) : productImageName ? (
+              <div className="mt-3 flex h-28 w-28 items-center justify-center rounded-lg border border-dashed border-rose-200 bg-white px-3 text-center text-xs text-rose-700">
+                Preview gambar tidak tersedia.
+              </div>
+            ) : null}
           </div>
-          <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-            Upload Foto
-            <input type="file" accept="image/*" className="hidden" onChange={(event) => onProductImageChange(event.target.files?.item(0) || null)} />
-          </label>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+              Upload Foto
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  onProductImageChange(event.target.files?.item(0) || null);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            {productImageName && (
+              <button
+                type="button"
+                onClick={() => onProductImageChange(null)}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Hapus Foto
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -712,6 +814,46 @@ function PreviewBlock({ title, body }: { title: string; body: string }) {
       <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-600">{body}</p>
     </div>
   );
+}
+
+async function buildGenerationAnswers(answers: AssignmentAnswers, productImage: ProductImageDraft | null): Promise<AssignmentAnswers> {
+  const generationAnswers = stripProductImageAnswers(answers);
+  if (!productImage || !isValidProductImage(productImage.file)) return generationAnswers;
+
+  try {
+    const dataUrl = await readFileAsDataUrl(productImage.file);
+    if (!dataUrl.startsWith("data:image/")) return generationAnswers;
+    return {
+      ...generationAnswers,
+      productImageData: dataUrl,
+      productImageName: productImage.name,
+    };
+  } catch {
+    toast.error(PRODUCT_IMAGE_ERROR_MESSAGE);
+    return generationAnswers;
+  }
+}
+
+function stripProductImageAnswers(answers: AssignmentAnswers): AssignmentAnswers {
+  return Object.fromEntries(Object.entries(answers).filter(([key]) => !PRODUCT_IMAGE_KEYS.has(key))) as AssignmentAnswers;
+}
+
+function stripReportProductImage(report: AssignmentReport | null): AssignmentReport | null {
+  if (!report?.productImage) return report;
+  const { productImage: _productImage, ...safeReport } = report;
+  return safeReport;
+}
+
+function isValidProductImage(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  const isHeic = lowerName.endsWith(".heic") || lowerName.endsWith(".heif") || file.type === "image/heic" || file.type === "image/heif";
+  return !isHeic && PRODUCT_IMAGE_ALLOWED_TYPES.has(file.type) && file.size <= PRODUCT_IMAGE_MAX_SIZE;
+}
+
+function revokeProductImageUrl(ref: MutableRefObject<string | null>) {
+  if (!ref.current) return;
+  URL.revokeObjectURL(ref.current);
+  ref.current = null;
 }
 
 function downloadBase64(base64: string, mimeType: string, fileName: string) {
