@@ -85,11 +85,19 @@ export const assignmentTimelineRowSchema = z.object({
   target: z.string(),
 });
 
+export const assignmentCostRowSchema = z.object({
+  item: z.string(),
+  quantity: z.string(),
+  unitCost: z.string(),
+  total: z.string(),
+});
+
 export const assignmentAcademicSectionSchema = z.object({
   heading: z.string(),
   level: z.enum(["chapter", "subheading"]),
   body: z.string().optional(),
   timelineRows: z.array(assignmentTimelineRowSchema).optional(),
+  costRows: z.array(assignmentCostRowSchema).optional(),
 });
 
 export const assignmentRubricCheckSchema = z.object({
@@ -128,6 +136,7 @@ export type AssignmentReport = z.infer<typeof assignmentReportSchema>;
 export type AssignmentReportSection = z.infer<typeof assignmentReportSectionSchema>;
 export type AssignmentAcademicSection = z.infer<typeof assignmentAcademicSectionSchema>;
 export type AssignmentTimelineRow = z.infer<typeof assignmentTimelineRowSchema>;
+export type AssignmentCostRow = z.infer<typeof assignmentCostRowSchema>;
 export type AssignmentRubricCheck = z.infer<typeof assignmentRubricCheckSchema>;
 export type AssignmentQualityReview = z.infer<typeof assignmentQualityReviewSchema>;
 

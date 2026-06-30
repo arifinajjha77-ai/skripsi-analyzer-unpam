@@ -8,18 +8,27 @@ import {
   Paragraph,
   Table,
   TableCell,
+  TableOfContents,
   TableRow,
   TextRun,
   WidthType,
   convertInchesToTwip,
 } from "docx";
-import type { AssignmentAcademicSection, AssignmentReport, AssignmentTimelineRow } from "./types";
+import { reviewAcademicReport } from "./academicReview";
+import type { AssignmentCostRow, AssignmentReport, AssignmentTimelineRow } from "./types";
 
 const FONT = "Times New Roman";
 const BODY_SIZE = 24;
 
 export async function exportAssignmentDocx(report: AssignmentReport): Promise<Buffer> {
-  const children: Array<Paragraph | Table> = report.academicSections?.length
+  if (report.academicSections?.length) {
+    const review = reviewAcademicReport(report);
+    if (!review.passed) {
+      throw new Error(`Quality review gagal: ${review.warnings.join("; ")}`);
+    }
+  }
+
+  const children: Array<Paragraph | Table | TableOfContents> = report.academicSections?.length
     ? buildAcademicDocument(report)
     : buildGenericDocument(report);
 
@@ -27,6 +36,14 @@ export async function exportAssignmentDocx(report: AssignmentReport): Promise<Bu
     styles: {
       default: {
         document: { run: { font: FONT, size: BODY_SIZE }, paragraph: { spacing: { line: 360 } } },
+        heading1: {
+          run: { font: FONT, size: 28, bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.CENTER, spacing: { before: 240, after: 180 } },
+        },
+        heading2: {
+          run: { font: FONT, size: BODY_SIZE, bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 180, after: 120 } },
+        },
       },
       paragraphStyles: [
         {
@@ -69,8 +86,8 @@ export async function exportAssignmentDocx(report: AssignmentReport): Promise<Bu
   return Packer.toBuffer(doc);
 }
 
-function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Table> {
-  const children: Array<Paragraph | Table> = [
+function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Table | TableOfContents> {
+  const children: Array<Paragraph | Table | TableOfContents> = [
     center("PROPOSAL MINI PROJECT", 32, true, 280),
     center(report.title.toUpperCase(), 30, true, 460),
     center(`Mata Kuliah: ${report.course}`, BODY_SIZE, false, 260),
@@ -79,8 +96,7 @@ function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Tabl
     heading("KATA PENGANTAR", HeadingLevel.HEADING_1, AlignmentType.CENTER),
     ...paragraphs(buildKataPengantar(report)),
     pageBreak(),
-    heading("DAFTAR ISI", HeadingLevel.HEADING_1, AlignmentType.CENTER),
-    ...buildDaftarIsi(report.academicSections || []),
+    ...buildWordToc(),
     pageBreak(),
   ];
 
@@ -92,6 +108,7 @@ function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Tabl
     children.push(heading(section.heading, HeadingLevel.HEADING_2, AlignmentType.LEFT));
     if (section.body) children.push(...paragraphs(section.body));
     if (section.timelineRows?.length) children.push(timelineTable(section.timelineRows));
+    if (section.costRows?.length) children.push(costTable(section.costRows));
   }
 
   children.push(pageBreak(), heading("DAFTAR PUSTAKA", HeadingLevel.HEADING_1, AlignmentType.CENTER));
@@ -100,8 +117,8 @@ function buildAcademicDocument(report: AssignmentReport): Array<Paragraph | Tabl
   return children;
 }
 
-function buildGenericDocument(report: AssignmentReport): Array<Paragraph | Table> {
-  const children: Array<Paragraph | Table> = [
+function buildGenericDocument(report: AssignmentReport): Array<Paragraph | Table | TableOfContents> {
+  const children: Array<Paragraph | Table | TableOfContents> = [
     center(report.outputType.toUpperCase(), 30, true, 320),
     center(report.title.toUpperCase(), 30, true, 520),
     center(`Mata Kuliah: ${report.course}`, BODY_SIZE, false, 260),
@@ -174,15 +191,18 @@ function buildKataPengantar(report: AssignmentReport): string {
   ].join("\n\n");
 }
 
-function buildDaftarIsi(sections: AssignmentAcademicSection[]): Paragraph[] {
-  const rows = ["KATA PENGANTAR .......................................................... i", "DAFTAR ISI ............................................................... ii"];
-  for (const section of sections) rows.push(`${section.heading} ........................................ [hal]`);
-  rows.push("DAFTAR PUSTAKA ..................................................... [hal]");
-  return rows.map((row) => new Paragraph({
-    spacing: { line: 360, after: 80 },
-    indent: /^\d+\./.test(row) || /^Kesimpulan|^Saran/.test(row) ? { left: convertInchesToTwip(0.35) } : undefined,
-    children: [new TextRun({ text: row, font: FONT, size: BODY_SIZE, bold: /^BAB|^DAFTAR|^KATA/.test(row) })],
-  }));
+function buildWordToc(): Array<Paragraph | TableOfContents> {
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 360 },
+      children: [new TextRun({ text: "DAFTAR ISI", font: FONT, size: 32, bold: true })],
+    }),
+    new TableOfContents("Daftar Isi", {
+      hyperlink: true,
+      headingStyleRange: "1-2",
+    }),
+  ];
 }
 
 function timelineTable(rows: AssignmentTimelineRow[]): Table {
@@ -191,6 +211,16 @@ function timelineTable(rows: AssignmentTimelineRow[]): Table {
     rows: [
       new TableRow({ children: [tableCell("Minggu", true), tableCell("Kegiatan", true), tableCell("Target", true)] }),
       ...rows.map((row) => new TableRow({ children: [tableCell(row.week, false), tableCell(row.activity, false), tableCell(row.target, false)] })),
+    ],
+  });
+}
+
+function costTable(rows: AssignmentCostRow[]): Table {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ children: [tableCell("Uraian Biaya", true), tableCell("Jumlah", true), tableCell("Harga Satuan", true), tableCell("Total", true)] }),
+      ...rows.map((row) => new TableRow({ children: [tableCell(row.item, false), tableCell(row.quantity, false), tableCell(row.unitCost, false), tableCell(row.total, false)] })),
     ],
   });
 }

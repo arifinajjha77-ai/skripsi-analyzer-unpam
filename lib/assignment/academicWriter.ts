@@ -1,7 +1,7 @@
 import { DEFAULT_MODEL } from "@/lib/ai/models";
 import { buildAcademicOutline, shouldUseMiniProjectProposalOutline } from "./academicOutline";
 import { reviewAcademicReport } from "./academicReview";
-import type { AssignmentAcademicSection, AssignmentAnalysis, AssignmentAnswers, AssignmentReport, AssignmentTimelineRow } from "./types";
+import type { AssignmentAcademicSection, AssignmentAnalysis, AssignmentAnswers, AssignmentReport } from "./types";
 
 type MiniProjectData = {
   brand: string;
@@ -15,7 +15,7 @@ type MiniProjectData = {
   className: string;
   lecturerName: string;
   date: string;
-  businessName: string;
+  course: string;
 };
 
 export function canWriteAcademicMiniProject(analysis: AssignmentAnalysis, answers: AssignmentAnswers): boolean {
@@ -32,7 +32,7 @@ export function writeAcademicMiniProjectProposal(analysis: AssignmentAnalysis, a
   const references = buildReferences();
   const report: AssignmentReport = {
     title: `${outline.outputType}: ${data.brand}`,
-    course: analysis.course || "Social Media Marketing",
+    course: data.course,
     outputType: outline.outputType,
     executiveSummary: buildExecutiveSummary(data),
     sections,
@@ -42,7 +42,7 @@ export function writeAcademicMiniProjectProposal(analysis: AssignmentAnalysis, a
     rubricChecks: analysis.gradingRubric.map((rubric) => ({
       aspect: rubric.aspect,
       status: "met",
-      note: "Aspek ini sudah dijadikan pertimbangan dalam struktur proposal, narasi strategi, dan timeline pelaksanaan.",
+      note: "Aspek rubrik sudah dipakai dalam struktur proposal, narasi bisnis, strategi pemasaran, estimasi biaya, dan timeline.",
     })),
     generatedWith: { model: DEFAULT_MODEL, fallback: true },
   };
@@ -51,86 +51,103 @@ export function writeAcademicMiniProjectProposal(analysis: AssignmentAnalysis, a
 
 function writeSection(section: AssignmentAcademicSection, data: MiniProjectData): AssignmentAcademicSection {
   if (section.level === "chapter") return section;
-  if (section.timelineRows) return { ...section, timelineRows: section.timelineRows };
-
   const body = SECTION_WRITERS[section.heading]?.(data) || "";
+  if (section.timelineRows) return { ...section, body: body || timelineIntro(data), timelineRows: section.timelineRows };
+  if (section.costRows) return { ...section, body: body || costIntro(data), costRows: section.costRows };
   return { ...section, body };
 }
 
 const SECTION_WRITERS: Record<string, (data: MiniProjectData) => string> = {
   "1.1 Latar Belakang": (data) => [
-    `Perkembangan media sosial saat ini memberikan peluang besar bagi pelaku usaha kecil untuk memperkenalkan produk secara lebih luas, cepat, dan terukur. Konsumen tidak hanya melihat produk dari fungsi utamanya, tetapi juga dari cerita, visual, identitas brand, serta pengalaman yang ditawarkan melalui konten digital. Dalam konteks tersebut, ${data.product} dipilih sebagai produk mini project karena memiliki nilai personalisasi, bentuk yang menarik, dan relevan dengan tren produk custom di kalangan remaja serta mahasiswa.`,
-    `${data.brand} dikembangkan sebagai brand yang menawarkan ${data.productDescription}. Nilai utama produk ini terletak pada kemampuan menyesuaikan desain dengan identitas konsumen, sehingga produk tidak hanya berfungsi sebagai barang pakai, tetapi juga sebagai media ekspresi diri. Karakter produk yang visual dan personal membuatnya cocok dipasarkan melalui ${data.platforms}, karena platform tersebut memungkinkan calon konsumen melihat contoh desain, proses pembuatan, variasi produk, serta respons pengguna secara langsung.`,
-    `Proposal ini disusun sebagai rancangan Week 1 pada mata kuliah ${data.businessName}. Fokus proposal diarahkan pada pembangunan dasar brand, pengenalan produk, analisis pasar, strategi marketing mix, strategi media sosial, serta timeline pelaksanaan selama empat belas minggu. Rancangan ini menjadi pedoman awal agar kegiatan mini project tidak berjalan secara acak, melainkan memiliki arah komunikasi, target pasar, jadwal konten, dan indikator evaluasi yang jelas.`,
+    `Perkembangan media sosial dalam beberapa tahun terakhir mengubah cara pelaku usaha kecil memperkenalkan produk kepada calon konsumen. Media sosial tidak hanya berfungsi sebagai tempat membagikan foto atau video, tetapi juga menjadi ruang untuk membangun identitas brand, berinteraksi dengan audiens, dan mengarahkan konsumen menuju proses pembelian. Kondisi tersebut membuka peluang bagi mahasiswa untuk mempelajari pemasaran secara langsung melalui mini project yang dekat dengan kehidupan sehari-hari.`,
+    `${data.product} dipilih sebagai produk utama karena memiliki karakter yang sesuai dengan tren konsumsi anak muda. Produk ini menawarkan nilai personalisasi, bentuk yang menarik, dan peluang untuk dikembangkan menjadi konten visual yang mudah dipahami. Dalam pasar yang semakin ramai, produk yang memiliki cerita personal cenderung lebih mudah menarik perhatian karena konsumen merasa terlibat dalam proses pemilihan desain, warna, nama, atau bentuk produk.`,
+    `${data.brand} hadir sebagai rancangan usaha yang memanfaatkan keunikan tersebut. Brand ini menawarkan ${data.productDescription}. Keunggulan tersebut perlu dikomunikasikan dengan cara yang rapi agar calon konsumen tidak hanya mengetahui nama produk, tetapi juga memahami manfaat, alasan membeli, dan pengalaman yang ingin ditawarkan oleh brand. Oleh karena itu, strategi branding menjadi bagian penting dalam proposal ini.`,
+    `Target utama ${data.brand} adalah ${data.targetMarket}. Kelompok konsumen ini relatif aktif menggunakan media sosial, terbiasa melihat rekomendasi produk melalui konten pendek, dan memiliki ketertarikan pada barang yang dapat menunjukkan identitas pribadi. Dengan menggunakan ${data.platforms}, usaha ini dapat menampilkan katalog, proses pembuatan, contoh penggunaan produk, serta interaksi dengan audiens secara bertahap.`,
+    `Proposal ini disusun sebagai rancangan awal pelaksanaan mini project pada mata kuliah ${data.course}. Rancangan yang dibuat mencakup pendahuluan, profil brand dan produk, analisis bisnis, rencana operasional, strategi pemasaran, serta penutup. Dengan adanya proposal ini, kegiatan kelompok dapat berjalan lebih terarah karena setiap keputusan memiliki dasar akademik, target kerja, dan indikator yang dapat dievaluasi selama pelaksanaan proyek.`,
   ].join("\n\n"),
   "1.2 Identifikasi Masalah": (data) => [
-    `Permasalahan utama yang dihadapi ${data.brand} adalah bagaimana memperkenalkan produk baru agar mudah dipahami oleh target pasar. Produk custom sering kali membutuhkan penjelasan visual yang kuat karena calon konsumen perlu melihat contoh bentuk, variasi desain, harga, serta proses pemesanan sebelum tertarik membeli.`,
-    `Masalah berikutnya berkaitan dengan konsistensi identitas brand di media sosial. Tanpa konsep visual, gaya bahasa, dan jadwal konten yang terarah, ${data.brand} berisiko terlihat seperti akun penjualan biasa yang hanya mengunggah produk tanpa membangun kedekatan dengan audiens. Padahal, produk personalisasi membutuhkan komunikasi yang hangat, responsif, dan mampu mendorong interaksi.`,
-    `Selain itu, mini project membutuhkan pembagian kerja dan target mingguan yang realistis. Kegiatan seperti membuat konten, mengelola akun, menjawab pertanyaan calon konsumen, mencatat insight, serta mengevaluasi performa perlu direncanakan sejak awal agar hasil akhir dapat dipertanggungjawabkan secara akademik.`,
+    `Permasalahan pertama yang perlu diperhatikan adalah rendahnya pengenalan awal terhadap brand baru. ${data.brand} belum memiliki reputasi yang kuat, sehingga calon konsumen membutuhkan informasi yang jelas mengenai produk, manfaat, harga, dan cara pemesanan. Tanpa pengenalan yang konsisten, produk berisiko hanya dilihat sekilas tanpa menimbulkan minat beli.`,
+    `Permasalahan kedua berkaitan dengan cara menyampaikan nilai personalisasi. ${data.product} tidak cukup dipasarkan hanya dengan menyebutkan bentuk produk. Audiens perlu melihat contoh hasil, variasi custom, dan alasan mengapa produk tersebut berbeda dari produk serupa. Hal ini menuntut strategi konten yang mampu mengubah fitur produk menjadi cerita yang mudah dipahami.`,
+    `Permasalahan ketiga adalah keterbatasan sumber daya kelompok. Mini project perlu dijalankan dengan waktu, biaya, dan tenaga yang terbatas. Karena itu, rencana operasional, estimasi biaya, jadwal posting, serta pembagian target mingguan harus dibuat realistis agar proyek dapat diselesaikan tanpa mengurangi kualitas tugas akademik.`,
   ].join("\n\n"),
   "1.3 Rumusan Masalah": (data) => [
-    `Rumusan masalah dalam proposal ini adalah bagaimana ${data.brand} dapat membangun identitas brand yang jelas untuk memasarkan ${data.product}. Pertanyaan tersebut penting karena identitas brand menjadi dasar bagi visual, caption, tone komunikasi, dan persepsi calon konsumen.`,
-    `Rumusan masalah berikutnya adalah bagaimana menentukan target pasar yang paling sesuai dengan karakter produk. ${data.targetMarket} menjadi sasaran utama yang perlu dipahami dari sisi kebutuhan, kebiasaan media sosial, daya beli, dan alasan membeli produk custom.`,
-    `Rumusan terakhir adalah bagaimana menyusun strategi konten, engagement, dan timeline mingguan agar aktivitas pemasaran melalui ${data.platforms} berjalan konsisten. Strategi tersebut harus mampu menghubungkan awareness, minat beli, proses pemesanan, dan evaluasi performa media sosial.`,
+    `Rumusan masalah proposal ini adalah bagaimana ${data.brand} membangun identitas brand yang jelas untuk memperkenalkan ${data.product} kepada target konsumen. Identitas tersebut mencakup nama, karakter komunikasi, tampilan visual, dan pesan utama yang akan dibawa dalam konten media sosial.`,
+    `Rumusan berikutnya adalah bagaimana menyusun rencana bisnis sederhana yang sesuai dengan kemampuan kelompok. Rencana tersebut perlu mencakup analisis pasar, analisis SWOT, kompetitor, estimasi biaya, serta timeline kegiatan agar mini project tidak hanya terlihat menarik, tetapi juga dapat dijalankan secara realistis.`,
+    `Rumusan terakhir adalah bagaimana strategi pemasaran melalui ${data.platforms} dapat membantu ${data.brand} memperoleh awareness, interaksi, dan minat beli. Strategi ini perlu diterjemahkan ke dalam marketing mix 4P, jadwal posting, dan bentuk engagement yang sesuai dengan perilaku target konsumen.`,
   ].join("\n\n"),
   "1.4 Tujuan Proposal": (data) => [
-    `Proposal ini bertujuan menyusun rancangan mini project ${data.brand} sebagai usaha berbasis produk custom yang dapat dipasarkan melalui media sosial. Rancangan ini mencakup profil usaha, deskripsi produk, analisis pasar, marketing mix 4P, strategi branding, strategi konten, dan timeline pelaksanaan.`,
-    `Tujuan lainnya adalah memberikan panduan kerja bagi anggota kelompok agar setiap tahap pelaksanaan memiliki target yang jelas. Dengan adanya proposal ini, kegiatan pemasaran ${data.product} dapat dijalankan secara sistematis mulai dari pengenalan brand sampai evaluasi konten dan respons audiens.`,
+    `Tujuan proposal ini adalah menyusun rancangan akademik untuk pengembangan ${data.brand} sebagai usaha mini project yang menawarkan ${data.product}. Proposal ini menjadi dasar bagi kelompok dalam menentukan arah brand, segmentasi konsumen, strategi operasional, serta strategi pemasaran media sosial.`,
+    `Tujuan lainnya adalah menghasilkan pedoman kerja yang dapat digunakan selama pelaksanaan proyek. Dengan proposal ini, kelompok memiliki acuan mengenai kegiatan mingguan, kebutuhan biaya, bentuk konten, dan indikator keberhasilan yang dapat dievaluasi pada tahap laporan berikutnya.`,
   ].join("\n\n"),
   "1.5 Manfaat Proposal": (data) => [
-    `Secara akademik, proposal ini bermanfaat sebagai penerapan konsep Social Media Marketing pada usaha kecil yang dekat dengan perilaku konsumen muda. Mahasiswa dapat memahami bagaimana segmentasi, targeting, positioning, marketing mix, dan strategi engagement diterapkan pada produk nyata.`,
-    `Secara praktis, proposal ini membantu ${data.brand} memiliki arah pengembangan yang lebih rapi. Rencana yang disusun dapat digunakan untuk menentukan konten prioritas, pembagian tugas, target mingguan, serta evaluasi performa media sosial selama mini project berlangsung.`,
+    `Bagi mahasiswa, proposal ini bermanfaat sebagai sarana penerapan teori pemasaran ke dalam rancangan usaha yang konkret. Konsep seperti segmentasi, targeting, positioning, SWOT, marketing mix, dan engagement media sosial dapat dipahami melalui produk ${data.product} yang menjadi objek mini project.`,
+    `Bagi pengembangan usaha, proposal ini membantu ${data.brand} memiliki rencana yang lebih tertata. Setiap kegiatan pemasaran dapat diarahkan pada tujuan yang jelas, mulai dari membangun awareness, memperkenalkan produk, menciptakan interaksi, sampai mengumpulkan insight awal dari audiens.`,
   ].join("\n\n"),
   "1.6 Gambaran Singkat Usaha": (data) => [
-    `${data.brand} merupakan usaha mini project yang menawarkan ${data.product}. Produk ini dikembangkan untuk konsumen yang menyukai barang personal, unik, dan dapat disesuaikan dengan identitas masing-masing. Harga awal yang direncanakan adalah ${data.price}, dengan penyesuaian sesuai variasi desain, ukuran, bahan, atau tingkat kesulitan produksi.`,
-    `Usaha ini memanfaatkan ${data.platforms} sebagai kanal utama komunikasi dan promosi. Nama akun yang digunakan adalah ${data.accountName}. Melalui akun tersebut, ${data.brand} akan menampilkan katalog produk, contoh custom, informasi harga, cara pemesanan, konten interaktif, dan perkembangan mini project.`,
+    `${data.brand} merupakan rancangan usaha mini project yang menawarkan ${data.product}. Produk ini dikembangkan dengan konsep custom sehingga konsumen dapat memperoleh barang yang lebih personal dibandingkan produk umum. Harga awal yang direncanakan adalah ${data.price}, dengan kemungkinan penyesuaian berdasarkan tingkat variasi dan kebutuhan produksi.`,
+    `Kegiatan promosi dan komunikasi akan diarahkan melalui ${data.platforms}. Akun atau identitas media sosial yang digunakan adalah ${data.accountName}. Kelompok yang menjalankan proyek ini adalah ${data.members} dari kelas ${data.className}, dengan arahan dosen pengampu ${data.lecturerName}.`,
   ].join("\n\n"),
-  "2.1 Profil Usaha": (data) => `${data.brand} adalah brand mini project yang bergerak pada produk custom dengan fokus utama ${data.product}. Usaha ini dibangun untuk memenuhi kebutuhan konsumen muda terhadap produk personal yang memiliki nilai identitas dan dapat digunakan sebagai aksesori, hadiah, atau barang koleksi. Karakter brand diarahkan agar terlihat kreatif, ramah, mudah diingat, dan dekat dengan gaya komunikasi mahasiswa.`,
-  "2.2 Visi dan Misi": (data) => `Visi ${data.brand} adalah menjadi brand produk custom yang mampu membantu konsumen mengekspresikan identitas melalui produk yang menarik, terjangkau, dan mudah dipesan. Misi yang dijalankan meliputi menyediakan desain produk yang variatif, menjaga kualitas hasil produksi, membangun komunikasi yang responsif di media sosial, serta menghadirkan pengalaman pemesanan yang jelas dari awal sampai produk diterima konsumen.`,
-  "2.3 Deskripsi Produk": (data) => `${data.product} merupakan produk utama ${data.brand}. ${data.productDescription}. Produk ini dirancang agar memiliki daya tarik visual yang kuat ketika difoto atau direkam, sehingga dapat digunakan sebagai materi konten media sosial. Deskripsi produk akan terus diperbarui mengikuti ketersediaan contoh produk, variasi desain, dan masukan dari calon konsumen selama mini project berjalan.`,
-  "2.4 Keunikan Produk": (data) => `Keunikan ${data.product} terletak pada unsur personalisasi. Konsumen tidak hanya membeli produk yang sudah jadi, tetapi mendapatkan barang yang dapat disesuaikan dengan nama, warna, bentuk, atau preferensi tertentu. Nilai personal tersebut membuat produk terasa lebih dekat dengan pemiliknya dan lebih menarik untuk dibagikan melalui media sosial.`,
-  "2.5 Keunggulan Produk": (data) => `Keunggulan produk ${data.brand} adalah kombinasi antara desain custom, harga yang dapat dijangkau target pasar, dan potensi konten visual yang tinggi. Produk yang personal lebih mudah digunakan sebagai bahan cerita dalam caption, video pendek, maupun testimoni. Keunggulan ini menjadi dasar bagi strategi pemasaran yang menonjolkan pengalaman konsumen, bukan sekadar informasi produk.`,
-  "3.1 Segmentasi Pasar": (data) => `Segmentasi pasar ${data.brand} mencakup konsumen muda yang aktif menggunakan media sosial dan memiliki ketertarikan pada produk unik. Secara demografis, sasaran utama meliputi ${data.targetMarket}. Secara psikografis, segmen ini cenderung menyukai produk yang dapat menunjukkan identitas, mudah dipamerkan, dan memiliki nilai personal.`,
-  "3.2 Target Pasar": (data) => `Target pasar utama ${data.brand} adalah ${data.targetMarket}. Kelompok ini dipilih karena memiliki kedekatan dengan tren produk custom dan terbiasa mencari referensi barang melalui media sosial. Target sekunder adalah konsumen yang membutuhkan hadiah sederhana namun personal untuk teman, pasangan, atau anggota keluarga.`,
-  "3.3 Positioning": (data) => `${data.brand} diposisikan sebagai brand produk custom yang membantu konsumen menunjukkan identitas melalui produk yang personal, menarik, dan mudah dipesan. Positioning ini membedakan ${data.brand} dari produk umum karena menonjolkan nilai personalisasi, tampilan visual, dan pengalaman konsumen dalam menentukan desain.`,
+  "2.1 Profil Usaha": (data) => `${data.brand} adalah usaha mini project yang berfokus pada produk custom. Usaha ini dirancang untuk menjawab kebutuhan konsumen muda terhadap produk yang tidak hanya memiliki fungsi, tetapi juga nilai identitas. Melalui ${data.product}, ${data.brand} ingin menghadirkan produk yang dapat dipakai, diberikan sebagai hadiah, atau dijadikan aksesori personal yang memiliki cerita bagi pemiliknya.`,
+  "2.2 Visi dan Misi": (data) => `Visi ${data.brand} adalah menjadi brand produk custom yang dikenal kreatif, mudah diakses, dan dekat dengan gaya hidup konsumen muda. Misi usaha ini adalah menyediakan produk yang dapat dipersonalisasi, menjaga kualitas hasil produksi, memberikan informasi pemesanan yang jelas, membangun komunikasi yang responsif melalui media sosial, dan mengembangkan konten yang mampu memperlihatkan nilai produk secara menarik.`,
+  "2.3 Deskripsi Produk": (data) => `${data.product} merupakan produk utama yang ditawarkan oleh ${data.brand}. ${data.productDescription}. Produk ini memiliki potensi visual yang kuat karena variasi desain, warna, bentuk, atau nama dapat ditampilkan dalam konten foto dan video. Informasi produk akan dikemas secara sederhana agar calon konsumen memahami manfaat, pilihan custom, harga, dan cara melakukan pemesanan.`,
+  "2.4 Keunikan Produk": (data) => `Keunikan ${data.product} terletak pada unsur personalisasi yang membuat setiap produk dapat terasa berbeda bagi setiap konsumen. Produk custom memberi ruang bagi pembeli untuk merasa memiliki keterlibatan dalam hasil akhir. Nilai personal tersebut menjadi daya tarik utama karena konsumen tidak hanya membeli barang, tetapi juga membeli pengalaman dan identitas yang melekat pada produk.`,
+  "2.5 Keunggulan Produk": (data) => `${data.product} memiliki beberapa keunggulan yang mendukung pemasaran melalui media sosial. Produk mudah divisualisasikan dalam konten, dapat dikaitkan dengan gaya hidup target konsumen, dan memiliki peluang untuk mendorong interaksi seperti request desain, polling warna, atau komentar nama. Keunggulan lain adalah fleksibilitas harga dan variasi produk yang dapat disesuaikan dengan kemampuan produksi kelompok.`,
+  "3.1 Analisis Pasar": (data) => `Pasar produk custom berkembang karena konsumen muda semakin menyukai barang yang memiliki nilai personal. ${data.targetMarket} menjadi segmen yang potensial karena mereka aktif mencari inspirasi produk melalui media sosial dan cenderung tertarik pada barang yang unik, fotogenik, serta mudah dibagikan dalam konten. Kondisi ini memberi peluang bagi ${data.brand} untuk masuk melalui pendekatan visual dan komunikasi yang dekat dengan keseharian audiens.`,
+  "3.2 Target Konsumen": (data) => `Target konsumen utama ${data.brand} adalah ${data.targetMarket}. Kelompok ini dipilih karena memiliki kebiasaan digital yang sesuai dengan rencana promosi usaha. Mereka dapat dijangkau melalui konten pendek, foto produk, story interaktif, dan katalog sederhana. Target sekunder adalah konsumen yang mencari hadiah kecil yang personal dan mudah dipesan.`,
+  "3.3 Positioning Usaha": (data) => `${data.brand} diposisikan sebagai brand produk custom yang membantu konsumen menampilkan identitas melalui produk yang menarik, personal, dan mudah dipesan. Positioning ini perlu dijaga melalui konsistensi visual, gaya bahasa yang ramah, dan kejelasan informasi produk. Dengan positioning tersebut, ${data.brand} tidak bersaing hanya melalui harga, tetapi juga melalui pengalaman personal yang ditawarkan.`,
   "3.4 Analisis SWOT": (data) => [
-    `Strength ${data.brand} terletak pada konsep produk yang personal dan mudah dijadikan konten visual. Produk custom memiliki peluang untuk menarik komentar, pertanyaan, dan permintaan desain dari audiens karena setiap konsumen dapat membayangkan versi produknya sendiri.`,
-    `Weakness yang perlu diperhatikan adalah keterbatasan produksi, konsistensi kualitas, dan kebutuhan waktu untuk membuat contoh desain. Opportunity muncul dari tingginya penggunaan media sosial di kalangan target pasar, terutama untuk mencari produk unik dan hadiah personal. Threat berasal dari pesaing produk custom lain, perubahan tren konten, serta kemungkinan audiens cepat bosan jika format posting tidak bervariasi.`,
+    `Strength dari ${data.brand} adalah konsep produk yang personal, mudah divisualisasikan, dan dekat dengan tren konsumsi anak muda. ${data.product} dapat dibuat dalam berbagai variasi sehingga konten tidak cepat monoton. Kekuatan lain terletak pada kemungkinan membangun interaksi melalui permintaan desain atau pilihan custom dari audiens.`,
+    `Weakness yang perlu diperhatikan adalah keterbatasan kapasitas produksi, keterbatasan modal awal, dan kebutuhan waktu untuk membuat contoh produk yang rapi. Jika kelompok tidak mengatur jadwal dengan baik, kualitas konten dan respons kepada calon konsumen dapat menurun. Kelemahan ini dapat dikurangi melalui pembagian tugas dan target mingguan yang realistis.`,
+    `Opportunity muncul dari tingginya penggunaan media sosial oleh target konsumen. Produk unik dan personal memiliki peluang untuk menarik perhatian ketika disajikan dalam konten visual yang jelas. Selain itu, tren hadiah custom dan barang personal memberi ruang bagi ${data.brand} untuk membangun pasar secara bertahap.`,
+    `Threat berasal dari kompetitor produk custom lain, perubahan tren konten, dan kemungkinan audiens cepat berpindah perhatian. Persaingan harga juga dapat menjadi tantangan apabila kompetitor menawarkan produk serupa dengan harga lebih rendah. Untuk menghadapi ancaman tersebut, ${data.brand} perlu menonjolkan kualitas komunikasi, contoh hasil produk, dan keunikan pengalaman custom.`,
   ].join("\n\n"),
-  "3.5 Analisis Kompetitor": (data) => `Kompetitor ${data.brand} dapat berasal dari penjual produk custom, aksesori personal, dan usaha kecil yang memasarkan produk kreatif melalui media sosial. Untuk bersaing, ${data.brand} perlu menonjolkan kualitas visual, kejelasan cara order, respons cepat, serta contoh hasil produk yang konsisten. Analisis kompetitor juga perlu dilakukan secara berkala dengan membandingkan harga, variasi desain, gaya konten, dan cara mereka membangun interaksi dengan audiens.`,
-  "4.1 Product": (data) => `Product yang ditawarkan adalah ${data.product}. Produk ini perlu ditampilkan melalui foto detail, video proses, contoh variasi, serta penjelasan manfaat. Informasi produk harus menjawab pertanyaan dasar calon konsumen, seperti bentuk produk, pilihan custom, estimasi pengerjaan, dan cara perawatan bila diperlukan.`,
-  "4.2 Price": (data) => `Price atau harga awal yang direncanakan adalah ${data.price}. Strategi harga perlu mempertimbangkan biaya bahan, waktu pengerjaan, tingkat custom, kemasan, dan daya beli target pasar. Selain harga reguler, ${data.brand} dapat menyiapkan harga promosi awal atau paket bundling untuk menarik pembelian pertama.`,
-  "4.3 Place": (data) => `Place difokuskan pada kanal digital yang mudah dijangkau target pasar, yaitu ${data.platforms}. Media sosial digunakan untuk membangun awareness dan interaksi, sedangkan kanal transaksi dapat diarahkan melalui pesan langsung, marketplace, atau metode pemesanan lain yang disepakati kelompok. Seluruh kanal perlu saling terhubung agar calon konsumen tidak bingung saat berpindah dari konten menuju proses pembelian.`,
-  "4.4 Promotion": (data) => `Promotion dilakukan melalui konten organik, konten interaktif, promosi launching, dan ajakan berbagi pengalaman. ${data.brand} dapat menggunakan format product showcase, behind the scenes, polling desain, video pendek, dan testimoni. Promosi tidak hanya diarahkan untuk menjual, tetapi juga untuk membangun kepercayaan dan memperkenalkan karakter brand.`,
-  "5.1 Identitas Brand": (data) => `Identitas brand ${data.brand} dibangun melalui nama, warna visual, gaya bahasa, dan konsistensi tampilan konten. Brand perlu tampil ramah, kreatif, dan responsif agar sesuai dengan karakter target pasar. Identitas ini akan menjadi pedoman dalam membuat caption, desain feed, video pendek, dan balasan komentar.`,
-  "5.2 Tujuan Penggunaan Media Sosial": (data) => `Media sosial digunakan untuk memperkenalkan ${data.product}, membangun awareness, menjelaskan cara pemesanan, dan menciptakan interaksi dengan calon konsumen. Tujuan lainnya adalah mengumpulkan insight dari respons audiens sehingga strategi konten dapat diperbaiki dari minggu ke minggu.`,
-  "5.3 Platform Media Sosial": (data) => `Platform yang digunakan adalah ${data.platforms}. Setiap platform memiliki peran yang berbeda. Platform visual dapat digunakan untuk katalog dan foto produk, platform video pendek untuk demonstrasi dan konten hiburan, sedangkan kanal transaksi atau komunikasi digunakan untuk menjawab pertanyaan dan memproses pesanan.`,
-  "5.4 Strategi Konten": (data) => `Strategi konten ${data.brand} meliputi pengenalan brand, edukasi produk, showcase desain, behind the scenes, konten interaktif, dan promosi. Konten pengenalan berfungsi menjelaskan siapa ${data.brand}, sedangkan konten edukasi membantu audiens memahami nilai custom. Konten interaktif seperti polling atau request desain dapat meningkatkan komentar dan kedekatan dengan audiens.`,
-  "5.5 Jadwal Posting": () => `Jadwal posting dirancang secara konsisten agar akun terlihat aktif dan terkelola. Pada tahap awal, kelompok dapat menyiapkan tiga sampai empat unggahan per minggu yang terdiri dari foto produk, video pendek, story interaktif, dan konten edukasi. Jadwal ini dapat disesuaikan setelah melihat kemampuan produksi konten dan respons audiens.`,
-  "5.6 Strategi Engagement": (data) => `Strategi engagement dilakukan dengan mengajak audiens berpartisipasi dalam pilihan desain, warna, nama, atau ide penggunaan produk. ${data.brand} dapat membuat pertanyaan di story, membalas komentar secara personal, serta menampilkan request audiens sebagai konten. Interaksi seperti ini penting karena produk custom sangat bergantung pada rasa keterlibatan konsumen.`,
-  "5.7 Target Media Sosial": (data) => `Target media sosial pada tahap awal adalah membangun akun yang aktif, memiliki konten yang konsisten, dan mulai memperoleh respons dari target pasar. Indikator yang dapat diamati meliputi jumlah unggahan, like, komentar, jangkauan, pesan masuk, dan jumlah calon konsumen yang menanyakan produk. Angka target dapat diperbarui setelah insight asli dari akun ${data.accountName} tersedia.`,
-  "Kesimpulan": (data) => `Proposal mini project ini menunjukkan bahwa ${data.brand} memiliki peluang untuk dikembangkan sebagai brand produk custom yang relevan dengan kebutuhan konsumen muda. Melalui ${data.product}, brand dapat menawarkan nilai personalisasi, pengalaman visual, dan kedekatan emosional dengan konsumen. Strategi yang disusun mencakup analisis pasar, marketing mix 4P, branding media sosial, serta timeline empat belas minggu agar pelaksanaan proyek memiliki arah yang jelas.`,
-  "Saran": (data) => `Kelompok disarankan menjaga konsistensi konten sejak awal pelaksanaan mini project. Setiap anggota perlu menjalankan tugas sesuai pembagian kerja, mencatat respons audiens, dan memperbarui strategi berdasarkan data aktual. ${data.brand} juga perlu terus memperbaiki kualitas visual, kejelasan informasi produk, dan kecepatan respons agar kepercayaan calon konsumen dapat terbentuk secara bertahap.`,
+  "3.5 Analisis Kompetitor": (data) => `Kompetitor ${data.brand} dapat berasal dari penjual produk custom, aksesori personal, dan usaha kecil yang aktif memasarkan produknya melalui media sosial. Analisis kompetitor perlu melihat harga, variasi desain, kualitas foto, gaya caption, kecepatan respons, dan cara mereka mengarahkan konsumen menuju pembelian. Dari pengamatan tersebut, ${data.brand} dapat menentukan pembeda yang lebih jelas, misalnya visual yang lebih konsisten, informasi order yang lebih mudah, atau konten interaktif yang lebih dekat dengan audiens.`,
+  "4.1 Proses Produksi": (data) => `Proses produksi ${data.product} dimulai dari penerimaan ide atau pilihan custom dari konsumen, pembuatan desain awal, persiapan bahan, produksi, pengecekan kualitas, pengemasan, dan dokumentasi produk. Setiap tahap perlu dicatat agar kelompok dapat mengetahui kendala produksi dan memperbaiki alur kerja. Dokumentasi proses juga dapat digunakan sebagai konten behind the scenes untuk membangun kepercayaan audiens.`,
+  "4.2 Kebutuhan Alat dan Bahan": (data) => `Kebutuhan alat dan bahan disesuaikan dengan karakter ${data.product}. Secara umum, kelompok perlu menyiapkan bahan utama produk, alat produksi atau alat finishing, kemasan, label brand, properti foto, serta perangkat untuk membuat konten. Kebutuhan tersebut tidak harus besar pada tahap awal, tetapi harus cukup untuk membuat contoh produk yang layak ditampilkan dan digunakan sebagai materi promosi.`,
+  "4.3 Estimasi Biaya": (data) => costIntro(data),
+  "4.4 Timeline Pelaksanaan": (data) => timelineIntro(data),
+  "5.1 Identitas Brand": (data) => `Identitas brand ${data.brand} dibangun melalui nama, warna visual, gaya komunikasi, dan konsistensi tampilan konten. Identitas yang kuat membantu audiens mengenali brand meskipun hanya melihat sekilas unggahan. Gaya komunikasi yang digunakan perlu ramah, jelas, dan sesuai dengan karakter target konsumen agar interaksi tidak terasa kaku.`,
+  "5.2 Tujuan Penggunaan Media Sosial": (data) => `Media sosial digunakan untuk membangun awareness, memperkenalkan ${data.product}, menjelaskan cara pemesanan, dan mengumpulkan respons audiens. Tujuan lainnya adalah mendokumentasikan proses mini project agar kelompok memiliki bukti kegiatan yang dapat digunakan dalam laporan akhir. Dengan pengelolaan yang konsisten, media sosial dapat menjadi alat promosi sekaligus sumber data evaluasi.`,
+  "5.3 Platform Media Sosial": (data) => `Platform yang digunakan adalah ${data.platforms}. Setiap platform perlu memiliki peran yang jelas. Platform visual dapat digunakan untuk katalog dan foto produk, platform video pendek untuk demonstrasi dan konten ringan, sedangkan kanal komunikasi atau marketplace digunakan untuk menjawab pertanyaan dan memproses pesanan. Keterhubungan antarplatform membuat perjalanan konsumen lebih mudah dipahami.`,
+  "5.4 Marketing Mix 4P": (data) => [
+    `Product yang ditawarkan adalah ${data.product}, yaitu produk custom yang mengutamakan nilai personalisasi dan tampilan visual. Informasi produk harus menjelaskan manfaat, variasi, cara custom, dan contoh hasil agar calon konsumen dapat membayangkan produk yang akan diterima.`,
+    `Price direncanakan mulai dari ${data.price}. Harga perlu mempertimbangkan biaya bahan, waktu pengerjaan, kemasan, dan nilai custom. Strategi harga dapat dilengkapi dengan promo awal atau bundling agar konsumen pertama lebih tertarik mencoba produk.`,
+    `Place difokuskan pada ${data.platforms}. Media sosial berfungsi untuk memperkenalkan dan menjelaskan produk, sedangkan kanal pemesanan diarahkan pada metode yang paling mudah digunakan oleh target konsumen. Informasi alur pembelian harus dibuat ringkas agar calon pembeli tidak kebingungan.`,
+    `Promotion dilakukan melalui product showcase, behind the scenes, konten edukasi, story interaktif, dan promosi launching. Promosi tidak hanya mengejar penjualan, tetapi juga membangun kepercayaan terhadap brand baru melalui konten yang konsisten dan respons yang cepat.`,
+  ].join("\n\n"),
+  "5.5 Strategi Konten": (data) => `Strategi konten ${data.brand} mencakup pengenalan brand, edukasi produk, showcase variasi, proses produksi, testimoni atau respons awal, serta konten interaktif. Konten harus dibuat dengan visual yang bersih dan caption yang mudah dipahami. Setiap unggahan sebaiknya memiliki tujuan, misalnya mengenalkan produk, menjawab pertanyaan, mendorong komentar, atau mengarahkan audiens untuk bertanya melalui pesan langsung.`,
+  "5.6 Jadwal Posting": () => `Jadwal posting dirancang tiga sampai empat kali dalam satu minggu pada tahap awal. Komposisi konten dapat terdiri dari satu unggahan product showcase, satu video pendek, satu story interaktif, dan satu konten edukasi atau promosi. Jadwal tersebut dapat disesuaikan setelah kelompok melihat kapasitas produksi konten dan respons audiens pada minggu-minggu pertama.`,
+  "5.7 Strategi Engagement": (data) => `Strategi engagement dilakukan dengan mendorong audiens berpartisipasi dalam pilihan desain, warna, nama, atau ide penggunaan produk. ${data.brand} dapat memakai polling, pertanyaan di story, komentar terbuka, dan repost respons audiens. Interaksi yang muncul perlu dicatat karena dapat menjadi bahan evaluasi strategi konten dan pengembangan produk.`,
+  "6.1 Kesimpulan": (data) => `Proposal ini menunjukkan bahwa ${data.brand} memiliki peluang untuk dikembangkan sebagai mini project yang relevan dengan mata kuliah ${data.course}. Produk ${data.product} memiliki nilai personalisasi, potensi visual, dan kesesuaian dengan perilaku konsumen muda di media sosial. Rencana yang disusun mencakup analisis bisnis, operasional, estimasi biaya, timeline, dan strategi pemasaran sehingga proyek memiliki arah pelaksanaan yang jelas.`,
+  "6.2 Saran": (data) => `Kelompok disarankan menjaga konsistensi pelaksanaan sejak minggu pertama. Setiap anggota perlu memahami tanggung jawabnya, mencatat data kegiatan, dan mengevaluasi respons audiens secara berkala. ${data.brand} juga perlu memperbaiki kualitas visual, memperjelas informasi produk, serta menyesuaikan strategi promosi berdasarkan data aktual yang diperoleh selama mini project berlangsung.`,
 };
+
+function costIntro(data: MiniProjectData): string {
+  return `Estimasi biaya disusun untuk memberikan gambaran kebutuhan awal dalam menjalankan mini project ${data.brand}. Angka yang digunakan bersifat realistis untuk skala mahasiswa dan dapat disesuaikan setelah kelompok mengetahui harga bahan yang sebenarnya. Perencanaan biaya diperlukan agar kegiatan produksi, kemasan, dan promosi dapat berjalan tanpa melebihi kemampuan modal awal kelompok.`;
+}
+
+function timelineIntro(data: MiniProjectData): string {
+  return `Timeline pelaksanaan disusun selama empat belas minggu agar kegiatan ${data.brand} berjalan terarah dari tahap perencanaan sampai evaluasi. Setiap minggu memiliki kegiatan dan target yang berbeda sehingga kelompok dapat memantau perkembangan proyek secara bertahap.`;
+}
 
 function collectMiniProjectData(analysis: AssignmentAnalysis, answers: AssignmentAnswers): MiniProjectData {
   const value = (...keys: string[]) => pickAnswer(answers, keys);
   const object = value("mainObject", "product", "produk", "productName", "projectName", "brandName", "businessName", "topic");
-  const brand = value("brand", "brandName", "businessName", "namaBrand", "namaUsaha", "projectName") || object || "Brand Mini Project";
-  const product = value("product", "produk", "productName", "mainObject", "topic") || object || "produk custom";
+  const brand = value("brand", "brandName", "businessName", "namaBrand", "namaUsaha", "projectName") || object || "usaha mini project";
+  const product = value("product", "produk", "productName", "mainObject", "topic") || object || "produk custom yang dirancang kelompok";
   return {
     brand,
     product,
-    productDescription: value("productDescription", "objectDetails", "detailProduk", "deskripsiProduk", "requiredContent") || `${product} merupakan produk yang dirancang dengan nilai personalisasi dan tampilan yang menarik bagi konsumen muda`,
+    productDescription: value("productDescription", "objectDetails", "detailProduk", "deskripsiProduk", "requiredContent") || `${product} dikembangkan sebagai produk yang memiliki nilai personalisasi dan tampilan menarik bagi konsumen muda`,
     targetMarket: value("targetMarket", "targetAudience", "targetPasar", "sasaran", "market") || "remaja, mahasiswa, dan konsumen muda yang aktif menggunakan media sosial",
-    price: value("price", "harga", "pricing", "modal") || "harga yang disesuaikan dengan biaya produksi dan variasi custom",
-    platforms: value("platform", "platforms", "socialPlatforms", "mediaSosial", "channels") || "Instagram, TikTok, dan marketplace/kanal pemesanan yang digunakan kelompok",
-    accountName: value("accountName", "socialAccount", "akun", "namaAkun") || "akun media sosial brand",
-    members: value("members", "studentIdentity", "studentName", "groupMembers", "anggota") || "anggota kelompok",
-    className: value("className", "kelas") || "kelas",
+    price: value("price", "harga", "pricing", "modal") || "harga awal yang disesuaikan dengan biaya produksi dan variasi custom",
+    platforms: value("platform", "platforms", "socialPlatforms", "mediaSosial", "channels") || "Instagram, TikTok, dan kanal pemesanan yang dipilih kelompok",
+    accountName: value("accountName", "socialAccount", "akun", "namaAkun") || `akun resmi ${brand}`,
+    members: value("members", "studentIdentity", "studentName", "groupMembers", "anggota") || "kelompok mahasiswa penyusun",
+    className: value("className", "kelas") || "kelas pengampu",
     lecturerName: value("lecturerName", "dosen", "namaDosen") || "dosen pengampu",
     date: value("date", "tanggal", "deadline") || new Date().toLocaleDateString("id-ID"),
-    businessName: analysis.course || value("course", "mataKuliah") || "Social Media Marketing",
+    course: analysis.course || value("course", "mataKuliah") || "Social Media Marketing",
   };
 }
 
@@ -150,7 +167,7 @@ function normalize(value: string): string {
 }
 
 function buildExecutiveSummary(data: MiniProjectData): string {
-  return `Proposal Mini Project Week 1 ini menyusun rancangan awal pengembangan ${data.brand} sebagai brand yang menawarkan ${data.product}. Proposal berfokus pada profil usaha, analisis pasar, marketing mix 4P, strategi branding dan media sosial, serta timeline pelaksanaan selama empat belas minggu. Dokumen ini disusun oleh ${data.members} untuk kelas ${data.className} di bawah arahan ${data.lecturerName}.`;
+  return `Proposal Mini Project Week 1 ini menyusun rancangan awal pengembangan ${data.brand} sebagai usaha yang menawarkan ${data.product}. Proposal mencakup pendahuluan, brand dan produk, analisis bisnis, rencana operasional, strategi pemasaran, serta penutup. Dokumen ini disusun oleh ${data.members} dari ${data.className} untuk mata kuliah ${data.course} di bawah arahan ${data.lecturerName}.`;
 }
 
 function buildReferences(): string[] {
@@ -159,6 +176,7 @@ function buildReferences(): string[] {
     "Kotler, P., & Keller, K. L. (2016). Marketing management. Pearson Education.",
     "Kotler, P., Kartajaya, H., & Setiawan, I. (2021). Marketing 5.0: Technology for humanity. John Wiley & Sons.",
     "Tuten, T. L., & Solomon, M. R. (2018). Social media marketing. SAGE Publications.",
+    "Zimmerer, T. W., Scarborough, N. M., & Wilson, D. (2008). Essentials of entrepreneurship and small business management. Pearson.",
   ];
 }
 

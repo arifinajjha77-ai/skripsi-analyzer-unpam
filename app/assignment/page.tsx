@@ -22,6 +22,7 @@ type PersistedWorkspace = {
 
 export default function AssignmentWorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const storageLoadedRef = useRef(false);
   const [state, setState] = useState<AssignmentWorkspaceState>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
   const [userNotes, setUserNotes] = useState("");
@@ -39,22 +40,30 @@ export default function AssignmentWorkspacePage() {
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      storageLoadedRef.current = true;
+      return;
+    }
     try {
       const saved = JSON.parse(raw) as PersistedWorkspace;
-      setState(saved.state === "ANALYZE" || saved.state === "GENERATING" ? "READY_TO_GENERATE" : saved.state);
-      setUserNotes(saved.userNotes || "");
-      setAnalysis(saved.analysis);
-      setAnswers(saved.answers || {});
-      setCurrentAnswer(saved.currentAnswer || "");
-      setReport(saved.report);
-      setMeta(saved.meta);
+      window.setTimeout(() => {
+        setState(saved.state === "ANALYZE" || saved.state === "GENERATING" ? "READY_TO_GENERATE" : saved.state);
+        setUserNotes(saved.userNotes || "");
+        setAnalysis(saved.analysis);
+        setAnswers(saved.answers || {});
+        setCurrentAnswer(saved.currentAnswer || "");
+        setReport(saved.report);
+        setMeta(saved.meta);
+        storageLoadedRef.current = true;
+      }, 0);
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
+      storageLoadedRef.current = true;
     }
   }, []);
 
   useEffect(() => {
+    if (!storageLoadedRef.current) return;
     const payload: PersistedWorkspace = { state, userNotes, analysis, answers, currentAnswer, report, meta };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }, [state, userNotes, analysis, answers, currentAnswer, report, meta]);
@@ -539,6 +548,30 @@ function AcademicDocumentPreview({ sections, references }: { sections: Assignmen
                       <td className="border-b border-slate-100 px-3 py-2 font-semibold text-slate-700">{row.week}</td>
                       <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.activity}</td>
                       <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.target}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {section.costRows && (
+            <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700">
+                  <tr>
+                    <th className="border-b border-slate-200 px-3 py-2">Uraian Biaya</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Jumlah</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Harga Satuan</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.costRows.map((row) => (
+                    <tr key={`${row.item}-${row.total}`} className="align-top">
+                      <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.item}</td>
+                      <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.quantity}</td>
+                      <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{row.unitCost}</td>
+                      <td className="border-b border-slate-100 px-3 py-2 font-semibold text-slate-700">{row.total}</td>
                     </tr>
                   ))}
                 </tbody>

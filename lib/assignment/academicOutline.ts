@@ -1,4 +1,4 @@
-import type { AssignmentAnalysis, AssignmentAnswers, AssignmentAcademicSection, AssignmentTimelineRow } from "./types";
+import type { AssignmentAnalysis, AssignmentAnswers, AssignmentAcademicSection, AssignmentCostRow, AssignmentTimelineRow } from "./types";
 
 export type AcademicOutline = {
   kind: "mini_project_proposal" | "generic";
@@ -23,7 +23,7 @@ export function shouldUseMiniProjectProposalOutline(analysis: AssignmentAnalysis
 }
 
 export function buildAcademicOutline(analysis: AssignmentAnalysis, answers: AssignmentAnswers): AcademicOutline {
-  if (shouldUseMiniProjectProposalOutline(analysis, answers)) return buildMiniProjectProposalOutline(analysis, answers);
+  if (shouldUseMiniProjectProposalOutline(analysis, answers)) return buildMiniProjectProposalOutline(analysis);
 
   return {
     kind: "generic",
@@ -36,7 +36,7 @@ export function buildAcademicOutline(analysis: AssignmentAnalysis, answers: Assi
   };
 }
 
-export function buildMiniProjectProposalOutline(analysis: AssignmentAnalysis, answers: AssignmentAnswers): AcademicOutline {
+export function buildMiniProjectProposalOutline(analysis: AssignmentAnalysis): AcademicOutline {
   return {
     kind: "mini_project_proposal",
     title: `Proposal Mini Project Week 1${analysis.course ? ` - ${analysis.course}` : ""}`,
@@ -55,35 +55,33 @@ export function buildMiniProjectProposalOutline(analysis: AssignmentAnalysis, an
       sub("2.3 Deskripsi Produk"),
       sub("2.4 Keunikan Produk"),
       sub("2.5 Keunggulan Produk"),
-      chapter("BAB III ANALISIS PASAR"),
-      sub("3.1 Segmentasi Pasar"),
-      sub("3.2 Target Pasar"),
-      sub("3.3 Positioning"),
+      chapter("BAB III ANALISIS BISNIS"),
+      sub("3.1 Analisis Pasar"),
+      sub("3.2 Target Konsumen"),
+      sub("3.3 Positioning Usaha"),
       sub("3.4 Analisis SWOT"),
       sub("3.5 Analisis Kompetitor"),
-      chapter("BAB IV MARKETING MIX 4P"),
-      sub("4.1 Product"),
-      sub("4.2 Price"),
-      sub("4.3 Place"),
-      sub("4.4 Promotion"),
-      chapter("BAB V STRATEGI BRANDING DAN MEDIA SOSIAL"),
+      chapter("BAB IV RENCANA OPERASIONAL"),
+      sub("4.1 Proses Produksi"),
+      sub("4.2 Kebutuhan Alat dan Bahan"),
+      { heading: "4.3 Estimasi Biaya", level: "subheading", costRows: buildMiniProjectCosts() },
+      { heading: "4.4 Timeline Pelaksanaan", level: "subheading", timelineRows: buildMiniProjectTimeline() },
+      chapter("BAB V STRATEGI PEMASARAN"),
       sub("5.1 Identitas Brand"),
       sub("5.2 Tujuan Penggunaan Media Sosial"),
       sub("5.3 Platform Media Sosial"),
-      sub("5.4 Strategi Konten"),
-      sub("5.5 Jadwal Posting"),
-      sub("5.6 Strategi Engagement"),
-      sub("5.7 Target Media Sosial"),
-      chapter("BAB VI TIMELINE DAN TARGET MINGGUAN"),
-      { heading: "Timeline Week 1 sampai Week 14", level: "subheading", timelineRows: buildMiniProjectTimeline(answers) },
-      chapter("BAB VII PENUTUP"),
-      sub("Kesimpulan"),
-      sub("Saran"),
+      sub("5.4 Marketing Mix 4P"),
+      sub("5.5 Strategi Konten"),
+      sub("5.6 Jadwal Posting"),
+      sub("5.7 Strategi Engagement"),
+      chapter("BAB VI PENUTUP"),
+      sub("6.1 Kesimpulan"),
+      sub("6.2 Saran"),
     ],
   };
 }
 
-export function buildMiniProjectTimeline(_answers: AssignmentAnswers): AssignmentTimelineRow[] {
+export function buildMiniProjectTimeline(): AssignmentTimelineRow[] {
   return [
     { week: "1", activity: "Finalisasi ide usaha, identitas brand, deskripsi produk, dan proposal awal.", target: "Proposal Week 1 selesai dan arah proyek disepakati kelompok." },
     { week: "2", activity: "Penyusunan visual brand, akun media sosial, dan konsep katalog produk.", target: "Logo sederhana, bio akun, dan template konten awal tersedia." },
@@ -99,6 +97,17 @@ export function buildMiniProjectTimeline(_answers: AssignmentAnswers): Assignmen
     { week: "12", activity: "Penyusunan evaluasi strategi pemasaran dan kendala pelaksanaan.", target: "Kelebihan, kelemahan, dan peluang perbaikan tersusun jelas." },
     { week: "13", activity: "Penyempurnaan laporan akhir, lampiran konten, dan bukti aktivitas media sosial.", target: "Draft laporan akhir siap direview." },
     { week: "14", activity: "Finalisasi laporan, presentasi hasil, dan refleksi mini project.", target: "Laporan akhir dan bahan presentasi siap dikumpulkan." },
+  ];
+}
+
+export function buildMiniProjectCosts(): AssignmentCostRow[] {
+  return [
+    { item: "Bahan baku produk/prototipe", quantity: "10 unit", unitCost: "Rp8.000", total: "Rp80.000" },
+    { item: "Kemasan sederhana", quantity: "10 pcs", unitCost: "Rp2.500", total: "Rp25.000" },
+    { item: "Label/stiker brand", quantity: "1 paket", unitCost: "Rp20.000", total: "Rp20.000" },
+    { item: "Properti foto produk", quantity: "1 paket", unitCost: "Rp35.000", total: "Rp35.000" },
+    { item: "Biaya promosi awal", quantity: "1 periode", unitCost: "Rp50.000", total: "Rp50.000" },
+    { item: "Cadangan operasional", quantity: "1 pos", unitCost: "Rp40.000", total: "Rp40.000" },
   ];
 }
 
