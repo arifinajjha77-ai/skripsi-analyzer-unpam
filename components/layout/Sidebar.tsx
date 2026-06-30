@@ -7,6 +7,7 @@ import {
   FileText, LayoutDashboard, X, BookOpen, ClipboardList, Newspaper,
   GitFork, Table2, Users, Settings, FolderOpen, Layers, BookMarked,
   GraduationCap, BookCopy, ChevronDown, ChevronRight, Sparkles,
+  FileQuestion,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/lib/context";
@@ -63,6 +64,7 @@ const NAV_SECTIONS: NavSection[] = [
     color: "text-violet-700",
     defaultOpen: false,
     items: [
+      { href: "/assignment", label: "Assignment Workspace", icon: FileQuestion, alwaysEnabled: true, badge: "V1" },
       { href: "/makalah", label: "Buat Makalah", icon: BookCopy, alwaysEnabled: true, badge: "Beta" },
       { href: "/makalah-engine", label: "MakalahEngine V2", icon: Sparkles, alwaysEnabled: true, badge: "V2" },
     ],
