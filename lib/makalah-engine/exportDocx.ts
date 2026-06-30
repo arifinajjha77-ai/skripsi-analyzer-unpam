@@ -94,7 +94,7 @@ export async function exportMakalahEngineDocx(document: MakalahDocument): Promis
 }
 
 function buildCover(input: MakalahEngineInput): Array<Paragraph | Table> {
-  const isProposal = /proposal|mini project|clickora|custom clicker|social media marketing/i.test([
+  const isProposal = /proposal|mini project/i.test([
     input.judul,
     input.tema,
     input.mataKuliah,

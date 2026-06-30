@@ -39,9 +39,11 @@ function buildPrompt(analysis: AssignmentAnalysis, answers: AssignmentAnswers, o
         sections: [{ title: "string", body: "string multi paragraph" }],
         references: ["string"],
         appendices: ["string"],
+        rubricChecks: [{ aspect: "string", status: "met|partial|missing", note: "string" }],
         generatedWith: { model: "string", fallback: false },
       },
     }),
+    "Rubric awareness: setiap aspek rubrik harus dipakai sebagai checklist kualitas. Tulis isi dokumen agar memenuhi rubrik, lalu isi rubricChecks secara jujur.",
     `Analisis tugas:\n${JSON.stringify(analysis, null, 2)}`,
     `Jawaban user:\n${JSON.stringify(answers, null, 2)}`,
     `Catatan tambahan:\n${optionalNotes || "-"}`,
@@ -70,6 +72,7 @@ function fallbackReport(analysis: AssignmentAnalysis, answers: AssignmentAnswers
       "Lampiran data pendukung dapat ditambahkan setelah user memiliki file, visual, data survei, atau insight platform yang asli.",
       "Angka target yang belum memiliki bukti aktual harus diposisikan sebagai simulasi perencanaan.",
     ],
+    rubricChecks: buildRubricChecks(analysis, sections),
     generatedWith: { model: DEFAULT_MODEL, fallback: true },
   };
 }
@@ -108,4 +111,18 @@ function buildReferences(course: string): string[] {
     "Sugiyono. (2019). Metode penelitian kuantitatif, kualitatif, dan R&D. Alfabeta.",
     "Referensi tambahan disesuaikan dengan topik dan instruksi dosen.",
   ];
+}
+
+function buildRubricChecks(analysis: AssignmentAnalysis, sections: Array<{ title: string; body: string }>): AssignmentReport["rubricChecks"] {
+  const body = sections.map((section) => `${section.title}\n${section.body}`).join("\n").toLowerCase();
+  return analysis.gradingRubric.map((rubric) => {
+    const tokens = rubric.aspect.toLowerCase().split(/\W+/).filter((token) => token.length > 4);
+    const hits = tokens.filter((token) => body.includes(token)).length;
+    const status = hits > 0 || body.includes("rubrik") ? "partial" : "partial";
+    return {
+      aspect: rubric.aspect,
+      status,
+      note: "Sudah dipertimbangkan dalam struktur dan narasi dasar. Perlu review manual untuk penilaian final.",
+    };
+  });
 }

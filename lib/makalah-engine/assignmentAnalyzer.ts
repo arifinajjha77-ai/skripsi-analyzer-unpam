@@ -15,7 +15,7 @@ export async function analyzeAssignmentText(text: string, userNotes = ""): Promi
     return { analysis: normalizeAnalysis(repaired), fallback: true, model: DEFAULT_MODEL };
   }
 
-  return { analysis: fallbackMiniProjectAnalysis(), fallback: true, model: DEFAULT_MODEL };
+  return { analysis: fallbackGenericAnalysis(), fallback: true, model: DEFAULT_MODEL };
 }
 
 function buildAssignmentAnalyzerPrompt(text: string, userNotes: string): string {
@@ -40,7 +40,7 @@ function tryParseRepair(text: string): AssignmentAnalysis | null {
 }
 
 function normalizeAnalysis(value: Partial<AssignmentAnalysis>): AssignmentAnalysis {
-  const fallback = fallbackMiniProjectAnalysis();
+  const fallback = fallbackGenericAnalysis();
   return {
     title: clean(value.title) || fallback.title,
     course: clean(value.course),
@@ -70,27 +70,19 @@ function normalizeAnalysis(value: Partial<AssignmentAnalysis>): AssignmentAnalys
   };
 }
 
-function fallbackMiniProjectAnalysis(): AssignmentAnalysis {
+function fallbackGenericAnalysis(): AssignmentAnalysis {
   return {
-    title: "Mini Project Social Media Marketing",
-    course: "Social Media Marketing",
-    summaryForStudent: "Mahasiswa diminta menyusun proposal mini project pemasaran media sosial, menjelaskan objek atau produk, strategi konten, alur eksekusi, serta indikator evaluasi. Jika data performa belum tersedia, bagian angka ditulis sebagai simulasi perencanaan.",
+    title: "Tugas Akademik",
+    course: "",
+    summaryForStudent: "Instruksi tugas belum cukup terbaca. Mahasiswa perlu mengklarifikasi jenis tugas, mata kuliah, output yang diminta, dan data objek sebelum dokumen dibuat.",
     requiredDeliverables: [
       {
-        name: "Proposal Mini Project",
-        type: "proposal",
-        description: "Dokumen utama berisi latar belakang, profil objek, strategi media sosial, rencana konten, timeline, dan evaluasi.",
-        estimatedPages: 15,
-        requiredSections: ["Pendahuluan", "Profil Objek", "Strategi Konten", "Timeline", "Evaluasi", "Penutup"],
+        name: "Dokumen Tugas",
+        type: "other",
+        description: "Dokumen utama sesuai klarifikasi mahasiswa dan instruksi dosen.",
+        estimatedPages: 10,
+        requiredSections: ["Pendahuluan", "Pembahasan", "Penutup"],
         priority: "high",
-      },
-      {
-        name: "Presentasi Ringkas",
-        type: "presentation",
-        description: "Slide pendukung untuk menjelaskan ide proyek dan strategi utama.",
-        estimatedPages: 8,
-        requiredSections: ["Masalah", "Target Audiens", "Strategi", "Konten", "Timeline"],
-        priority: "medium",
       },
     ],
     writingRules: {
@@ -105,8 +97,8 @@ function fallbackMiniProjectAnalysis(): AssignmentAnalysis {
       { aspect: "Kejelasan strategi", description: "Strategi konten dan target audiens dijelaskan logis." },
       { aspect: "Kerapian dokumen", description: "Struktur, bahasa, dan format akademik rapi." },
     ],
-    timelineRequirements: ["Prioritaskan proposal terlebih dahulu agar siap dikumpulkan besok."],
-    missingInfoQuestions: ["Apa nama produk atau objek yang dipilih?", "Apakah dosen memberi deadline spesifik?", "Apakah ada data performa media sosial asli?"],
+    timelineRequirements: [],
+    missingInfoQuestions: ["Apa jenis tugas yang diminta?", "Apa mata kuliahnya?", "Output apa yang harus dikumpulkan?", "Topik atau objek apa yang harus dibahas?"],
     suggestedWorkflow: [
       { step: 1, title: "Tetapkan objek", description: "Tentukan produk, brand, atau studi kasus yang akan dianalisis." },
       { step: 2, title: "Susun proposal", description: "Buat dokumen proposal dengan struktur ringkas dan jelas." },

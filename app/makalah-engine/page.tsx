@@ -491,7 +491,7 @@ function buildInputFromDynamic(
 
   return {
     ...emptyInput,
-    judul: values.title || values.researchTitle || (brand ? `Proposal Mini Project Social Media Marketing ${brand}` : analysis.title),
+    judul: values.title || values.researchTitle || (brand ? `Proposal ${brand}` : analysis.title),
     namaKampus: values.campusName || "",
     fakultas: values.faculty || "",
     programStudi: values.studyProgram || "",
@@ -525,7 +525,7 @@ function buildPedoman(analysis: AssignmentAnalysis): string {
 
 function getSmartDefaults(analysis: AssignmentAnalysis): { mode: MakalahGenerationMode; jumlahBab: number; targetHalaman: number } {
   const text = [analysis.title, analysis.course, analysis.summaryForStudent].join(" ").toLowerCase();
-  if (/proposal|mini project|social media marketing/.test(text)) {
+  if (/proposal|mini project/.test(text)) {
     return { mode: "complete", jumlahBab: 7, targetHalaman: 20 };
   }
   return { mode: "fast", jumlahBab: 5, targetHalaman: analysis.requiredDeliverables[0]?.estimatedPages || 12 };

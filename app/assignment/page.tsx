@@ -1,12 +1,24 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Download, FileQuestion, FileText, Loader2, Send, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeAssignmentAction, exportAssignmentAction, generateAssignmentAction } from "./actions";
 import type { AssignmentAnalysis, AssignmentAnswers, AssignmentQuestion, AssignmentReport, AssignmentWorkspaceState } from "@/lib/assignment/types";
 import { getCurrentQuestion, getNextStateAfterAnswers, getQuestionProgress } from "@/lib/assignment/questionEngine";
 import { mergeAnswer } from "@/lib/assignment/missingData";
+
+const STORAGE_KEY = "smartcampus.assignment.workspace.v1";
+
+type PersistedWorkspace = {
+  state: AssignmentWorkspaceState;
+  userNotes: string;
+  analysis: AssignmentAnalysis | null;
+  answers: AssignmentAnswers;
+  currentAnswer: string;
+  report: AssignmentReport | null;
+  meta: { model: string; fallback: boolean; extractedCharacters: number } | null;
+};
 
 export default function AssignmentWorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -25,6 +37,28 @@ export default function AssignmentWorkspacePage() {
   const progress = useMemo(() => analysis ? getQuestionProgress(analysis, answers) : { answered: 0, total: 0, remaining: 0 }, [analysis, answers]);
   const canGenerate = Boolean(analysis && state === "READY_TO_GENERATE" && !isPending);
 
+  useEffect(() => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as PersistedWorkspace;
+      setState(saved.state === "ANALYZE" || saved.state === "GENERATING" ? "READY_TO_GENERATE" : saved.state);
+      setUserNotes(saved.userNotes || "");
+      setAnalysis(saved.analysis);
+      setAnswers(saved.answers || {});
+      setCurrentAnswer(saved.currentAnswer || "");
+      setReport(saved.report);
+      setMeta(saved.meta);
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload: PersistedWorkspace = { state, userNotes, analysis, answers, currentAnswer, report, meta };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }, [state, userNotes, analysis, answers, currentAnswer, report, meta]);
+
   function resetForFile(nextFile: File | null) {
     setFile(nextFile);
     setState("UPLOAD");
@@ -34,6 +68,7 @@ export default function AssignmentWorkspacePage() {
     setReport(null);
     setMeta(null);
     setError("");
+    window.localStorage.removeItem(STORAGE_KEY);
   }
 
   function analyze() {
@@ -183,7 +218,7 @@ export default function AssignmentWorkspacePage() {
                 value={userNotes}
                 onChange={(event) => setUserNotes(event.target.value)}
                 rows={4}
-                placeholder="Contoh: Produk Fidget Clicker Custom Name, output Proposal Mini Project Week 1."
+                placeholder="Contoh: output yang diminta, deadline, format dosen, atau konteks tugas yang belum tertulis di file."
                 className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
             </label>
@@ -223,33 +258,17 @@ export default function AssignmentWorkspacePage() {
                 onSkip={skipOptional}
               />
               <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-900">Generate Dokumen</h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {canGenerate ? "Data wajib sudah lengkap. Dokumen siap dibuat." : "Lengkapi pertanyaan wajib sebelum generate."}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={generate}
-                      disabled={!canGenerate}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-100 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {state === "GENERATING" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      Generate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={exportDocx}
-                      disabled={!report || isPending}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Download className="h-4 w-4" />
-                      Export DOCX
-                    </button>
-                  </div>
+                <PreGenerateReview analysis={analysis} answers={answers} canGenerate={canGenerate} state={state} onGenerate={generate} />
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={exportDocx}
+                    disabled={!report || isPending}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export DOCX
+                  </button>
                 </div>
               </section>
               <ReportPreview report={report} />
@@ -297,11 +316,12 @@ function UnderstandingPanel({ analysis }: { analysis: AssignmentAnalysis }) {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <InfoBlock title="Mata Kuliah" items={[analysis.course || "Belum disebutkan"]} />
             <InfoBlock title="Jenis Tugas" items={[analysis.assignmentType]} />
+            <InfoBlock title="Router" items={[analysis.routedType]} />
             <InfoBlock title="Output yang Diminta" items={analysis.requestedOutput} />
             <InfoBlock title="Struktur Laporan" items={analysis.reportStructure} />
-            <InfoBlock title="Rubrik Penilaian" items={analysis.gradingRubric.map((item) => [item.aspect, item.weight, item.description].filter(Boolean).join(" - "))} />
             <InfoBlock title="Data yang Masih Kurang" items={analysis.missingData.map((item) => item.label)} />
           </div>
+          <RubricChecklist analysis={analysis} />
         </div>
       </div>
     </section>
@@ -315,6 +335,77 @@ function InfoBlock({ title, items }: { title: string; items: string[] }) {
       <ul className="mt-2 space-y-1 text-sm text-slate-800">
         {items.map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}
       </ul>
+    </div>
+  );
+}
+
+function PreGenerateReview({
+  analysis,
+  answers,
+  canGenerate,
+  state,
+  onGenerate,
+}: {
+  analysis: AssignmentAnalysis;
+  answers: AssignmentAnswers;
+  canGenerate: boolean;
+  state: AssignmentWorkspaceState;
+  onGenerate: () => void;
+}) {
+  const collected = analysis.missingData
+    .map((question) => ({ label: question.label, value: answers[question.id]?.trim() || "" }))
+    .filter((item) => item.value && item.value !== "-");
+  const assumed = [
+    ...analysis.missingData
+      .filter((question) => !answers[question.id]?.trim() || answers[question.id] === "-")
+      .map((question) => question.label),
+    ...analysis.assumptions,
+  ];
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Pre-Generate Review</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Periksa ringkasan ini sebelum SmartCampus membuat dokumen final.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!canGenerate}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-100 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {state === "GENERATING" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Konfirmasi Generate
+        </button>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <InfoBlock title="Jenis Tugas" items={[analysis.routedType]} />
+        <InfoBlock title="Mata Kuliah" items={[analysis.course || "Belum disebutkan"]} />
+        <InfoBlock title="Output yang Akan Dibuat" items={analysis.requestedOutput} />
+        <InfoBlock title="Struktur Dokumen" items={analysis.reportStructure} />
+        <InfoBlock title="Data Terkumpul" items={collected.length ? collected.map((item) => `${item.label}: ${item.value}`) : ["Belum ada data mahasiswa yang tersimpan."]} />
+        <InfoBlock title="Diasumsikan/Kosong" items={assumed.length ? assumed : ["Tidak ada asumsi atau data kosong terdeteksi."]} />
+      </div>
+    </div>
+  );
+}
+
+function RubricChecklist({ analysis }: { analysis: AssignmentAnalysis }) {
+  if (analysis.gradingRubric.length === 0) return null;
+  return (
+    <div className="mt-4 rounded-lg border border-emerald-100 bg-white/80 p-3">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700">Rubric Awareness V1</h3>
+      <div className="mt-2 space-y-2">
+        {analysis.gradingRubric.map((item, index) => (
+          <label key={`${item.aspect}-${index}`} className="flex items-start gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked readOnly className="mt-1 h-3.5 w-3.5 rounded border-slate-300" />
+            <span>{[item.aspect, item.weight, item.description].filter(Boolean).join(" - ")}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -390,6 +481,18 @@ function ReportPreview({ report }: { report: AssignmentReport | null }) {
       </div>
       <div className="max-h-[680px] space-y-4 overflow-y-auto pr-2">
         <PreviewBlock title="Ringkasan" body={report.executiveSummary} />
+        {report.rubricChecks.length > 0 && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+            <h3 className="text-sm font-bold text-blue-950">Rubric Check Setelah Generate</h3>
+            <div className="mt-2 space-y-1">
+              {report.rubricChecks.map((item, index) => (
+                <p key={`${item.aspect}-${index}`} className="text-xs text-blue-900">
+                  <span className="font-semibold">{item.status.toUpperCase()}</span> - {item.aspect}: {item.note}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
         {report.sections.map((section) => <PreviewBlock key={section.title} title={section.title} body={section.body} />)}
       </div>
     </section>

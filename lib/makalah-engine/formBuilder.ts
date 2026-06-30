@@ -8,19 +8,17 @@ export function buildDynamicFormSchema(analysis: AssignmentAnalysis): DynamicFor
     ...analysis.requiredDeliverables.flatMap((item) => [item.name, item.description, ...item.requiredSections]),
   ].join(" ").toLowerCase();
 
-  if (matches(text, ["social media marketing", "mini project", "proposal"])) {
+  if (matches(text, ["mini project", "proposal"])) {
     return schema(
-      "Silakan lengkapi data proposal mini project",
+      "Silakan lengkapi data proposal",
       "Data ini akan dipakai sebagai bahan proposal. Instruksi dosen tetap disimpan sebagai blueprint internal.",
       [
-        field("brandName", "Nama Brand", "text", true, "Contoh: Clickora", "Clickora"),
-        field("productName", "Produk", "text", true, "Contoh: Custom Clicker Nama", "Custom Clicker Nama"),
-        field("tagline", "Tagline", "text", false, "Contoh: Klik Namamu, Tunjukkan Gayamu", "Klik Namamu, Tunjukkan Gayamu"),
-        field("productDescription", "Deskripsi Produk", "textarea", true, "Jelaskan produk, fungsi, bahan, variasi, dan alasan produk menarik.", "Custom Clicker Nama diproduksi menggunakan mesin 3D printing, tersedia berbagai model dan warna, berbentuk seperti keyboard mini, dan saat ditekan menghasilkan bunyi klik."),
-        field("targetMarket", "Target Market", "textarea", true, "Contoh: pelajar, mahasiswa, pembeli hadiah personal, pengguna aktif TikTok.", "Pelajar dan mahasiswa yang menyukai aksesori personal, unik, dan mudah dipamerkan di media sosial."),
-        field("socialPlatforms", "Platform Media Sosial", "text", true, "Contoh: Instagram, TikTok, Shopee", "Instagram, TikTok, Shopee"),
+        field("projectName", "Nama Proyek/Objek", "text", true, "Nama proyek, kegiatan, produk, usaha, atau objek kajian"),
+        field("projectDescription", "Deskripsi Proyek/Objek", "textarea", true, "Jelaskan konteks, tujuan, fitur, manfaat, atau batasan utama."),
+        field("targetAudience", "Target/Sasaran", "textarea", true, "Segmen pengguna, peserta, responden, pelanggan, atau pihak terkait."),
+        field("channels", "Media/Kanal/Metode", "text", false, "Kanal, metode pelaksanaan, lokasi, atau alat yang relevan."),
         field("logo", "Logo (opsional)", "image", false, "Upload logo bila sudah ada."),
-        field("productPhoto", "Foto Produk (opsional)", "image", false, "Upload foto produk bila sudah ada."),
+        field("supportingImage", "Gambar Pendukung (opsional)", "image", false, "Upload gambar bila sudah ada."),
         field("groupName", "Nama Kelompok", "text", false, "Contoh: Kelompok 3"),
         field("members", "Nama Anggota", "textarea", true, "Tulis nama anggota per baris."),
         field("nim", "NIM", "textarea", true, "Tulis NIM sesuai urutan anggota."),

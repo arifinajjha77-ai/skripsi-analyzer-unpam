@@ -11,6 +11,21 @@ export const assignmentWorkspaceStateSchema = z.enum([
 
 export type AssignmentWorkspaceState = z.infer<typeof assignmentWorkspaceStateSchema>;
 
+export const assignmentTypeRouterSchema = z.enum([
+  "PROPOSAL",
+  "MAKALAH",
+  "BUSINESS_PLAN",
+  "SKRIPSI",
+  "PKM",
+  "LAPORAN_PRAKTIKUM",
+  "JURNAL",
+  "PRESENTASI",
+  "CASE_STUDY",
+  "UNKNOWN",
+]);
+
+export type AssignmentTypeRouter = z.infer<typeof assignmentTypeRouterSchema>;
+
 export const assignmentDeliverableSchema = z.object({
   name: z.string(),
   type: z.enum(["proposal", "report", "weekly_report", "final_report", "presentation", "essay", "worksheet", "other"]),
@@ -33,6 +48,7 @@ export const assignmentAnalysisSchema = z.object({
   title: z.string(),
   course: z.string().optional(),
   assignmentType: z.string(),
+  routedType: assignmentTypeRouterSchema,
   requestedOutput: z.array(z.string()),
   reportStructure: z.array(z.string()),
   gradingRubric: z.array(z.object({
@@ -63,6 +79,12 @@ export const assignmentReportSectionSchema = z.object({
   body: z.string(),
 });
 
+export const assignmentRubricCheckSchema = z.object({
+  aspect: z.string(),
+  status: z.enum(["met", "partial", "missing"]),
+  note: z.string(),
+});
+
 export const assignmentReportSchema = z.object({
   title: z.string(),
   course: z.string(),
@@ -71,6 +93,7 @@ export const assignmentReportSchema = z.object({
   sections: z.array(assignmentReportSectionSchema),
   references: z.array(z.string()),
   appendices: z.array(z.string()),
+  rubricChecks: z.array(assignmentRubricCheckSchema),
   generatedWith: z.object({
     model: z.string(),
     fallback: z.boolean(),
@@ -79,6 +102,7 @@ export const assignmentReportSchema = z.object({
 
 export type AssignmentReport = z.infer<typeof assignmentReportSchema>;
 export type AssignmentReportSection = z.infer<typeof assignmentReportSectionSchema>;
+export type AssignmentRubricCheck = z.infer<typeof assignmentRubricCheckSchema>;
 
 export type AssignmentAnalyzeResult = {
   state: AssignmentWorkspaceState;
