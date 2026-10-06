@@ -49,6 +49,22 @@ async function inspect(name, data, marker, line) {
   }
   const styles = await zip.file('word/styles.xml').async('string');
   assert(styles.includes('Times New Roman'), `${name}: default font`);
+  const relationships = xml2js(await zip.file('word/_rels/document.xml.rels').async('string'));
+  const targets = new Map(all(relationships, 'Relationship').map(r => [r.attributes.Id, r.attributes.Target]));
+  const pageField = node => all(node, 'w:instrText').some(n => n.elements?.some(e => /\bPAGE\b/.test(e.text || '')));
+  for (const file of Object.keys(zip.files).filter(f => /^word\/header\d+\.xml$/.test(f))) {
+    assert(!pageField(xml2js(await zip.file(file).async('string'))), `${name}: no page numbers in headers`);
+  }
+  for (const sect of sects) {
+    for (const ref of all(sect, 'w:footerReference')) {
+      const footer = xml2js(await zip.file(`word/${targets.get(ref.attributes['r:id'])}`).async('string'));
+      if (all(sect, 'w:titlePg').some(n => !['0', 'false'].includes(n.attributes?.['w:val']))) assert(pageField(footer), `${name}: chapter first and continuation pages have footer numbers`);
+      for (const p of all(footer, 'w:p').filter(pageField)) {
+        assert.equal(all(p, 'w:jc')[0]?.attributes['w:val'], 'center', `${name}: footer number centered`);
+        assert.equal(all(p, 'w:ind')[0]?.attributes['w:right'], '567', `${name}: number centered on physical A4`);
+      }
+    }
+  }
   console.log(`PASS ${name}: A4, margins 4/4/3/3 cm, header/footer 2 cm${marker ? ', body spacing and indent' : ''}`);
   return { xml, zip };
 }
@@ -101,7 +117,7 @@ assert.equal(all(firstFooter, 'w:jc')[0].attributes['w:val'], 'center');
 assert.equal(all(firstFooter, 'w:ind')[0].attributes['w:right'], '567', 'Center footer on physical A4 despite asymmetric margins');
 assert(all(firstFooter, 'w:instrText').some(n => n.elements?.some(e => e.text === 'PAGE')));
 const defaultHeader = xml2js(await placementDoc.zip.file('word/header1.xml').async('string'));
-assert.equal(all(defaultHeader, 'w:jc')[0].attributes['w:val'], 'right');
+assert.equal(all(defaultHeader, 'w:instrText').length, 0, 'Continuation pages do not have header numbers');
 const listParagraph = all(placementDoc.xml, 'w:p').find(p => plainText(p).startsWith('1.') && plainText(p).includes('Apakah'));
 assert.equal(all(listParagraph, 'w:ind')[0].attributes['w:left'], '850');
 assert.equal(all(listParagraph, 'w:ind')[0].attributes['w:hanging'], '850');

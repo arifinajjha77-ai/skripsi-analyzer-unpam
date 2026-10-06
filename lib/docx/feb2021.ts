@@ -25,12 +25,12 @@ export const FEB_PAGE = {
   margin: { top: cmTwips(4), left: cmTwips(4), right: cmTwips(3), bottom: cmTwips(3), header: cmTwips(2), footer: cmTwips(2) },
 };
 
-function pageNumber(align: "center" | "right"): Paragraph {
+function pageNumber(): Paragraph {
   return new Paragraph({
-    alignment: align === "right" ? AlignmentType.RIGHT : AlignmentType.CENTER,
+    alignment: AlignmentType.CENTER,
     // A centered paragraph otherwise centers in the asymmetric text margins,
     // shifting the number 0.5 cm right of the physical A4 page center.
-    ...(align === "center" ? { indent: { right: cmTwips(FEB_2021.marginCm.left - FEB_2021.marginCm.right) } } : {}),
+    indent: { right: cmTwips(FEB_2021.marginCm.left - FEB_2021.marginCm.right) },
     spacing: { before: 0, after: 0, line: 240 },
     children: [new TextRun({ children: [PageNumber.CURRENT], font: FEB_2021.font, size: 24 })],
   });
@@ -51,11 +51,11 @@ export function febSection(children: ISectionOptions["children"], region: "cover
     },
     headers: {
       first: new Header({ children: [blank()] }),
-      default: new Header({ children: [chapter ? pageNumber("right") : blank()] }),
+      default: new Header({ children: [blank()] }),
     },
     footers: {
-      first: new Footer({ children: [cover ? blank() : pageNumber("center")] }),
-      default: new Footer({ children: [chapter || cover ? blank() : pageNumber("center")] }),
+      first: new Footer({ children: [cover ? blank() : pageNumber()] }),
+      default: new Footer({ children: [cover ? blank() : pageNumber()] }),
     },
     children,
   };

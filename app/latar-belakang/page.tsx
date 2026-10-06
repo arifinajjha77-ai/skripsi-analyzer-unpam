@@ -870,7 +870,7 @@ export default function LatarBelakangPage() {
         <select id="bab1-document-type" value={form.documentType || "skripsi"} onChange={(event) => updateForm({ documentType: event.target.value as "skripsi" | "proposal-skripsi" })} className="mt-2 block w-full rounded-lg border border-blue-200 bg-white p-2 text-sm">
           <option value="skripsi">Skripsi · Subbab 1.1–1.4</option><option value="proposal-skripsi">Proposal skripsi / sempro · Subbab 1.1–1.5</option>
         </select>
-        <p className="mt-2 text-xs text-blue-900">Proposal menambahkan 1.5 Sistematika Penulisan sesuai pedoman. Definisi dan kutipan perlu dicocokkan kembali dengan sumber asli. Penomoran DOCX: awal BAB di tengah bawah kertas, halaman lanjutan di kanan atas, dan daftar pustaka di tengah bawah dengan nomor berlanjut.</p>
+        <p className="mt-2 text-xs text-blue-900">Proposal menambahkan 1.5 Sistematika Penulisan sesuai pedoman. Definisi dan kutipan perlu dicocokkan kembali dengan sumber asli. Penomoran DOCX: seluruh nomor halaman berada di bawah tengah kertas dan berlanjut antar bab hingga daftar pustaka.</p>
       </section>
       {/* ── FORM SECTIONS ── */}
 
