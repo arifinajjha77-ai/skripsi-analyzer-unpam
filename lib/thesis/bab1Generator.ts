@@ -387,17 +387,15 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     paragraphs.push(salesDesc);
   } else if (salesMode === "tidak_tersedia") {
     paragraphs.push(
-      `Data penjualan ${namaObjek} tidak dapat disajikan secara rinci mengingat keterbatasan ` +
-      `aksesibilitas informasi dari pihak ${varRef(namaObjek, ++refN)}. Namun, berdasarkan ` +
-      `observasi dan informasi yang diperoleh peneliti di lapangan, terdapat indikasi bahwa ` +
-      `kinerja penjualan ${varRef(namaObjek, ++refN)} menghadapi tantangan yang memerlukan ` +
-      `evaluasi mendalam terhadap faktor-faktor yang mempengaruhi ${y || "keputusan konsumen"}.`
+      `Data penjualan ${namaObjek} belum tersedia untuk disajikan. Oleh karena itu, ` +
+      `tren penjualan dan pencapaian target belum dapat disimpulkan. Penelitian memerlukan ` +
+      `data pendukung untuk menilai kondisi tersebut.`
     );
   }
 
   // ── 5. PENGUATAN TEORI — DATA TO THEORY BRIDGE ───────────────────────────────
   // Pass the trendKey (not the label) so the engine can vary its analysis sentences
-  if (validSales.length >= 1 || salesMode === "tidak_tersedia") {
+  if (salesValues.length >= 2) {
     paragraphs.push(
       buildDataTheoryBridge(namaObjek, saleTrendKey, x1, x2, y)
     );
@@ -457,10 +455,8 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     paragraphs.push(consumerDesc);
   } else if (consumerMode === "tidak_tersedia") {
     paragraphs.push(
-      `Data jumlah konsumen ${namaObjek} juga tidak tersedia secara resmi. Berdasarkan ` +
-      `pengamatan langsung di lapangan, terdapat indikasi bahwa pertumbuhan konsumen ` +
-      `${varRef(namaObjek, ++refN)} menghadapi tantangan yang memerlukan perbaikan ` +
-      `strategi pemasaran secara menyeluruh.`
+      `Data jumlah konsumen ${namaObjek} belum tersedia. Perkembangan jumlah konsumen ` +
+      `belum dapat dinilai sebelum data pendukung diperoleh.`
     );
   }
 
@@ -520,20 +516,12 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
   // ── 8. FENOMENA OBJEK PENELITIAN (observasi/wawancara) ───────────────────────
   if (fenomenaLines.length > 0) {
     // Vary the intro based on hash
-    const fenIntroVariants = [
-      `Untuk memperkaya pemahaman yang berbasis data kuantitatif di atas, peneliti melakukan ` +
-      `observasi awal dan wawancara pendahuluan secara langsung kepada pihak ${varRef(namaObjek, ++refN)}. `,
-      `Data-data di atas diperkuat oleh hasil observasi lapangan yang dilakukan peneliti ` +
-      `terhadap kondisi aktual ${varRef(namaObjek, ++refN)} selama periode penelitian berlangsung. `,
-      `Selain melalui data sekunder, peneliti juga memperoleh gambaran kondisi ${varRef(namaObjek, ++refN)} ` +
-      `melalui observasi langsung dan wawancara awal dengan pihak terkait. `,
-    ];
-    const fenIntro = fenIntroVariants[hash0 % fenIntroVariants.length];
+    const fenIntro = `Fenomena yang dicatat dalam rancangan penelitian ${namaObjek} perlu didukung sumber dan metode pengumpulan yang jelas. `;
 
     const fenCore =
       fenomenaLines.length === 1
-        ? `Dari hasil observasi tersebut, ditemukan fenomena yang menjadi permasalahan utama, yaitu: ${fenomenaLines[0]}. `
-        : `Dari hasil observasi dan wawancara tersebut, teridentifikasi beberapa fenomena yang ` +
+        ? `Permasalahan yang dicatat yaitu: ${fenomenaLines[0]}. `
+        : `Beberapa fenomena yang dicatat ` +
           `menjadi permasalahan utama ${varRef(namaObjek, ++refN)}, di antaranya: ` +
           `${fenomenaLines.join("; ")}. `;
 
@@ -573,6 +561,8 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
       consumerTrend: consumerTrendKey,
       hasCompetitors: validCompetitors.length > 0,
       hasFenomena: fenomenaLines.length > 0,
+      hasSalesData: salesValues.length >= 2,
+      hasConsumerData: consumerValues.length >= 2,
     })
   );
 

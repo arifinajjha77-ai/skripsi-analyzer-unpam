@@ -12,7 +12,7 @@ import { generateOperasionalDocx } from '../lib/thesis/operasionalDocx.ts';
 import { generateDocx } from '../lib/thesis/docxExport.ts';
 import { generateInsightDocx } from '../lib/kelayakan/docxExport.ts';
 import { generateBab4Enhanced } from '../lib/narratives/generator.ts';
-import { buildSalesTable } from '../lib/thesis/bab1Generator.ts';
+import { buildSalesTable, generateLatarBelakang } from '../lib/thesis/bab1Generator.ts';
 import { getCitationFor, getBab1References } from '../lib/bab1-engine/authorMapping.ts';
 import { defaultBab1State } from '../lib/thesis/bab1Store.ts';
 import { defaultMakalahState } from '../lib/makalah/store.ts';
@@ -71,6 +71,14 @@ for (const profile of ['proposal-skripsi', 'skripsi', 'makalah']) {
   assert(headings.every(p => all(p, 'w:sz')[0]?.attributes['w:val'] === '24'));
 }
 const thesis = { x1: 'Kualitas Pelayanan', x2: 'Harga', y: 'Kepuasan Pelanggan', objek: 'Usaha Uji' };
+const withoutData = generateLatarBelakang({ ...defaultBab1State, namaObjek: 'Usaha Uji', salesDataMode: 'tidak_tersedia', consumerDataMode: 'tidak_tersedia', fenomena: '' }, thesis);
+assert(!withoutData.includes('tercermin dalam data'));
+assert(!withoutData.includes('pengamatan langsung'));
+assert(!withoutData.includes('observasi dan informasi'));
+assert(!withoutData.includes('Tjiptono & Chandra, 2022'));
+assert(!withoutData.includes('masih sangat terbatas'));
+assert(withoutData.includes('tren penjualan dan pencapaian target belum dapat disimpulkan'));
+
 await inspect('bab1', await generateBab1Docx({ ...defaultBab1State, namaObjek: 'Usaha Uji', lokasi: 'Cirebon', fenomena: marker, salesData: [{tahun: '2026', target: '100', realisasi: '80'}], consumerData: [], competitors: [] }, thesis));
 const proposalBab1 = await inspect('bab1-sempro', await generateBab1Docx({ ...defaultBab1State, documentType: 'proposal-skripsi', namaObjek: 'Usaha Uji', fenomena: marker }, thesis));
 assert(plainText(proposalBab1.xml).includes('1.5 Sistematika Penulisan'));

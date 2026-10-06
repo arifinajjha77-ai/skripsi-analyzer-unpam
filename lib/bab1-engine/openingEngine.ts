@@ -29,21 +29,21 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `telah mencapai lebih dari 78 persen penduduk, sehingga aktivitas konsumen dalam mencari informasi dan membuat ` +
       `keputusan pembelian semakin banyak dilakukan melalui platform digital. Kondisi ini menciptakan peluang strategis ` +
       `bagi pelaku usaha di bidang ${usaha || "pemasaran"} untuk mengoptimalkan kehadiran digitalnya dalam menjangkau ` +
-      `konsumen yang lebih luas (Chaffey & Ellis-Chadwick, 2022).`,
+      `konsumen yang lebih luas.`,
 
     (usaha: string) =>
       `Transformasi perilaku konsumen yang dipicu oleh meluasnya penggunaan platform media sosial telah mengubah ` +
       `lanskap persaingan bisnis secara fundamental. Konsumen kini memiliki akses yang lebih mudah terhadap informasi ` +
       `produk, ulasan pengguna, dan perbandingan harga sebelum melakukan pembelian. Fenomena ini mendorong pelaku ` +
       `usaha di bidang ${usaha || "pemasaran"} untuk merancang strategi komunikasi yang lebih adaptif dan responsif ` +
-      `terhadap kebiasaan konsumen di ruang digital (Kaplan & Haenlein, 2022).`,
+      `terhadap kebiasaan konsumen di ruang digital.`,
 
     (usaha: string) =>
       `Kemajuan teknologi informasi yang berlangsung pesat telah membuka babak baru dalam aktivitas pemasaran di Indonesia. ` +
       `Platform media sosial seperti Instagram, TikTok, dan YouTube kini menjadi arena utama bagi konsumen untuk ` +
       `menemukan dan mengevaluasi produk sebelum memutuskan pembelian. Bagi pelaku usaha di bidang ` +
       `${usaha || "pemasaran"}, kemampuan untuk memanfaatkan kanal digital secara efektif menjadi salah satu ` +
-      `keunggulan kompetitif yang menentukan keberlangsungan usaha (Kotler et al., 2022).`,
+      `keunggulan kompetitif yang menentukan keberlangsungan usaha.`,
   ] as unknown as string[],
 
   influencer: [
@@ -53,7 +53,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `tahun terakhir. Konsumen menunjukkan kecenderungan yang lebih tinggi untuk mempercayai rekomendasi dari ` +
       `individu yang mereka ikuti di media sosial dibandingkan dengan iklan konvensional. Hal ini menjadikan ` +
       `influencer marketing sebagai instrumen pemasaran yang efektif bagi pelaku usaha di bidang ` +
-      `${usaha || "pemasaran"} untuk meningkatkan jangkauan dan daya tarik produknya (Shimp & Andrews, 2023).`,
+      `${usaha || "pemasaran"} untuk meningkatkan jangkauan dan daya tarik produknya.`,
 
     (usaha: string) =>
       `Pergeseran kepercayaan konsumen dari media konvensional menuju rekomendasi berbasis komunitas digital ` +
@@ -61,7 +61,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `dan opinion leader di platform digital dalam membentuk persepsi konsumen terhadap suatu produk atau ` +
       `merek tidak dapat lagi diabaikan oleh pelaku usaha. Kondisi ini mendorong pelaku usaha di bidang ` +
       `${usaha || "pemasaran"} untuk mengintegrasikan strategi endorsement digital sebagai bagian dari ` +
-      `rencana pemasaran yang komprehensif (Kotler et al., 2022).`,
+      `rencana pemasaran yang komprehensif.`,
   ] as unknown as string[],
 
   price: [
@@ -71,7 +71,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `penetapan harga yang kompetitif bukan lagi sekadar keunggulan, melainkan prasyarat agar suatu usaha ` +
       `dapat bertahan dan berkembang. Pelaku usaha di bidang ${usaha || "pemasaran"} dituntut untuk merancang ` +
       `strategi penetapan harga yang mampu memberikan nilai terbaik bagi konsumen sekaligus menjaga ` +
-      `profitabilitas perusahaan (Tjiptono & Chandra, 2022).`,
+      `profitabilitas perusahaan.`,
 
     (usaha: string) =>
       `Sensitivitas konsumen terhadap harga merupakan salah satu faktor paling berpengaruh dalam proses ` +
@@ -79,7 +79,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `persepsi nilai yang dirasakan oleh konsumen terhadap produk atau jasa yang ditawarkan. Dalam lingkungan ` +
       `persaingan yang semakin intens, kemampuan pelaku usaha di bidang ${usaha || "pemasaran"} untuk ` +
       `mengelola kebijakan harga secara cermat menjadi kunci dalam mempertahankan pangsa pasar ` +
-      `(Kotler & Armstrong, 2021).`,
+      `.`,
   ] as unknown as string[],
 
   quality_product: [
@@ -89,7 +89,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `harga sebagai satu-satunya acuan dalam menilai kelayakan suatu produk, melainkan memberikan perhatian ` +
       `yang sama besarnya terhadap performa, keandalan, dan daya tahan produk tersebut. Tantangan ini menuntut ` +
       `pelaku usaha di bidang ${usaha || "industri"} untuk menjadikan standar kualitas sebagai fondasi ` +
-      `utama dalam setiap proses produksi (Kotler & Armstrong, 2021).`,
+      `utama dalam setiap proses produksi.`,
 
     (usaha: string) =>
       `Konsistensi kualitas produk menjadi faktor pembeda yang signifikan di tengah pasar yang semakin ` +
@@ -97,7 +97,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `cenderung untuk melakukan pembelian ulang dan merekomendasikannya kepada orang-orang di sekitarnya. ` +
       `Dalam hal ini, pelaku usaha di bidang ${usaha || "industri"} memiliki tanggung jawab untuk ` +
       `memastikan bahwa standar kualitas yang dijanjikan dapat terpenuhi secara konsisten pada ` +
-      `setiap unit produk yang dihasilkan (Kotler & Keller, 2022).`,
+      `setiap unit produk yang dihasilkan.`,
   ] as unknown as string[],
 
   quality_service: [
@@ -107,7 +107,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `mendorong konsumen untuk kembali, tetapi juga menciptakan efek berantai melalui rekomendasi ` +
       `dari mulut ke mulut. Bagi pelaku usaha di bidang ${usaha || "jasa"}, peningkatan standar ` +
       `pelayanan secara berkelanjutan merupakan investasi strategis yang berdampak langsung terhadap ` +
-      `pertumbuhan bisnis jangka panjang (Parasuraman et al., 2022).`,
+      `pertumbuhan bisnis jangka panjang.`,
 
     (usaha: string) =>
       `Persaingan dalam industri jasa yang semakin kompetitif menempatkan kualitas pelayanan sebagai ` +
@@ -115,7 +115,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `yang semakin tinggi terhadap responsivitas, keandalan, dan empati yang ditunjukkan oleh ` +
       `penyedia jasa dalam melayani kebutuhan mereka. Pelaku usaha di bidang ${usaha || "jasa"} ` +
       `yang mampu secara konsisten memenuhi atau melampaui ekspektasi tersebut akan memiliki posisi ` +
-      `yang lebih kuat dalam mempertahankan loyalitas konsumen (Zeithaml et al., 2022).`,
+      `yang lebih kuat dalam mempertahankan loyalitas konsumen.`,
   ] as unknown as string[],
 
   brand: [
@@ -125,7 +125,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `cenderung lebih mudah menerima dan mempercayai produk baru yang dikeluarkan oleh merek tersebut. ` +
       `Bagi pelaku usaha di bidang ${usaha || "pemasaran"}, pengelolaan identitas dan reputasi merek ` +
       `secara strategis menjadi bagian yang tidak terpisahkan dari upaya membangun pangsa pasar ` +
-      `yang berkelanjutan (Aaker, 2022).`,
+      `yang berkelanjutan.`,
 
     (usaha: string) =>
       `Pembentukan persepsi konsumen terhadap suatu merek terjadi melalui akumulasi pengalaman, ` +
@@ -133,7 +133,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `membangun keterikatan emosional dengan konsumennya tidak hanya memperoleh loyalitas pembelian, ` +
       `tetapi juga mendapatkan advokasi organik yang berdampak positif terhadap pertumbuhan bisnis. ` +
       `Kondisi ini mendorong pelaku usaha di bidang ${usaha || "pemasaran"} untuk menjadikan ` +
-      `penguatan merek sebagai prioritas dalam agenda strategisnya (Aaker, 2022).`,
+      `penguatan merek sebagai prioritas dalam agenda strategisnya.`,
   ] as unknown as string[],
 
   distribution: [
@@ -143,7 +143,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `dapat menjangkau konsumen dengan cara yang paling mudah dan nyaman, baik melalui saluran ` +
       `fisik maupun digital. Pelaku usaha di bidang ${usaha || "pemasaran"} yang mampu mengelola ` +
       `rantai distribusinya dengan baik akan memiliki keunggulan dalam memenuhi permintaan pasar ` +
-      `secara lebih responsif (Tjiptono, 2021).`,
+      `secara lebih responsif.`,
   ] as unknown as string[],
 
   consumer_decision: [
@@ -154,7 +154,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `usaha dalam merancang strategi pemasaran yang efektif dan tepat sasaran. Dalam industri ` +
       `${usaha || "pemasaran"}, pemahaman mendalam tentang faktor-faktor yang memengaruhi keputusan ` +
       `konsumen menjadi landasan penting dalam mengembangkan pendekatan bisnis yang kompetitif ` +
-      `(Schiffman & Kanuk, 2022).`,
+      `.`,
 
     (usaha: string) =>
       `Dinamika perilaku konsumen yang terus berkembang seiring perubahan sosial, teknologi, dan ` +
@@ -163,7 +163,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `manfaat fungsional produk, tetapi juga aspek pengalaman, nilai sosial, dan kepercayaan terhadap ` +
       `penyedia produk atau jasa. Fenomena ini mendorong pelaku usaha di bidang ` +
       `${usaha || "pemasaran"} untuk terus beradaptasi dalam memenuhi ekspektasi konsumen yang ` +
-      `semakin beragam (Engel et al., 2021).`,
+      `semakin beragam.`,
   ] as unknown as string[],
 
   general: [
@@ -174,7 +174,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `untuk terus melakukan evaluasi dan inovasi dalam strategi pemasarannya. Bagi pelaku usaha ` +
       `di bidang ${usaha || "pemasaran"}, identifikasi faktor-faktor yang secara signifikan ` +
       `mempengaruhi perilaku konsumen menjadi langkah awal yang krusial dalam merancang strategi ` +
-      `bisnis yang terukur dan berkelanjutan (Kotler & Keller, 2022).`,
+      `bisnis yang terukur dan berkelanjutan.`,
 
     (usaha: string) =>
       `Perkembangan dunia bisnis yang dinamis menuntut setiap pelaku usaha untuk mampu mengidentifikasi ` +
@@ -183,7 +183,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `strategi pemasaran yang diterapkan dalam menjangkau dan mempertahankan konsumennya. Oleh karena ` +
       `itu, kajian mendalam mengenai faktor-faktor yang mempengaruhi perilaku konsumen di bidang ` +
       `${usaha || "pemasaran"} menjadi topik penelitian yang relevan dan memiliki nilai praktis ` +
-      `yang tinggi bagi pengembangan ilmu manajemen pemasaran (Kotler & Armstrong, 2021).`,
+      `yang tinggi bagi pengembangan ilmu manajemen pemasaran.`,
 
     (usaha: string) =>
       `Kelangsungan usaha dalam jangka panjang tidak dapat dipisahkan dari kemampuan perusahaan ` +
@@ -192,7 +192,7 @@ const OPENINGS: Record<OpeningCategory, string[]> = {
       `kebutuhan dan keinginan konsumen di pasar. Dalam konteks ${usaha || "pemasaran"} yang ` +
       `semakin kompetitif, penelitian yang mengkaji faktor-faktor penentu keberhasilan pemasaran ` +
       `memiliki relevansi yang tinggi baik bagi akademisi maupun bagi praktisi bisnis ` +
-      `(Tjiptono, 2021).`,
+      `.`,
   ] as unknown as string[],
 };
 
