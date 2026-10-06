@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const ai = await generateJsonWithOpenAI<unknown>(studyImportPrompt(text), { timeoutMs: 40000, signal: request.signal, maxOutputTokens: 10000 });
     const studies = ai && validateImportedStudies(ai.data, text);
     if (!studies) return Response.json({ error: 'Teks belum dapat dipisahkan dengan akurat. Gunakan format Peneliti:, Judul:, Jurnal:, Hasil:; pisahkan setiap penelitian dengan satu baris kosong. Pilihan 10 penelitian yang dikirim tetap dapat dipakai tanpa koneksi generator.' }, { status: 422 });
-    return Response.json({ studies, engine: 'ai', warnings: ['Periksa jumlah dan isi baris terhadap teks sumber. Metode dan identitas yang tidak tercantum tidak ditebak.'] }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ studies, engine: 'ai', warnings: ['Periksa jumlah dan isi baris terhadap teks sumber. Metode dan identitas yang tidak tercantum tidak ditebak.', ...(studies.some(r => !/\b\d{4}\b/.test(r.author)) ? ['Tahun terbit pada sebagian peneliti belum terbaca. Lengkapi dari jurnal asli.'] : [])] }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ error: 'Data impor tidak dapat dibaca. Teks dan tabel sebelumnya tetap tersedia.' }, { status: 400 });
   }
