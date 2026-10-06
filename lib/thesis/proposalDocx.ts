@@ -5,12 +5,13 @@ import type { Bab1State } from './bab1Store';
 import type { ThesisState } from './store';
 import { PROPOSAL_DIAGRAM_PNG } from './proposalDiagram';
 import { emptyProposal, PROPOSAL_SECTIONS, starterSections, type ProposalState } from './proposal';
+import { ProposalContents } from './proposalContents';
 
 export type ProposalExport = 'bab1' | 'bab2' | 'bab3' | 'combined';
 const chapterTitle = (text: string) => new Paragraph({ children: [new TextRun({ text, bold: true, font: 'Times New Roman', size: 24 })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 480 }, keepNext: true });
 const heading = (text: string, third = false) => new Paragraph({ heading: third ? HeadingLevel.HEADING_3 : HeadingLevel.HEADING_2, children: [new TextRun({ text, bold: true, font: 'Times New Roman', size: 24 })], spacing: { before: 0, after: 0, line: 480 }, keepNext: true });
 const body = (text: string) => new Paragraph({ children: academicRuns(text), alignment: AlignmentType.JUSTIFIED, spacing: { before: 0, after: 0, line: 480 }, indent: { firstLine: FEB_INDENT }, widowControl: true });
-const textParagraphs = (text: string) => text.split(/\n+/).map(t => t.trim()).filter(Boolean).map(t => /^\d+\.\d+\.\d+\s/.test(t) ? heading(t, true) : body(t));
+const textParagraphs = (text: string, contents?: ProposalContents) => text.split(/\n+/).map(t => t.trim()).filter(Boolean).map(t => /^\d+\.\d+\.\d+\s/.test(t) ? contents ? contents.heading(t, 3) : heading(t, true) : body(t));
 const blank = () => new Paragraph({ text: '', spacing: { before: 0, after: 0, line: 480 } });
 function caption(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 24, bold: true })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 240 }, keepNext: true }); }
 function source(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 20 })], spacing: { before: 0, after: 0, line: 240 } }); }
@@ -19,11 +20,13 @@ function dataTable(headers: string[], rows: string[][]): Table {
   const cell = (text: string, header = false) => new TableCell({ children: [new Paragraph({ children: header ? [new TextRun({ text, bold: true, font: 'Times New Roman', size: 20 })] : academicRuns(text, 20), spacing: { before: 0, after: 0, line: 240 }, alignment: header ? AlignmentType.CENTER : AlignmentType.LEFT })] });
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ tableHeader: true, cantSplit: true, children: headers.map(h => cell(h, true)) }), ...rows.map(row => new TableRow({ cantSplit: true, children: row.map(t => cell(t)) }))] });
 }
-function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisState, bab1: Bab1State): (Paragraph | Table)[] {
+function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisState, bab1: Bab1State, contents?: ProposalContents): (Paragraph | Table)[] {
   const defaults = starterSections(thesis, bab1);
-  const children: (Paragraph | Table)[] = [chapterTitle(chapter === 2 ? 'BAB II' : 'BAB III'), chapterTitle(chapter === 2 ? 'TINJAUAN PUSTAKA' : 'METODE PENELITIAN')];
+  const number = chapter === 2 ? 'BAB II' : 'BAB III';
+  const title = chapter === 2 ? 'TINJAUAN PUSTAKA' : 'METODE PENELITIAN';
+  const children: (Paragraph | Table)[] = [contents ? contents.heading(number, 1, `${number}\t${title}`) : chapterTitle(number), chapterTitle(title)];
   for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === chapter)) {
-    children.push(heading(s.title), ...textParagraphs(state.sections[s.id].trim() || defaults[s.id]));
+    children.push(contents ? contents.heading(s.title, 2) : heading(s.title), ...textParagraphs(state.sections[s.id].trim() || defaults[s.id], contents));
     if (s.id === 'studies') {
       const rows = state.studies.filter(r => Object.values(r).some(v => v.trim())).map(r => [r.author, r.title, r.method, r.result, r.comparison].map(v => v.trim() || '[Lengkapi]'));
       children.push(caption('Tabel 2.1 Penelitian Terdahulu'), dataTable(['Peneliti dan Tahun', 'Judul', 'Metode', 'Hasil', 'Persamaan dan Perbedaan'], rows.length ? rows : [['[Peneliti, tahun]', '[Judul jurnal]', '[Metode]', '[Temuan asli]', '[Persamaan/perbedaan]']]));
@@ -41,19 +44,22 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
   }
   return children;
 }
-function templateBab1(): Paragraph[] {
+function templateBab1(contents?: ProposalContents): Paragraph[] {
   const sections = ['1.1 Latar Belakang Penelitian', '1.2 Rumusan Masalah', '1.3 Tujuan Penelitian', '1.4 Manfaat Penelitian', '1.5 Sistematika Penulisan'];
-  return [chapterTitle('BAB I'), chapterTitle('PENDAHULUAN'), ...sections.flatMap(s => [heading(s), body(`[Isi ${s.replace(/^\d\.\d /, '')} sesuai penelitian Anda.]`), blank()])];
+  return [contents ? contents.heading('BAB I', 1, 'BAB I\tPENDAHULUAN', '1') : chapterTitle('BAB I'), chapterTitle('PENDAHULUAN'), ...sections.flatMap(s => [contents ? contents.heading(s, 2) : heading(s), body(`[Isi ${s.replace(/^\d\.\d /, '')} sesuai penelitian Anda.]`), blank()])];
 }
 /** Each chapter is a distinct Word section; only BAB I resets Arabic numbering. */
 export async function exportProposalDocx(state: ProposalState, thesis: ThesisState, bab1: Bab1State, target: ProposalExport, template = false): Promise<Blob> {
   if (template) { state = emptyProposal(); thesis = { x1: '', x2: '', y: '', objek: '' }; bab1 = { ...bab1, namaObjek: '', lokasi: '' }; }
-  const first = template ? { children: templateBab1(), references: [] as string[] } : buildBab1Content({ ...bab1, documentType: 'proposal-skripsi', namaObjek: bab1.namaObjek || thesis.objek }, thesis);
+  const contents = target === 'combined' ? new ProposalContents() : undefined;
+  const contentsTitle = contents?.heading('DAFTAR ISI', 1, 'DAFTAR ISI', 'i');
+  const first = template ? { children: templateBab1(contents), references: [] as string[] } : buildBab1Content({ ...bab1, documentType: 'proposal-skripsi', namaObjek: bab1.namaObjek || thesis.objek }, thesis, contents);
   const sections = [];
   if (target === 'bab1' || target === 'combined') sections.push(febSection(first.children, 'chapter', 1));
-  if (target === 'bab2' || target === 'combined') sections.push(febSection(chapterContent(2, state, thesis, bab1), 'chapter', target === 'combined' ? undefined : 1));
-  if (target === 'bab3' || target === 'combined') sections.push(febSection(chapterContent(3, state, thesis, bab1), 'chapter', target === 'combined' ? undefined : 1));
+  if (target === 'bab2' || target === 'combined') sections.push(febSection(chapterContent(2, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
+  if (target === 'bab3' || target === 'combined') sections.push(febSection(chapterContent(3, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
   const references = Array.from(new Set([...(target === 'bab1' || target === 'combined' ? first.references : []), ...state.references.split(/\n+/).map(s => s.trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'id'));
-  sections.push(febSection([chapterTitle('DAFTAR PUSTAKA'), ...(references.length ? references.map(reference) : [reference('[Tuliskan daftar pustaka dari semua sumber yang disitasi; urutkan menurut abjad.]')])], 'back'));
-  return Packer.toBlob(createFebDocument({ sections }, 'proposal-skripsi'));
+  sections.push(febSection([contents ? contents.heading('DAFTAR PUSTAKA', 1) : chapterTitle('DAFTAR PUSTAKA'), ...(references.length ? references.map(reference) : [reference('[Tuliskan daftar pustaka dari semua sumber yang disitasi; urutkan menurut abjad.]')])], 'back'));
+  if (contents && contentsTitle) sections.unshift(febSection(contents.table(contentsTitle), 'front', 1));
+  return Packer.toBlob(createFebDocument({ sections, ...(contents ? { styles: { paragraphStyles: contents.styles() } } : {}) }, 'proposal-skripsi'));
 }

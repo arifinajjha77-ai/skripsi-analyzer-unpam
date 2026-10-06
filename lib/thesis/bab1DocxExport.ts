@@ -26,6 +26,7 @@ import {
 } from "docx";
 import { Bab1State } from "./bab1Store";
 import { ThesisState } from "./store";
+import type { ProposalContents } from "./proposalContents";
 import {
   generateLatarBelakangBlocks,
   normalizeBab1State,
@@ -203,9 +204,10 @@ function buildTujuan(thesis: ThesisState, namaObjek: string): string[] {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-export function buildBab1Content(bab1: Bab1State, thesis: ThesisState): { children: (Paragraph | Table)[]; references: string[] } {
+export function buildBab1Content(bab1: Bab1State, thesis: ThesisState, contents?: ProposalContents): { children: (Paragraph | Table)[]; references: string[] } {
   bab1 = normalizeBab1State(bab1);
   const { namaObjek, lokasi } = bab1;
+  const sectionHeading = (text: string) => contents ? contents.heading(text, 2) : h2(text);
 
   const latarBelakangBlocks = generateLatarBelakangBlocks(bab1, thesis);
   const manfaatText = generateManfaatPenelitian(bab1, thesis);
@@ -252,27 +254,27 @@ export function buildBab1Content(bab1: Bab1State, thesis: ThesisState): { childr
   for (const key of ["sales", "consumers", "competitors"] as const) latarElements.push(...tableElements(key));
 
   const children: (Paragraph | Table)[] = [
-    h1("BAB I"),
+    contents ? contents.heading("BAB I", 1, "BAB I\tPENDAHULUAN", '1') : h1("BAB I"),
     h1("PENDAHULUAN"),
-    h2("1.1 Latar Belakang Penelitian"),
+    sectionHeading("1.1 Latar Belakang Penelitian"),
     ...latarElements,
     blank(),
 
     // 1.2 Rumusan Masalah
-    h2("1.2 Rumusan Masalah"),
+    sectionHeading("1.2 Rumusan Masalah"),
     ...rumusan.map((r) => listItem(r)),
     blank(),
 
     // 1.3 Tujuan Penelitian
-    h2("1.3 Tujuan Penelitian"),
+    sectionHeading("1.3 Tujuan Penelitian"),
     ...tujuan.map((t) => listItem(t)),
     blank(),
 
     // 1.4 Manfaat Penelitian
-    h2("1.4 Manfaat Penelitian"),
-    ...manfaatSections.flatMap(({ title, body }) => [
-      new Paragraph({
-        children: [new TextRun({ text: title, bold: true, size: SIZE_BODY, font: FONT })],
+    sectionHeading("1.4 Manfaat Penelitian"),
+    ...manfaatSections.flatMap(({ title, body }, index) => [
+      contents ? contents.heading(`1.4.${index + 1} ${title}`, 3) : new Paragraph({
+        children: [new TextRun({ text: `1.4.${index + 1} ${title}`, bold: true, size: SIZE_BODY, font: FONT })],
         spacing: { before: 0, after: 0, line: 480 },
       }),
       bodyPara(body),
@@ -280,7 +282,7 @@ export function buildBab1Content(bab1: Bab1State, thesis: ThesisState): { childr
   ];
 
   if (bab1.documentType === "proposal-skripsi") {
-    children.push(blank(), h2("1.5 Sistematika Penulisan"));
+    children.push(blank(), sectionHeading("1.5 Sistematika Penulisan"));
     for (const block of generateSistematikaProposal().split("\n\n")) {
       const [title, ...body] = block.split("\n");
       children.push(h2(title), bodyPara(body.join(" ")));

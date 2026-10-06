@@ -110,7 +110,7 @@ export default function ProposalPage() {
       const label = { bab1: 'BAB-I', bab2: 'BAB-II', bab3: 'BAB-III', combined: 'BAB-I-III' }[target];
       a.download = `${template ? 'Template' : 'Draf'}-Sempro-${label}-${template ? 'FEB-2021' : name}.docx`;
       document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice(`${template ? 'Template' : 'Draf'} ${label} berhasil diunduh. Bagian bertanda [kurung siku] masih perlu dilengkapi.`);
+      setNotice(`${template ? 'Template' : 'Draf'} ${label} berhasil diunduh.${target === 'combined' ? ' Daftar isi sudah disertakan. Di Microsoft Word, pilih Perbarui seluruh tabel agar nomor halaman mengikuti naskah; tanda — menunggu pembaruan.' : ''} Bagian bertanda [kurung siku] masih perlu dilengkapi.`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Unduhan gagal. Silakan coba lagi.'); }
     finally { setBusy(false); }
   }
@@ -128,10 +128,11 @@ export default function ProposalPage() {
     </section>
     <section className={cardClass} aria-labelledby="download-heading">
       <h2 id="download-heading" className="font-semibold text-slate-900">Unduh Word dan template</h2>
-      <p className="mb-4 mt-1 text-sm text-slate-600">Unduhan gabungan berisi BAB I–III dan daftar pustaka. Sampul serta bagian awal belum disertakan. BAB I memakai data di menu Latar Belakang dan menambahkan 1.5 Sistematika Penulisan.</p>
+      <p className="mb-4 mt-1 text-sm text-slate-600">Unduhan gabungan berisi daftar isi, BAB I–III, dan daftar pustaka. Sampul dan kata pengantar dapat ditambahkan sesuai naskah Anda. BAB I memakai data di menu Latar Belakang dan menambahkan 1.5 Sistematika Penulisan.</p>
       <div className="flex flex-wrap gap-2">{([{ key: 'bab1', label: 'Unduh BAB I' }, { key: 'bab2', label: 'Unduh BAB II' }, { key: 'bab3', label: 'Unduh BAB III' }, { key: 'combined', label: 'Unduh gabungan BAB I–III' }] as const).map(item => <button key={item.key} type="button" disabled={!ready || working} className={buttonClass} onClick={() => download(item.key)}><Download className="h-4 w-4" />{item.label}</button>)}</div>
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4"><label className="text-sm text-slate-700" htmlFor="template-target">Pilih template<select id="template-target" className={`${inputClass} mt-1`} value={templateTarget} onChange={e => setTemplateTarget(e.target.value as ProposalExport)}><option value="combined">Isi BAB I–III</option><option value="bab1">BAB I</option><option value="bab2">BAB II</option><option value="bab3">BAB III</option></select></label><button className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working} onClick={() => download(templateTarget, true)}><FileText className="h-4 w-4" />Unduh template Word</button></div>
-      <p className="mt-3 text-xs text-slate-500">A4, Times New Roman 12, isi 2 spasi, tabel 1 spasi. Nomor halaman gabungan berlanjut antar bab; halaman pembuka bab di tengah bawah, halaman berikutnya di kanan atas.</p>
+      <p className="mt-3 text-xs text-slate-500">A4, Times New Roman 12, isi 2 spasi, tabel 1 spasi. Daftar isi 1,5 spasi, titik penghubung, dan nomor rata kanan; halaman awal memakai Romawi. BAB I dimulai dari 1 dan nomor berlanjut antar bab; halaman pembuka bab di tengah bawah, halaman berikutnya di kanan atas.</p>
+      <p className="mt-2 text-xs text-slate-500">Di Microsoft Word, klik kanan daftar isi → Perbarui Bidang → Perbarui seluruh tabel. Lakukan kembali setelah mengubah naskah atau menambah halaman awal. Tanda — pada daftar isi akan diganti nomor halaman sebenarnya.</p>
     </section>
     {notice && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{notice}</p>}
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
@@ -143,7 +144,7 @@ export default function ProposalPage() {
       {generationNotes.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">{generationNotes.map((note,i) => <li key={i}>{note}</li>)}</ul>}
       <div className="mt-4 border-t border-slate-200 pt-4">
         <GeneratedDownloadButton disabled={!ready || working || filled === 0} busy={busy} onClick={() => download('combined')} />
-        <p className="mt-2 text-sm text-slate-600">{filled === 0 ? 'Generate atau isi narasi BAB II–III terlebih dahulu untuk mengunduh hasilnya.' : 'Menggabungkan BAB I yang tersimpan, hasil generate BAB II–III, edit terbaru, tabel, diagram, dan daftar pustaka ke satu file Word.'}</p>
+        <p className="mt-2 text-sm text-slate-600">{filled === 0 ? 'Generate atau isi narasi BAB II–III terlebih dahulu untuk mengunduh hasilnya.' : 'Menggabungkan daftar isi, BAB I yang tersimpan, hasil generate BAB II–III, edit terbaru, tabel, diagram, dan daftar pustaka ke satu file Word.'}</p>
       </div>
       <p className="mt-3 text-xs text-slate-500">Format unduhan tetap FEB UNPAM 2021. Data sampel, waktu penelitian, dan sitasi yang belum tersedia perlu dilengkapi sebelum naskah diajukan.</p>
     </section>
@@ -158,7 +159,7 @@ export default function ProposalPage() {
     <section className={cardClass}><h2 className="font-semibold text-slate-900"><label htmlFor="proposal-references">Daftar pustaka tambahan BAB II–III</label></h2><p className="mb-3 mt-1 text-sm text-slate-500">Satu entri lengkap per baris. Masukkan hanya sumber yang disitasi dan diverifikasi, maksimal 10 tahun terakhir menurut pedoman. Referensi BAB I ikut digabung dan diurutkan menurut abjad pada unduhan gabungan.</p><textarea id="proposal-references" disabled={!ready || working} className={inputClass} rows={6} placeholder="Penulis. (Tahun). Judul. Kota: Penerbit. / Metadata jurnal lengkap." value={proposal.references} onChange={e => updateProposal({ ...proposal, references: e.target.value })} />{referenceWarnings.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">{referenceWarnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>}</section>
     <section className={`${cardClass} border-emerald-200 bg-emerald-50`} aria-labelledby="generated-download-heading">
       <h2 id="generated-download-heading" className="font-semibold text-slate-900">Unduh hasil generate</h2>
-      <p className="mb-4 mt-1 text-sm text-slate-600">{filled}/10 subbab memiliki narasi. Unduh BAB I–III dan daftar pustaka dalam satu file Word dengan format FEB UNPAM 2021. Bagian bertanda [kurung siku] masih perlu dilengkapi.</p>
+      <p className="mb-4 mt-1 text-sm text-slate-600">{filled}/10 subbab memiliki narasi. Unduh daftar isi, BAB I–III, dan daftar pustaka dalam satu file Word dengan format FEB UNPAM 2021. Bagian bertanda [kurung siku] masih perlu dilengkapi.</p>
       <GeneratedDownloadButton disabled={!ready || working || filled === 0} busy={busy} onClick={() => download('combined')} />
     </section>
   </div>;

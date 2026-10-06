@@ -172,8 +172,8 @@ assert(started.sections.hypotheses.includes(thesis.x1));
 for (const target of ['bab1', 'bab2', 'bab3', 'combined']) {
   const { xml, zip } = await inspect(`sempro-${target}`, await exportProposalDocx(proposalState, thesis, { ...defaultBab1State, namaObjek: 'Usaha Uji' }, target), target === 'bab1' ? undefined : marker, 480);
   const text = plainText(xml);
-  assert.equal(all(xml, 'w:sectPr').length, target === 'combined' ? 4 : 2, 'One section per chapter plus bibliography');
-  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:start'] === '1').length, 1, 'Arabic numbering restarts once');
+  assert.equal(all(xml, 'w:sectPr').length, target === 'combined' ? 5 : 2, 'Combined includes Roman TOC, chapters and bibliography');
+  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:fmt'] === 'decimal' && n.attributes['w:start'] === '1').length, 1, 'Arabic numbering restarts once');
   if (target === 'bab2' || target === 'combined') {
     for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === 2)) assert(text.includes(s.title));
     assert(text.includes('Peneliti Uji (2025)'));
@@ -210,6 +210,26 @@ for (const target of ['bab1', 'bab2', 'bab3', 'combined']) {
   assert(!text.includes('Usaha Uji') && !text.includes('Peneliti Uji') && !text.includes(marker), 'Template excludes previous manuscript inputs');
   assert(!text.includes('Kotler'), 'Blank template does not inject manuscript references');
   assert(text.includes('[Isi') || text.includes('[Variabel'), 'Template retains fill-in prompts');
-  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:start'] === '1').length, 1);
+  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:fmt'] === 'decimal' && n.attributes['w:start'] === '1').length, 1);
 }
+// TOC cache is visible immediately; Word fields compute actual pages after layout.
+const tocProposal = { ...proposalState, sections: { ...proposalState.sections, theory: '2.1.1 Manajemen\n' + marker + '\n2.1.2 Pengaruh Harga dan Promosi terhadap Keputusan Pembelian dengan Judul Panjang yang Melampaui Satu Baris\n' + marker } };
+const { xml: tocXml, zip: tocZip } = await inspect('sempro-toc-layout', await exportProposalDocx(tocProposal, thesis, { ...defaultBab1State, namaObjek: 'Usaha Uji' }, 'combined'));
+const toc = all(tocXml, 'w:sdt')[0]; assert(toc, 'TOC structured field exists');
+assert(plainText(toc).includes('DAFTAR ISI') && plainText(toc).includes('2.1.1') && plainText(toc).includes('1.4.1'));
+assert(!plainText(toc).includes('KATA PENGANTAR'), 'Do not invent absent front pages');
+const tocInstruction = all(toc, 'w:instrText').flatMap(n => n.elements || []).map(e => e.text || '').join('');
+assert(tocInstruction.includes('TOC') && tocInstruction.includes('2-3') && tocInstruction.includes('\\f "P"'));
+const anchors = new Set(all(tocXml, 'w:bookmarkStart').map(b => b.attributes['w:name']));
+for (const field of all(toc, 'w:fldSimple')) { const instr = field.attributes['w:instr']; assert(instr.startsWith('PAGEREF ')); assert(anchors.has(instr.split(' ')[1]), 'TOC pages reference real heading bookmarks'); }
+assert(all(tocXml,'w:pgNumType').some(n => n.attributes['w:fmt']==='lowerRoman' && n.attributes['w:start']==='1'));
+const tocStyles = xml2js(await tocZip.file('word/styles.xml').async('string'));
+for (const level of [1,2,3]) {
+  const style = all(tocStyles,'w:style').find(s => s.attributes['w:styleId']===`TOC${level}`); assert(style);
+  assert.equal(all(style,'w:spacing')[0].attributes['w:line'],'360');
+  assert.equal(all(style,'w:rFonts')[0].attributes['w:ascii'],'Times New Roman');
+  assert.equal(all(style,'w:sz')[0].attributes['w:val'],'24');
+  const stop = all(style,'w:tab').find(t => t.attributes['w:val']==='right'); assert.equal(stop.attributes['w:pos'],'7937'); assert.equal(stop.attributes['w:leader'],'dot');
+}
+assert((await tocZip.file('word/settings.xml').async('string')).includes('w:updateFields'));
 console.log('PASS BAB II/III editing, all four DOCX downloads and templates, framework, manuscript continuity, clean template data, preserved drafts');

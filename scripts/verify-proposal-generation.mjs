@@ -100,14 +100,14 @@ for (const target of ['bab2', 'bab3', 'combined']) {
   const blob = await exportProposalDocx(proposal, thesis, bab1, target); const bytes = Buffer.from(await blob.arrayBuffer());
   await fs.writeFile(`/tmp/sempro-auto-evidence/generated-${target}.docx`, bytes);
   const zip = await JSZip.loadAsync(bytes); const xml = xml2js(await zip.file('word/document.xml').async('string')); const text = textOf(xml);
-  assert.equal(all(xml, 'w:sectPr').length, target === 'combined' ? 4 : 2);
+  assert.equal(all(xml, 'w:sectPr').length, target === 'combined' ? 5 : 2);
   for (const id of target === 'combined' ? ['theory','method'] : target === 'bab2' ? ['theory'] : ['method']) {
     const first = result.sections[id].split('\n\n')[0]; const para = all(xml, 'w:p').find(p => textOf(p) === first); assert(para);
     assert.equal(all(para, 'w:spacing')[0].attributes['w:line'], '480'); assert.equal(all(para, 'w:ind')[0].attributes['w:firstLine'], '850');
   }
   assert(text.includes('Boston: Pearson'));
   if (target !== 'bab2') { const term = all(xml, 'w:r').find(r => textOf(r) === 'explanatory'); assert(term && all(term,'w:i').length, 'Foreign methodological terms are italic in exported Word'); }
-  assert.equal(all(xml,'w:pgNumType').filter(n => n.attributes['w:start']==='1').length,1);
+  assert.equal(all(xml,'w:pgNumType').filter(n => n.attributes['w:fmt']==='decimal' && n.attributes['w:start']==='1').length,1);
   for(const s of all(xml,'w:sectPr'))assert.equal(all(s,'w:pgMar')[0].attributes['w:left'],'2268');
 }
 console.log('PASS title/context generation, 10 subchapters, template upgrade, manual prose preservation, source grounding, polish fact/citation/number guards, validated API boundary, generated DOCX and numbering');
