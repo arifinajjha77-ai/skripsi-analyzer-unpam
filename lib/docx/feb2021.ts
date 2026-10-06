@@ -9,7 +9,7 @@ export const FEB_INDENT = cmTwips(FEB_2021.indentCm);
 
 /** Preserve explicitly marked italics and common foreign terms used by the writers. */
 export function academicRuns(text: string, size = 24): TextRun[] {
-  const foreign = /\*([^*]+)\*|\b(marketing mix|social media marketing|research gap|empirical gap|grand theory|brand awareness|behind the scenes|product showcase|engagement|awareness|targeting|positioning|strength|weakness|opportunity|threat)\b/gi;
+  const foreign = /\*([^*]+)\*|\b(marketing management|digital marketing|marketing mix|social media marketing|e-commerce|marketplace|influencer|fashion|research gap|empirical gap|grand theory|brand awareness|brand image|online customer review|electronic word of mouth|behind the scenes|product showcase|engagement|awareness|targeting|positioning|strength|weakness|opportunity|threat)\b/gi;
   const runs: TextRun[] = [];
   let start = 0;
   for (const match of text.matchAll(foreign)) {
@@ -28,6 +28,9 @@ export const FEB_PAGE = {
 function pageNumber(align: "center" | "right"): Paragraph {
   return new Paragraph({
     alignment: align === "right" ? AlignmentType.RIGHT : AlignmentType.CENTER,
+    // A centered paragraph otherwise centers in the asymmetric text margins,
+    // shifting the number 0.5 cm right of the physical A4 page center.
+    ...(align === "center" ? { indent: { right: cmTwips(FEB_2021.marginCm.left - FEB_2021.marginCm.right) } } : {}),
     spacing: { before: 0, after: 0, line: 240 },
     children: [new TextRun({ children: [PageNumber.CURRENT], font: FEB_2021.font, size: 24 })],
   });

@@ -12,7 +12,7 @@ import { generateOperasionalDocx } from '../lib/thesis/operasionalDocx.ts';
 import { generateDocx } from '../lib/thesis/docxExport.ts';
 import { generateInsightDocx } from '../lib/kelayakan/docxExport.ts';
 import { generateBab4Enhanced } from '../lib/narratives/generator.ts';
-import { buildSalesTable, generateLatarBelakang } from '../lib/thesis/bab1Generator.ts';
+import { buildSalesTable, generateLatarBelakang, generateLatarBelakangBlocks } from '../lib/thesis/bab1Generator.ts';
 import { getCitationFor, getBab1References } from '../lib/bab1-engine/authorMapping.ts';
 import { defaultBab1State } from '../lib/thesis/bab1Store.ts';
 import { defaultMakalahState } from '../lib/makalah/store.ts';
@@ -78,6 +78,31 @@ assert(!withoutData.includes('observasi dan informasi'));
 assert(!withoutData.includes('Tjiptono & Chandra, 2022'));
 assert(!withoutData.includes('masih sangat terbatas'));
 assert(withoutData.includes('tren penjualan dan pencapaian target belum dapat disimpulkan'));
+const placementState = { ...defaultBab1State, namaObjek: ' Usaha  Uji ', salesData: [{tahun: '2026', target: '100', realisasi: '80'}], consumerData: [{tahun: '2026', target: '100', realisasi: '70'}], competitors: [{ nama: 'Kompetitor Uji', produk: 'Produk', harga: 'Rp 25.000', source: 'manual' }] };
+const placementBlocks = generateLatarBelakangBlocks(placementState, thesis);
+assert(placementBlocks.find(b => b.tableAfter === 'sales').text.includes('80,0%'));
+assert(!placementBlocks.some(b => b.text.includes('Usaha  Uji')));
+const placementDoc = await inspect('bab1-table-placement', await generateBab1Docx(placementState, thesis));
+const bodyNodes = all(placementDoc.xml, 'w:body')[0].elements;
+const firstTableIndex = bodyNodes.findIndex(node => node.name === 'w:tbl');
+assert(plainText(bodyNodes[firstTableIndex - 2]).includes('Data selengkapnya tersaji pada tabel berikut ini.'));
+assert(all(bodyNodes[firstTableIndex - 2], 'w:keepLines').length === 1, 'Keep a narrative paragraph together across pages');
+assert(plainText(bodyNodes[firstTableIndex - 1]).startsWith('Tabel 1.1'));
+const numericP = all(bodyNodes[firstTableIndex], 'w:p').find(p => plainText(p) === '80,0%');
+assert.equal(all(numericP, 'w:jc')[0].attributes['w:val'], 'right');
+for (const node of bodyNodes.filter(node => node.name === 'w:p')) {
+  const spacing = all(node, 'w:spacing')[0]?.attributes;
+  if (spacing) { assert.equal(spacing['w:before'], '0'); assert.equal(spacing['w:after'], '0'); }
+}
+const firstFooter = xml2js(await placementDoc.zip.file('word/footer2.xml').async('string'));
+assert.equal(all(firstFooter, 'w:jc')[0].attributes['w:val'], 'center');
+assert.equal(all(firstFooter, 'w:ind')[0].attributes['w:right'], '567', 'Center footer on physical A4 despite asymmetric margins');
+assert(all(firstFooter, 'w:instrText').some(n => n.elements?.some(e => e.text === 'PAGE')));
+const defaultHeader = xml2js(await placementDoc.zip.file('word/header1.xml').async('string'));
+assert.equal(all(defaultHeader, 'w:jc')[0].attributes['w:val'], 'right');
+const listParagraph = all(placementDoc.xml, 'w:p').find(p => plainText(p).startsWith('1.') && plainText(p).includes('Apakah'));
+assert.equal(all(listParagraph, 'w:ind')[0].attributes['w:left'], '850');
+assert.equal(all(listParagraph, 'w:ind')[0].attributes['w:hanging'], '850');
 
 await inspect('bab1', await generateBab1Docx({ ...defaultBab1State, namaObjek: 'Usaha Uji', lokasi: 'Cirebon', fenomena: marker, salesData: [{tahun: '2026', target: '100', realisasi: '80'}], consumerData: [], competitors: [] }, thesis));
 const proposalBab1 = await inspect('bab1-sempro', await generateBab1Docx({ ...defaultBab1State, documentType: 'proposal-skripsi', namaObjek: 'Usaha Uji', fenomena: marker }, thesis));

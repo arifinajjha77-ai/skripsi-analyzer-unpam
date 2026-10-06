@@ -63,7 +63,7 @@ function pct(target: string, realisasi: string): string {
   const t = parseIDNumber(target);
   const r = parseIDNumber(realisasi);
   if (!t || isNaN(t) || isNaN(r)) return "-";
-  return ((r / t) * 100).toFixed(1) + "%";
+  return ((r / t) * 100).toFixed(1).replace(".", ",") + "%";
 }
 
 function keterangan(target: string, realisasi: string): string {
@@ -78,7 +78,15 @@ function keterangan(target: string, realisasi: string): string {
 }
 
 function formatNumber(val: string): string {
-  return val.trim() || "-";
+  return val.trim().replace(/\d[\d.,]*/g, (number) => {
+    const parsed = parseIDNumber(number);
+    return Number.isFinite(parsed) ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 10 }).format(parsed) : number;
+  }) || "-";
+}
+
+function writtenCount(value: number): string {
+  const words = ["Nol", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan"];
+  return value >= 0 && value < 10 ? `${value} (${words[value]})` : String(value);
 }
 
 /**
@@ -127,6 +135,8 @@ export function formatYearList(years: string[]): string {
  *   ("Sock Energy", "")                  → "Sock Energy"
  */
 export function buildObjectLabel(name: string, location: string): string {
+  name = name.trim().replace(/\s+/g, " ");
+  location = location.trim().replace(/\s+/g, " ");
   if (!location || !location.trim()) return name;
   if (name.toLowerCase().includes(location.toLowerCase().trim())) return name;
   return `${name} di ${location}`;
@@ -152,7 +162,7 @@ export function buildSalesTable(
   const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Penjualan", "Realisasi Penjualan", "Persentase", "Keterangan"];
   const rows = (mode === "tidak_tersedia" ? [] : salesData)
-    .filter((r) => r.tahun)
+    .filter((r) => r.tahun && (r.target.trim() || r.realisasi.trim()))
     .map((r) => ({
       cols: [
         r.tahun,
@@ -177,7 +187,7 @@ export function buildConsumerTable(
   const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Konsumen", "Realisasi Konsumen", "Persentase", "Keterangan"];
   const rows = (mode === "tidak_tersedia" ? [] : consumerData)
-    .filter((r) => r.tahun)
+    .filter((r) => r.tahun && (r.target.trim() || r.realisasi.trim()))
     .map((r) => ({
       cols: [
         r.tahun,
@@ -272,7 +282,18 @@ const TREND_LABEL: Record<string, string> = {
   stabil:     "relatif stabil",
 };
 
-export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): string {
+export interface LatarBelakangBlock {
+  text: string;
+  tableAfter?: "sales" | "consumers" | "competitors";
+}
+
+export function normalizeBab1State(bab1: Bab1State): Bab1State {
+  const clean = (value: string) => value.trim().replace(/\s+/g, " ");
+  return { ...bab1, namaObjek: clean(bab1.namaObjek), jenisUsaha: clean(bab1.jenisUsaha), lokasi: clean(bab1.lokasi) };
+}
+
+export function generateLatarBelakangBlocks(bab1: Bab1State, thesis: ThesisState): LatarBelakangBlock[] {
+  bab1 = normalizeBab1State(bab1);
   const { namaObjek, jenisUsaha, lokasi, salesData, consumerData, competitors, fenomena } = bab1;
   const { x1, x2, y } = thesis;
 
@@ -302,6 +323,7 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
   const fenomenaLines = fenomena.split("\n").map((l) => l.trim()).filter(Boolean);
 
   const paragraphs: string[] = [];
+  const tablesAfter = new Map<number, LatarBelakangBlock["tableAfter"]>();
   let refN = 0;
   const hash0 = strhash(namaObjek + x1 + x2 + y);
 
@@ -363,7 +385,7 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     if (notAchieved.length > 0 && notAchieved.length >= achieved.length) {
       // Vary the miss-analysis phrasing
       const missVariants = [
-        `${analysisTransition(hash0 + 3)}, terdapat ${notAchieved.length} periode ` +
+        `Berdasarkan perbandingan target dan realisasi, terdapat ${writtenCount(notAchieved.length)} periode ` +
         `di mana realisasi penjualan belum memenuhi target, yaitu tahun ` +
         `${formatYearList(notAchieved.map((r) => r.tahun))}. ` +
         `Hal ini merupakan sinyal yang perlu ditangani secara serius oleh ${varRef(namaObjek, ++refN)} ` +
@@ -385,6 +407,7 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
     salesDesc += `Data selengkapnya tersaji pada tabel berikut ini.`;
     paragraphs.push(salesDesc);
+    tablesAfter.set(paragraphs.length - 1, "sales");
   } else if (salesMode === "tidak_tersedia") {
     paragraphs.push(
       `Data penjualan ${namaObjek} belum tersedia untuk disajikan. Oleh karena itu, ` +
@@ -453,6 +476,7 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
 
     consumerDesc += `Data tersebut selengkapnya tersaji pada tabel di bawah ini.`;
     paragraphs.push(consumerDesc);
+    tablesAfter.set(paragraphs.length - 1, "consumers");
   } else if (consumerMode === "tidak_tersedia") {
     paragraphs.push(
       `Data jumlah konsumen ${namaObjek} belum tersedia. Perkembangan jumlah konsumen ` +
@@ -511,6 +535,7 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
         ` (Catatan: Sebagian data kompetitor bersifat referensi awal yang perlu diverifikasi.)`;
     }
     paragraphs.push(compDesc);
+    tablesAfter.set(paragraphs.length - 1, "competitors");
   }
 
   // ── 8. FENOMENA OBJEK PENELITIAN (observasi/wawancara) ───────────────────────
@@ -575,15 +600,24 @@ export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): str
     `Berdasarkan uraian latar belakang permasalahan yang telah dipaparkan di atas, maka ` +
     `peneliti mengajukan penelitian dengan judul: ` +
     `"Pengaruh ${x1 || "Variabel X1"} dan ${x2 || "Variabel X2"} Terhadap ` +
-    `${y || "Variabel Y"} Pada ${objectLabel}."`
+    `${y || "Variabel Y"} Pada ${objectLabel}." ` +
+    `Penelitian ini direncanakan untuk menguji hubungan antarvariabel berdasarkan data yang dikumpulkan.`
   );
 
-  return paragraphs.join("\n\n");
+  return paragraphs.flatMap((text, index) => text.split("\n\n").filter(Boolean).map((paragraph, part, parts) => ({
+    text: paragraph.replace(/ +([.,;?])/g, "$1"),
+    ...(part === parts.length - 1 && tablesAfter.has(index) ? { tableAfter: tablesAfter.get(index) } : {}),
+  })));
+}
+
+export function generateLatarBelakang(bab1: Bab1State, thesis: ThesisState): string {
+  return generateLatarBelakangBlocks(bab1, thesis).map(block => block.text).join("\n\n");
 }
 
 // ─── Manfaat Penelitian generator ─────────────────────────────────────────────
 
 export function generateManfaatPenelitian(bab1: Bab1State, thesis: ThesisState): string {
+  bab1 = normalizeBab1State(bab1);
   const { namaObjek, jenisUsaha } = bab1;
   const { x1, x2, y } = thesis;
 
@@ -594,7 +628,7 @@ export function generateManfaatPenelitian(bab1: Bab1State, thesis: ThesisState):
         `Penelitian ini bermanfaat untuk menambah wawasan dan pengetahuan peneliti dalam bidang manajemen ` +
         `pemasaran, khususnya mengenai pengaruh ${x1 || "variabel X1"} dan ${x2 || "variabel X2"} ` +
         `terhadap ${y || "variabel Y"}, serta merupakan salah satu syarat untuk memperoleh gelar Sarjana ` +
-        `Manajemen di Universitas Pamulang.`,
+        `Manajemen di Universitas Pamulang. Peneliti juga dapat mengembangkan kemampuan penerapan metode penelitian dalam mengkaji permasalahan pemasaran.`,
     },
     {
       pihak: "Bagi Perusahaan",
@@ -602,21 +636,21 @@ export function generateManfaatPenelitian(bab1: Bab1State, thesis: ThesisState):
         `Hasil penelitian ini diharapkan dapat memberikan masukan dan rekomendasi yang bermanfaat bagi ` +
         `${namaObjek} sebagai ${jenisUsaha || "pelaku usaha"} dalam merumuskan strategi pemasaran yang ` +
         `lebih efektif, terutama dalam mengelola ${x1 || "variabel X1"} dan ${x2 || "variabel X2"} ` +
-        `guna meningkatkan ${y || "kinerja bisnis"}.`,
+        `guna meningkatkan ${y || "kinerja bisnis"}. Rekomendasi disusun berdasarkan hasil analisis dan keterbatasan data penelitian.`,
     },
     {
       pihak: "Bagi Akademisi",
       manfaat:
         `Penelitian ini diharapkan dapat menjadi referensi dan bahan kajian bagi peneliti selanjutnya ` +
         `yang akan melakukan penelitian serupa mengenai ${x1 || "variabel X1"}, ${x2 || "variabel X2"}, ` +
-        `dan ${y || "variabel Y"}, serta memperkaya khazanah ilmu pengetahuan di bidang manajemen pemasaran.`,
+        `dan ${y || "variabel Y"}, serta memperkaya khazanah ilmu pengetahuan di bidang manajemen pemasaran. Hasilnya dapat menjadi bahan perbandingan untuk mengembangkan kajian pada konteks yang berbeda.`,
     },
     {
       pihak: "Bagi Pembaca",
       manfaat:
         `Penelitian ini diharapkan dapat menambah pengetahuan dan pemahaman pembaca mengenai faktor-faktor ` +
         `yang mempengaruhi ${y || "perilaku konsumen"}, khususnya dalam konteks ${jenisUsaha || "usaha"}, ` +
-        `sehingga dapat dijadikan bahan pertimbangan dalam pengambilan keputusan yang lebih baik.`,
+        `sehingga dapat dijadikan bahan pertimbangan dalam pengambilan keputusan yang lebih baik. Pembaca dapat menilai penerapannya dengan mempertimbangkan konteks dan keterbatasan penelitian.`,
     },
   ];
 
@@ -627,5 +661,5 @@ export { pct, keterangan, formatNumber };
 
 /** Proposal BAB I includes systematics; final thesis does not (FEB 2021 pp.11/25). */
 export function generateSistematikaProposal(): string {
-  return "BAB I PENDAHULUAN\nBab ini menguraikan latar belakang penelitian, rumusan masalah, tujuan penelitian, manfaat penelitian, dan sistematika penulisan.\n\nBAB II TINJAUAN PUSTAKA\nBab ini menyajikan landasan teori, penelitian terdahulu, kerangka berpikir, dan pengembangan hipotesis.\n\nBAB III METODE PENELITIAN\nBab ini menjelaskan jenis penelitian, tempat dan waktu penelitian, operasional variabel, populasi dan sampel, teknik pengumpulan data, serta teknik analisis data.";
+  return "BAB I PENDAHULUAN\nBab ini menguraikan latar belakang penelitian, rumusan masalah, tujuan penelitian, manfaat penelitian, dan sistematika penulisan. Uraian tersebut menjadi dasar perumusan arah penelitian.\n\nBAB II TINJAUAN PUSTAKA\nBab ini menyajikan landasan teori, penelitian terdahulu, kerangka berpikir, dan pengembangan hipotesis. Kajian tersebut digunakan untuk menyusun dasar hubungan antarvariabel.\n\nBAB III METODE PENELITIAN\nBab ini menjelaskan jenis penelitian, tempat dan waktu penelitian, operasional variabel, populasi dan sampel, teknik pengumpulan data, serta teknik analisis data. Metode disusun untuk menjawab rumusan masalah secara terukur.";
 }

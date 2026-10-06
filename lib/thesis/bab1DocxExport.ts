@@ -21,11 +21,14 @@ import {
   AlignmentType,
   WidthType,
   ShadingType,
+  Tab,
+  TabStopType,
 } from "docx";
 import { Bab1State } from "./bab1Store";
 import { ThesisState } from "./store";
 import {
-  generateLatarBelakang,
+  generateLatarBelakangBlocks,
+  normalizeBab1State,
   generateManfaatPenelitian,
   generateSistematikaProposal,
   buildSalesTable,
@@ -87,6 +90,8 @@ function bodyPara(text: string): Paragraph {
     alignment: AlignmentType.JUSTIFIED,
     spacing: { before: 0, after: 0, line: 480 },
     indent: { firstLine: FEB_INDENT },
+    keepLines: true,
+    widowControl: true,
   });
 }
 
@@ -111,16 +116,19 @@ function sourceNote(text: string): Paragraph {
 
 /** Numbered list item */
 function listItem(text: string): Paragraph {
+  const match = text.match(/^(\d+)\.\s*(.*)$/);
   return new Paragraph({
-    children: academicRuns(text),
+    children: match ? [new TextRun({ children: [`${match[1]}.`, new Tab()], font: FONT, size: SIZE_BODY }), ...academicRuns(match[2])] : academicRuns(text),
     alignment: AlignmentType.JUSTIFIED,
     spacing: { before: 0, after: 0, line: 480 },
-    indent: { left: 720, hanging: 360 },
+    indent: { left: FEB_INDENT, hanging: FEB_INDENT },
+    tabStops: [{ type: TabStopType.LEFT, position: FEB_INDENT }],
+    keepLines: true,
   });
 }
 
 function blank(): Paragraph {
-  return new Paragraph({ text: "", spacing: { after: 120 } });
+  return new Paragraph({ text: "", spacing: { before: 0, after: 0, line: 480 } });
 }
 
 // ─── Table Builder ────────────────────────────────────────────────────────────
@@ -130,6 +138,7 @@ function buildDocxTable(table: GeneratedTable): Table {
 
   const headerRow = new TableRow({
     tableHeader: true,
+    cantSplit: true,
     children: table.headers.map(
       (h) =>
         new TableCell({
@@ -149,13 +158,14 @@ function buildDocxTable(table: GeneratedTable): Table {
   const dataRows = table.rows.map(
     (row) =>
       new TableRow({
+        cantSplit: true,
         children: row.cols.map(
           (cell, ci) =>
             new TableCell({
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: cell, size: 24, font: FONT })],
-                  alignment: ci === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
+                  children: academicRuns(cell, table.headers.length > 5 ? 20 : 24),
+                  alignment: /^(No|Tahun|Target|Realisasi|Persentase|Rentang Harga)/i.test(table.headers[ci]) ? AlignmentType.RIGHT : AlignmentType.LEFT,
                   spacing: { before: 0, after: 0, line: 240 },
                 }),
               ],
@@ -194,9 +204,10 @@ function buildTujuan(thesis: ThesisState, namaObjek: string): string[] {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Promise<Blob> {
+  bab1 = normalizeBab1State(bab1);
   const { namaObjek, lokasi } = bab1;
 
-  const latarBelakangText = generateLatarBelakang(bab1, thesis);
+  const latarBelakangBlocks = generateLatarBelakangBlocks(bab1, thesis);
   const manfaatText = generateManfaatPenelitian(bab1, thesis);
 
   const rumusan = buildRumusan(thesis, buildObjectLabel(namaObjek || "Objek Penelitian", lokasi));
@@ -213,11 +224,6 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
     return { title, body };
   });
 
-  const latarBelakangParas = latarBelakangText
-    .split("\n\n")
-    .filter(Boolean)
-    .map((p) => bodyPara(p));
-
   // ── Table numbering ──────────────────────────────────────────────────────────
   let tableNum = 0;
   const nextTableNum = () => {
@@ -225,59 +231,32 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
     return `1.${tableNum}`;
   };
 
-  // ── Document sections ────────────────────────────────────────────────────────
+  const tableData = {
+    sales: { table: salesTable, source: bab1.salesDataMode === "estimasi" ? `Sumber: ${bab1.catatanKerahasiaan}` : `Sumber: Data ${namaObjek}` },
+    consumers: { table: consumerTable, source: bab1.consumerDataMode === "estimasi" ? `Sumber: ${bab1.catatanKerahasiaan}` : `Sumber: Data ${namaObjek}` },
+    competitors: { table: competitorTable, source: bab1.competitors.some(c => c.source !== "manual" && c.source !== undefined)
+      ? "Sumber: Data referensi awal, perlu diverifikasi terhadap sumber asli"
+      : "Sumber: Data kompetitor yang diinput peneliti" },
+  };
+  const emitted = new Set<string>();
+  function tableElements(key: keyof typeof tableData): (Paragraph | Table)[] {
+    const { table, source } = tableData[key];
+    if (!table.rows.length || emitted.has(key)) return [];
+    emitted.add(key);
+    return [tableCaption(`Tabel ${nextTableNum()} ${table.caption}`), buildDocxTable(table), sourceNote(source)];
+  }
+  const latarElements = latarBelakangBlocks.flatMap(({ text, tableAfter }) => [
+    bodyPara(text), ...(tableAfter ? tableElements(tableAfter) : []),
+  ]);
+  // Preserve partially entered data even when it cannot support a trend narrative.
+  for (const key of ["sales", "consumers", "competitors"] as const) latarElements.push(...tableElements(key));
+
   const children: (Paragraph | Table)[] = [
-    // BAB I PENDAHULUAN — no cover, no logo, start directly
     h1("BAB I"),
     h1("PENDAHULUAN"),
-
-    // 1.1 Latar Belakang
     h2("1.1 Latar Belakang Penelitian"),
-    ...latarBelakangParas,
-
-    // Sales table
-    ...(salesTable.rows.length > 0
-      ? [
-          tableCaption(`Tabel ${nextTableNum()} ${salesTable.caption}`),
-          buildDocxTable(salesTable),
-          sourceNote(
-            bab1.salesDataMode !== "asli" && bab1.catatanKerahasiaan
-              ? `Sumber: ${bab1.catatanKerahasiaan}`
-              : `Sumber: Data ${namaObjek}`
-          ),
-          blank(),
-        ]
-      : []),
-
-    // Consumer table
-    ...(consumerTable.rows.length > 0
-      ? [
-          tableCaption(`Tabel ${nextTableNum()} ${consumerTable.caption}`),
-          buildDocxTable(consumerTable),
-          sourceNote(
-            bab1.consumerDataMode !== "asli" && bab1.catatanKerahasiaan
-              ? `Sumber: ${bab1.catatanKerahasiaan}`
-              : `Sumber: Data ${namaObjek}`
-          ),
-          blank(),
-        ]
-      : []),
-
-    // Competitor table
-    ...(competitorTable.rows.length > 0
-      ? [
-          tableCaption(`Tabel ${nextTableNum()} ${competitorTable.caption}`),
-          buildDocxTable(competitorTable),
-          sourceNote(
-            bab1.competitors.some(
-              (c) => c.source === "estimasi" || c.source === "google" || c.source === "marketplace"
-            )
-              ? "Sumber: Data referensi awal, diverifikasi ulang sebelum digunakan"
-              : `Sumber: Observasi lapangan peneliti`
-          ),
-          blank(),
-        ]
-      : []),
+    ...latarElements,
+    blank(),
 
     // 1.2 Rumusan Masalah
     h2("1.2 Rumusan Masalah"),
@@ -301,7 +280,7 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
   ];
 
   if (bab1.documentType === "proposal-skripsi") {
-    children.push(h2("1.5 Sistematika Penulisan"));
+    children.push(blank(), h2("1.5 Sistematika Penulisan"));
     for (const block of generateSistematikaProposal().split("\n\n")) {
       const [title, ...body] = block.split("\n");
       children.push(h2(title), bodyPara(body.join(" ")));

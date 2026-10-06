@@ -15,7 +15,9 @@ import {
 } from "@/lib/thesis/bab1Store";
 import { loadThesisState, ThesisState } from "@/lib/thesis/store";
 import {
-  generateLatarBelakang,
+  generateLatarBelakangBlocks,
+  type LatarBelakangBlock,
+  type GeneratedTable,
   generateSistematikaProposal,
   generateManfaatPenelitian,
   buildSalesTable,
@@ -696,6 +698,18 @@ function CompetitorTableView({ table }: { table: ReturnType<typeof buildCompetit
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
+function OutputTable({ table, number, competitor = false }: { table: GeneratedTable; number: number; competitor?: boolean }) {
+  return <Card>
+    <CardHeader className="pb-3 bg-slate-50 border-b border-slate-200">
+      <CardTitle className="text-sm flex items-center justify-between">
+        <span>Tabel 1.{number} {table.caption}</span>
+        <CopyButton text={[table.headers.join("\t"), ...table.rows.map(row => row.cols.join("\t"))].join("\n")} label="Salin Tabel" />
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">{competitor ? <CompetitorTableView table={table} /> : <GeneratedTableView table={table} />}</CardContent>
+  </Card>;
+}
+
 export default function LatarBelakangPage() {
   const [form, setForm] = useState<Bab1State>(defaultBab1State);
   const [thesis, setThesis] = useState<ThesisState>({ x1: "", x2: "", y: "", objek: "" });
@@ -704,7 +718,8 @@ export default function LatarBelakangPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Output state
-  const [latarBelakang, setLatarBelakang] = useState("");
+  const [latarBlocks, setLatarBlocks] = useState<LatarBelakangBlock[]>([]);
+  const latarBelakang = latarBlocks.map(block => block.text).join("\n\n");
   const [manfaat, setManfaat] = useState("");
 
   // Quality check — computed live from current form + thesis
@@ -738,7 +753,7 @@ export default function LatarBelakangPage() {
     const err = validate();
     if (err) { setError(err); return; }
     setError(null);
-    setLatarBelakang(generateLatarBelakang(form, thesis));
+    setLatarBlocks(generateLatarBelakangBlocks(form, thesis));
     setManfaat(generateManfaatPenelitian(form, thesis));
     setGenerated(true);
     setTimeout(() => {
@@ -754,7 +769,7 @@ export default function LatarBelakangPage() {
     try {
       const { generateBab1Docx } = await import("@/lib/thesis/bab1DocxExport");
       const blob = await generateBab1Docx(form, thesis);
-      const fileName = `BAB-I-${form.namaObjek.replace(/\s+/g, "-")}.docx`;
+      const fileName = `BAB-I-${form.documentType === "proposal-skripsi" ? "Sempro" : "Skripsi"}-${form.namaObjek.trim().replace(/\s+/g, "-")}.docx`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -782,6 +797,10 @@ export default function LatarBelakangPage() {
     toast.success("Data estimasi sinkron berhasil digenerate");
   }
   const competitorTable = buildCompetitorTable(form.competitors);
+  const outputTables = { sales: salesTable, consumers: consumerTable, competitors: competitorTable };
+  const outputTableKeys = (["sales", "consumers", "competitors"] as const).filter(key => outputTables[key].rows.length > 0);
+  const tableNumbers = Object.fromEntries(outputTableKeys.map((key, index) => [key, index + 1]));
+
 
   const isReady = !!thesis.x1 && !!thesis.x2 && !!thesis.y;
 
@@ -849,7 +868,7 @@ export default function LatarBelakangPage() {
         <select id="bab1-document-type" value={form.documentType || "skripsi"} onChange={(event) => updateForm({ documentType: event.target.value as "skripsi" | "proposal-skripsi" })} className="mt-2 block w-full rounded-lg border border-blue-200 bg-white p-2 text-sm">
           <option value="skripsi">Skripsi · Subbab 1.1–1.4</option><option value="proposal-skripsi">Proposal skripsi / sempro · Subbab 1.1–1.5</option>
         </select>
-        <p className="mt-2 text-xs text-blue-900">Proposal menambahkan 1.5 Sistematika Penulisan sesuai pedoman. Definisi dan kutipan perlu dicocokkan kembali dengan sumber asli.</p>
+        <p className="mt-2 text-xs text-blue-900">Proposal menambahkan 1.5 Sistematika Penulisan sesuai pedoman. Definisi dan kutipan perlu dicocokkan kembali dengan sumber asli. Penomoran DOCX: awal BAB di tengah bawah kertas, halaman lanjutan di kanan atas, dan daftar pustaka di tengah bawah dengan nomor berlanjut.</p>
       </section>
       {/* ── FORM SECTIONS ── */}
 
@@ -1094,7 +1113,7 @@ export default function LatarBelakangPage() {
           <Separator />
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-slate-800">Hasil Generate BAB I</h2>
-            <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Siap Salin</Badge>
+            <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Draf BAB I</Badge>
           </div>
 
           {/* Latar Belakang */}
@@ -1112,77 +1131,20 @@ export default function LatarBelakangPage() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-4">
-                {latarBelakang.split("\n\n").map((p, i) => (
-                  <p key={i} className="text-sm text-slate-700 leading-relaxed text-justify indent-8">
-                    {p}
-                  </p>
+                {latarBlocks.map(({ text, tableAfter }, index) => (
+                  <div key={index} className="space-y-4">
+                    <p className="text-sm text-slate-700 leading-relaxed text-justify indent-8">{text}</p>
+                    {tableAfter && outputTables[tableAfter].rows.length > 0 && (
+                      <OutputTable table={outputTables[tableAfter]} number={tableNumbers[tableAfter]} competitor={tableAfter === "competitors"} />
+                    )}
+                  </div>
+                ))}
+                {outputTableKeys.filter(key => !latarBlocks.some(block => block.tableAfter === key)).map(key => (
+                  <OutputTable key={key} table={outputTables[key]} number={tableNumbers[key]} competitor={key === "competitors"} />
                 ))}
               </div>
             </CardContent>
           </Card>
-
-          {/* Tabel Penjualan */}
-          {salesTable.rows.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3 bg-slate-50 border-b border-slate-200">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span>Tabel 1.1 {salesTable.caption}</span>
-                  <CopyButton
-                    text={[
-                      salesTable.headers.join("\t"),
-                      ...salesTable.rows.map((r) => r.cols.join("\t")),
-                    ].join("\n")}
-                    label="Salin Tabel"
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <GeneratedTableView table={salesTable} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tabel Konsumen */}
-          {consumerTable.rows.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3 bg-slate-50 border-b border-slate-200">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span>Tabel 1.2 {consumerTable.caption}</span>
-                  <CopyButton
-                    text={[
-                      consumerTable.headers.join("\t"),
-                      ...consumerTable.rows.map((r) => r.cols.join("\t")),
-                    ].join("\n")}
-                    label="Salin Tabel"
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <GeneratedTableView table={consumerTable} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tabel Kompetitor */}
-          {competitorTable.rows.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3 bg-slate-50 border-b border-slate-200">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span>Tabel 1.3 {competitorTable.caption}</span>
-                  <CopyButton
-                    text={[
-                      competitorTable.headers.join("\t"),
-                      ...competitorTable.rows.map((r) => r.cols.join("\t")),
-                    ].join("\n")}
-                    label="Salin Tabel"
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <CompetitorTableView table={competitorTable} />
-              </CardContent>
-            </Card>
-          )}
 
           {/* Rumusan Masalah */}
           <Card>

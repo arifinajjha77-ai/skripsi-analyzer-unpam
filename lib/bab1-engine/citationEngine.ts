@@ -31,7 +31,7 @@ const CONTEXT_OPENERS_X1 = [
 
 const CONTEXT_OPENERS_X2 = [
   (var2: string, y: string) =>
-    `Selain variabel yang telah dibahas sebelumnya, terdapat faktor lain yang juga memiliki pengaruh signifikan terhadap ${y || "keputusan konsumen"}, yaitu ${var2}.`,
+    `Selain variabel yang telah dibahas sebelumnya, terdapat faktor lain yang juga akan diuji hubungannya dengan ${y || "keputusan konsumen"}, yaitu ${var2}.`,
   (var2: string, y: string) =>
     `Dalam kerangka penelitian ini, ${var2} diposisikan sebagai variabel independen kedua yang diperkirakan turut berkontribusi secara nyata terhadap ${y || "keputusan konsumen"}.`,
   (var2: string, y: string) =>
@@ -86,11 +86,11 @@ function getApplication(vLower: string, namaObjek: string, y: string): string {
   if (/media.?sosial|social.?media/.test(vLower))
     return `Bagi ${obj}, pengelolaan konten media sosial yang strategis dan terencana dapat menjadi keunggulan kompetitif yang nyata dalam mendorong ${yVar} dan membangun komunitas konsumen yang loyal.`;
   if (/harga|price/.test(vLower))
-    return `Kemampuan ${obj} dalam menetapkan harga yang dipersepsikan wajar dan kompetitif oleh konsumennya akan menjadi faktor penentu yang signifikan dalam membentuk ${yVar} di tengah ketatnya persaingan.`;
+    return `Kemampuan ${obj} dalam menetapkan harga yang dipersepsikan wajar dan kompetitif oleh konsumennya perlu diuji hubungannya dengan ${yVar} di tengah ketatnya persaingan.`;
   if (/kualitas.?produk|product.?quality/.test(vLower))
     return `Investasi ${obj} pada peningkatan dan konsistensi kualitas produk akan berdampak langsung pada kepercayaan konsumen, yang pada gilirannya menjadi pendorong utama ${yVar} dan loyalitas jangka panjang.`;
   if (/kualitas.?layanan|pelayanan|service/.test(vLower))
-    return `Standar pelayanan yang tinggi dan konsisten dari ${obj} akan menjadi salah satu determinan utama dalam membentuk pengalaman positif konsumen yang berujung pada ${yVar} yang lebih baik dan retensi konsumen yang lebih kuat.`;
+    return `Standar pelayanan yang tinggi dan konsisten dari ${obj} perlu dikaji hubungannya dengan pengalaman konsumen dan ${yVar} berdasarkan data penelitian.`;
   if (/brand|merek|citra/.test(vLower))
     return `Penguatan identitas dan reputasi merek ${obj} secara berkelanjutan akan membangun kepercayaan konsumen yang pada akhirnya tercermin dalam peningkatan ${yVar} dan pangsa pasar yang lebih luas.`;
   if (/keputusan.?pembelian|purchase|minat.?beli/.test(vLower))
@@ -156,7 +156,7 @@ export function buildDataTheoryBridge(
     saleTrend === "menurun"
       ? `Tren penurunan penjualan yang dialami ${namaObjek} mengindikasikan adanya gap antara apa yang ditawarkan perusahaan dengan apa yang diharapkan dan dibutuhkan oleh konsumennya. Gap tersebut perlu diidentifikasi secara ilmiah agar dapat diatasi dengan strategi yang tepat.`
       : saleTrend === "fluktuatif"
-      ? `Ketidakkonsistenan pencapaian penjualan ${namaObjek} yang tercermin dalam data menunjukkan bahwa strategi pemasaran yang diterapkan belum mampu menciptakan dampak yang stabil dan berkelanjutan terhadap perilaku pembelian konsumen.`
+      ? `Pola penjualan ${namaObjek} yang tercermin dalam data mengalami fluktuasi. Data tersebut belum menjelaskan penyebabnya, sehingga hubungan antara strategi pemasaran dan perilaku pembelian perlu diuji melalui penelitian.`
       : saleTrend === "meningkat"
       ? `Pertumbuhan penjualan yang berhasil dicatatkan ${namaObjek} merupakan sinyal positif yang perlu dipertahankan dan diperkuat melalui strategi pemasaran yang terstruktur dan berbasis pada pemahaman mendalam tentang faktor-faktor pendorongnya.`
       : `Stabilitas penjualan yang ditunjukkan oleh data ${namaObjek} perlu dimaknai secara hati-hati, karena kondisi stabil dalam pasar yang dinamis berisiko menjadi awal dari stagnasi apabila tidak disertai dengan inovasi strategi pemasaran yang berkelanjutan.`;
@@ -200,7 +200,6 @@ export function buildUrgencyParagraph(
     `pihak manajemen ${namaObjek} dalam mengalokasikan sumber daya pemasaran secara lebih ` +
     `efektif dan terukur. Secara akademis, penelitian ini berkontribusi pada pengembangan ` +
     `literatur manajemen pemasaran dengan menyajikan bukti empiris mengenai hubungan antar ` +
-    `variabel yang dikaji dalam konteks ${jenisUsaha || "usaha"} yang selama ini belum ` +
-    `banyak mendapat perhatian dalam penelitian terdahulu.`
+    `variabel yang dikaji dalam konteks ${jenisUsaha || "usaha"} yang menjadi objek penelitian ini.`
   );
 }

@@ -31,3 +31,11 @@ Banner acuan 2021 tampil di seluruh 15 halaman kelompok Skripsi. Menu statistik 
 Author mapping lama memuat atribusi tahun yang belum terverifikasi, termasuk Kaplan & Haenlein (2022). Pemilihan otomatis kini memakai edisi bibliografis yang diperiksa, mempertahankan tahun asli, serta tidak memaksakan sumber pemasaran pada variabel di luar cakupannya. Definisi dan halaman kutipan harus diperiksa pada edisi yang benar-benar digunakan penulis.
 
 Katalog pendukung: https://uk.sagepub.com/sites/default/files/upm-assets/89036_book_item_89036.pdf ; https://www.pearson.com/en-us/subject-catalog/p/Kotler-Marketing-Management-15th-Edition/P200000007478?view=educator ; https://library.fra.ac.uk/bib/36828 .
+
+## Audit ekspor BAB I dari file GYFIN SOCK
+
+Nomor awal BAB berada di tengah bawah, lanjutan di sisi kanan, dan bagian akhir di tengah bawah sesuai poin 9 (halaman 6 dan 20). Teks pedoman tidak merinci posisi vertikal nomor lanjutan; aplikasi menggunakan header kanan dengan jarak 2 cm. Footer tengah dikoreksi terhadap pusat kertas A4, karena margin kiri 4 cm dan kanan 3 cm sebelumnya menggesernya 0,5 cm.
+
+Tabel kini muncul langsung setelah paragraf yang merujuknya; penomoran menyesuaikan tabel yang benar-benar tersedia. Angka desimal memakai koma, kolom angka rata kanan, nomor daftar sejajar margin kiri dengan tab 1,5 cm, dan paragraf pemisah subbab menggunakan before/after 0. Istilah asing yang dikenali dan judul buku berbahasa Inggris ditulis miring. Profil sempro tetap menambahkan 1.5; profil skripsi tidak.
+
+Uji XML aktual memeriksa posisi field PAGE, kompensasi margin footer tengah, urutan tabel, angka desimal dan indentasi daftar. Uji render membandingkan posisi nomor pertama dan nomor lanjutan pada PDF hasil ekspor. Struktur dan format otomatis tidak membuktikan kebenaran data, definisi khusus variabel, penelitian terdahulu, atau kesenjangan penelitian.
