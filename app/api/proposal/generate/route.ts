@@ -1,5 +1,5 @@
 import { generateJsonWithOpenAI } from '@/lib/ai/openai';
-import { generatedReferenceAdditions, generationInputSchema, generationPrompt, generationTargets, localGeneration, validateGeneratedSections, type GenerationInput } from '@/lib/thesis/proposalGeneration';
+import { generatedReferenceAdditions, generationInputSchema, generationPrompt, generationTargets, localGeneration, polishProse, validateGeneratedSections, type GenerationInput } from '@/lib/thesis/proposalGeneration';
 
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -13,7 +13,8 @@ export async function POST(request: Request) {
     const fallback = localGeneration(input);
     if (!generationTargets(input).length) return Response.json(fallback);
     const ai = await generateJsonWithOpenAI<unknown>(generationPrompt(input), { timeoutMs: 40000, signal: request.signal, maxOutputTokens: 10000 });
-    const sections = ai ? validateGeneratedSections(ai.data, input) : null;
+    const validated = ai ? validateGeneratedSections(ai.data, input) : null;
+    const sections = validated && input.mode === 'polish' ? Object.fromEntries(Object.entries(validated).map(([id, text]) => [id, polishProse(text)])) : validated;
     return Response.json(sections ? { ...fallback, sections, referencesToAdd: generatedReferenceAdditions(sections, input), engine: 'ai' } : fallback, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ error: 'Data generate tidak dapat dibaca. Muat ulang halaman dan coba kembali.' }, { status: 400 });

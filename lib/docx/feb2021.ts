@@ -9,7 +9,7 @@ export const FEB_INDENT = cmTwips(FEB_2021.indentCm);
 
 /** Preserve explicitly marked italics and common foreign terms used by the writers. */
 export function academicRuns(text: string, size = 24): TextRun[] {
-  const foreign = /\*([^*]+)\*|\b(marketing management|digital marketing|marketing mix|social media marketing|e-commerce|marketplace|influencer|fashion|research gap|empirical gap|grand theory|brand awareness|brand image|online customer review|electronic word of mouth|behind the scenes|product showcase|engagement|awareness|targeting|positioning|strength|weakness|opportunity|threat)\b/gi;
+  const foreign = /\*([^*]+)\*|\b(marketing management|digital marketing|marketing mix|social media marketing|e-commerce|marketplace|influencer|fashion|research gap|empirical gap|grand theory|explanatory research|explanatory|cross-sectional|cross sectional|simple random sampling|purposive sampling|probability sampling|nonprobability sampling|random sampling|sampling|brand awareness|brand image|online customer review|electronic word of mouth|behind the scenes|product showcase|engagement|awareness|targeting|positioning|strength|weakness|opportunity|threat)\b/gi;
   const runs: TextRun[] = [];
   let start = 0;
   for (const match of text.matchAll(foreign)) {
