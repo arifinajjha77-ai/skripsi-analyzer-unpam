@@ -15,8 +15,11 @@ const body = (text: string) => new Paragraph({ children: academicRuns(text), ali
 const textParagraphs = (text: string, contents?: ProposalContents) => text.split(/\n+/).map(t => t.trim()).filter(Boolean).map(t => /^\d+\.\d+\.\d+\s/.test(t) ? contents ? contents.heading(t, 3) : heading(t, true) : body(t));
 const blank = () => new Paragraph({ text: '', spacing: { before: 0, after: 0, line: 480 } });
 function caption(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 24, bold: true })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 240 }, keepNext: true }); }
-function source(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 20 })], spacing: { before: 0, after: 0, line: 240 } }); }
-function reference(text: string) { return new Paragraph({ children: academicRuns(text), spacing: { before: 0, after: 0, line: 240 }, indent: { left: FEB_INDENT, hanging: FEB_INDENT } }); }
+function source(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 24 })], spacing: { before: 0, after: 0, line: 240 } }); }
+function reference(text: string) {
+  const formatted = text.replace(/(?<!\*)(Principles of marketing|Principles of management|Introduction to modern statistics|An introduction to statistical learning: With applications in Python)(?!\*)/gi, '*$1*');
+  return new Paragraph({ children: academicRuns(formatted), spacing: { before: 0, after: 0, line: 240 }, indent: { left: FEB_INDENT, hanging: FEB_INDENT } });
+}
 function dataTable(headers: string[], rows: string[][], widths?: number[]): Table {
   const size = widths ? 24 : 20;
   const cell = (text: string, index: number, header = false) => new TableCell({ ...(widths ? { width: { size: widths[index], type: WidthType.DXA } } : {}), children: text.split(/\n+/).map(line => new Paragraph({ children: header ? [new TextRun({ text: line, bold: true, font: 'Times New Roman', size })] : academicRuns(line, size), spacing: { before: 0, after: 0, line: 240 }, alignment: header ? AlignmentType.CENTER : AlignmentType.LEFT })) });
