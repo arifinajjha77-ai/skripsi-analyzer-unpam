@@ -14,7 +14,7 @@ export const PROPOSAL_SECTIONS = [
   { id: 'analysis', chapter: 3, title: '3.6 Teknik Analisis Data', hint: 'Jelaskan analisis deskriptif, uji instrumen, asumsi, regresi, dan pengujian hipotesis yang sesuai desain penelitian. Sertakan kriteria keputusan dan rujukannya.' },
 ] as const;
 export type SectionId = typeof PROPOSAL_SECTIONS[number]['id'];
-export type Study = { author: string; title: string; method: string; result: string; comparison: string };
+export type Study = { author: string; title: string; method: string; result: string; comparison: string; journal?: string; reference?: string };
 export type Operation = { variable: string; definition: string; indicators: string; scale: string; source: string };
 export type ProposalState = {
   sections: Record<SectionId, string>;
@@ -22,7 +22,7 @@ export type ProposalState = {
   operations: Operation[];
   references: string;
 };
-export const emptyStudy = (): Study => ({ author: '', title: '', method: '', result: '', comparison: '' });
+export const emptyStudy = (): Study => ({ author: '', title: '', method: '', result: '', comparison: '', journal: '', reference: '' });
 export const emptyOperation = (): Operation => ({ variable: '', definition: '', indicators: '', scale: '', source: '' });
 export function emptyProposal(): ProposalState {
   return { sections: Object.fromEntries(PROPOSAL_SECTIONS.map(s => [s.id, ''])) as Record<SectionId, string>, studies: [emptyStudy()], operations: [emptyOperation()], references: '' };

@@ -11,10 +11,10 @@ export async function POST(request: Request) {
     if (!parsed.success) return Response.json({ error: 'Lengkapi variabel X1, X2, Y dan objek penelitian pada BAB I, lalu periksa data isian.' }, { status: 400 });
     const input: GenerationInput = parsed.data;
     const fallback = localGeneration(input);
-    if (!generationTargets(input).length) return Response.json(fallback);
+    if (!generationTargets(input).length || input.scope === 'studies') return Response.json(fallback, { headers: { 'Cache-Control': 'no-store' } });
     const ai = await generateJsonWithOpenAI<unknown>(generationPrompt(input), { timeoutMs: 40000, signal: request.signal, maxOutputTokens: 10000 });
     const validated = ai ? validateGeneratedSections(ai.data, input) : null;
-    const sections = validated && input.mode === 'polish' ? Object.fromEntries(Object.entries(validated).map(([id, text]) => [id, polishProse(text)])) : validated;
+    const sections = validated ? { ...(input.mode === 'polish' ? Object.fromEntries(Object.entries(validated).map(([id, text]) => [id, polishProse(text)])) : validated), ...(input.mode === 'generate' && fallback.sections.studies ? { studies: fallback.sections.studies } : {}) } : null;
     return Response.json(sections ? { ...fallback, sections, referencesToAdd: generatedReferenceAdditions(sections, input), engine: 'ai' } : fallback, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ error: 'Data generate tidak dapat dibaca. Muat ulang halaman dan coba kembali.' }, { status: 400 });

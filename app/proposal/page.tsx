@@ -11,11 +11,12 @@ import { emptyOperation, emptyProposal, emptyStudy, loadProposal, PROPOSAL_SECTI
 import type { ProposalExport } from '@/lib/thesis/proposalDocx';
 import { isStarterSection, localGeneration, researchTitle, type GenerationInput, type GenerationMode, type GenerationResult, type GenerationScope } from '@/lib/thesis/proposalGeneration';
 import { referenceAgeWarnings } from '@/lib/templates/feb2021';
+import { applyImportedStudies, parseStudyText, studyNarrative, suppliedStudies, suppliedStudyWarnings, type StudyImportResult } from '@/lib/thesis/priorStudies';
 
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100';
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
 const cardClass = 'rounded-xl border border-slate-200 bg-white p-4 md:p-6';
-const studyFields: { key: keyof Study; label: string }[] = [{ key: 'author', label: 'Peneliti dan tahun' }, { key: 'title', label: 'Judul dan sumber jurnal' }, { key: 'method', label: 'Metode penelitian' }, { key: 'result', label: 'Hasil penelitian' }, { key: 'comparison', label: 'Persamaan dan perbedaan' }];
+const studyFields: { key: keyof Study; label: string }[] = [{ key: 'author', label: 'Peneliti dan tahun' }, { key: 'title', label: 'Judul penelitian' }, { key: 'journal', label: 'Nama jurnal, volume, nomor, dan ISSN' }, { key: 'method', label: 'Metode penelitian' }, { key: 'result', label: 'Hasil penelitian' }, { key: 'comparison', label: 'Persamaan dan perbedaan' }, { key: 'reference', label: 'URL atau DOI sumber' }];
 const operationFields: { key: keyof Operation; label: string }[] = [{ key: 'variable', label: 'Variabel' }, { key: 'definition', label: 'Definisi operasional' }, { key: 'indicators', label: 'Indikator' }, { key: 'scale', label: 'Skala pengukuran' }, { key: 'source', label: 'Sumber teori' }];
 
 function GeneratedDownloadButton({ disabled, busy, onClick }: { disabled: boolean; busy: boolean; onClick: () => void }) {
@@ -51,6 +52,7 @@ export default function ProposalPage() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [generationNotes, setGenerationNotes] = useState<string[]>([]);
   const [undoSnapshot, setUndoSnapshot] = useState<ProposalState | null>(null);
+  const [studySource, setStudySource] = useState('');
   const generationAbort = useRef<AbortController | null>(null);
   const working = busy || Boolean(generating);
   const [error, setError] = useState('');
@@ -65,6 +67,40 @@ export default function ProposalPage() {
   function updateThesis(key: keyof ThesisState, value: string) {
     const next = { ...thesis, [key]: value }; setThesis(next); saveThesisState(next);
     if (key === 'objek') { const nextBab1 = { ...bab1, namaObjek: value }; setBab1(nextBab1); saveBab1State(nextBab1); }
+  }
+  function importStudyResult(result: StudyImportResult) {
+    const replaceNarrative = isStarterSection(proposal.sections.studies, 'studies', { thesis, bab1, proposal, scope: 'studies', mode: 'generate' });
+    const applied = applyImportedStudies(proposal, result.studies, thesis, bab1.namaObjek || thesis.objek, replaceNarrative);
+    const previous = proposal;
+    updateProposal(applied.proposal); setUndoSnapshot(previous); setGenerationNotes(result.warnings);
+    setNotice(`${result.studies.length} penelitian terbaca; ${applied.added} baris baru ditambahkan. Tabel dan daftar pustaka tersimpan.${replaceNarrative ? ' Narasi 2.2 disusun mengikuti judul BAB I.' : ' Narasi yang sudah ditulis dipertahankan. Pilih Susun ulang narasi 2.2 dari tabel untuk memperbaruinya.'} Baris yang sama tidak digandakan.`);
+  }
+  async function importStudyText() {
+    if (studySource.trim().length < 20 || studySource.length > 80000) { setError('Tempel teks penelitian sepanjang 20–80.000 karakter terlebih dahulu.'); return; }
+    const controller = new AbortController(); generationAbort.current = controller;
+    const timeout = window.setTimeout(() => controller.abort('timeout'), 55000);
+    setGenerating('import-studies'); setError(''); setGenerationNotes([]);
+    try {
+      const direct = parseStudyText(studySource);
+      if (direct) { importStudyResult({ studies: direct, engine: 'structured', warnings: ['Periksa kembali isi tabel terhadap jurnal asli.'] }); return; }
+      const response = await fetch('/api/proposal/studies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: studySource }), signal: controller.signal });
+      const result = await response.json();
+      if (!response.ok) { setError(result.error || 'Teks belum dapat dipisahkan. Tabel sebelumnya tetap tersimpan.'); return; }
+      if (!Array.isArray(result.studies) || !result.studies.length) throw new Error('Respons impor tidak lengkap.');
+      importStudyResult(result);
+    } catch (e) {
+      setError(controller.signal.aborted ? 'Impor terhenti. Teks dan tabel tetap tersedia; format berlabel dan pilihan 10 penelitian dapat dipakai tanpa koneksi generator.' : e instanceof Error ? e.message : 'Impor gagal. Teks dan tabel tetap tersedia.');
+    } finally { window.clearTimeout(timeout); generationAbort.current = null; setGenerating(null); }
+  }
+  function useSuppliedStudies() {
+    setError('');
+    try { importStudyResult({ studies: suppliedStudies, warnings: suppliedStudyWarnings, engine: 'structured' }); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Tabel belum dapat diperbarui.'); }
+  }
+  function regenerateStudiesNarrative() {
+    const previous = proposal;
+    updateProposal({ ...proposal, sections: { ...proposal.sections, studies: studyNarrative(proposal.studies, thesis, bab1.namaObjek || thesis.objek) } });
+    setUndoSnapshot(previous); setNotice('Narasi 2.2 disusun ulang dari tabel dan judul BAB I terbaru. Hasil penelitian tetap mengikuti sumber.');
   }
   async function generate(scope: GenerationScope, mode: GenerationMode = 'generate') {
     if (![thesis.x1, thesis.x2, thesis.y, bab1.namaObjek || thesis.objek].every(v => v.trim())) {
@@ -151,8 +187,19 @@ export default function ProposalPage() {
     <nav aria-label="Pilih bab proposal" className="flex gap-2">{([2, 3] as const).map(c => <button key={c} aria-pressed={chapter === c} onClick={() => setChapter(c)} className={`rounded-lg px-4 py-3 text-sm font-semibold ${chapter === c ? 'bg-blue-700 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}>{c === 2 ? 'BAB II · Tinjauan Pustaka' : 'BAB III · Metode Penelitian'}</button>)}</nav>
     {PROPOSAL_SECTIONS.filter(s => s.chapter === chapter).map(s => <section key={s.id} className={cardClass}>
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-slate-900"><label htmlFor={`section-${s.id}`}>{s.title}</label></h2><button className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50" disabled={!ready || working} onClick={() => generate(s.id)}><Sparkles className="h-3 w-3" />{isStarterSection(proposal.sections[s.id], s.id, context) ? 'Generate' : 'Generate ulang'} {s.title.split(' ')[0]}</button></div><p id={`hint-${s.id}`} className="mb-3 mt-1 text-sm text-slate-500">{s.hint}</p>
+      {s.id === 'studies' && <div className="mb-4 space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-4" aria-labelledby="import-studies-heading">
+        <h3 id="import-studies-heading" className="font-semibold text-slate-900">Generate penelitian terdahulu dari teks</h3>
+        <p className="text-sm text-slate-600">Tempel salinan tabel atau ringkasan jurnal. Nama peneliti, judul, jurnal, dan hasil dipisahkan ke tabel; narasi mengikuti judul BAB I. Anda juga dapat langsung memakai 10 penelitian yang dikirim: Saputra, Rahardi, Cahyaningtyas, Solihin, Mardiana, Hartina, Romadon, Karamang, Bayu, dan Lestari.</p>
+        <button type="button" className={buttonClass} disabled={!ready || working} onClick={useSuppliedStudies}><Sparkles className="h-4 w-4" />Gunakan 10 penelitian yang dikirim</button>
+        <label className="block text-sm font-medium text-slate-700" htmlFor="study-source">Teks penelitian terdahulu<textarea id="study-source" className={`${inputClass} mt-1 font-normal`} disabled={!ready || working} rows={5} maxLength={80000} value={studySource} onChange={e => setStudySource(e.target.value)} placeholder={'Tempel teks tabel di sini. Format tanpa koneksi generator:\nPeneliti: Nama (2024)\nJudul: Judul penelitian\nJurnal: Nama jurnal, volume dan nomor\nHasil: Temuan sesuai sumber\n\nPisahkan setiap penelitian dengan satu baris kosong.'} /></label>
+        <div className="flex flex-wrap gap-2"><button type="button" className={buttonClass} disabled={!ready || working || !studySource.trim()} onClick={importStudyText}>{generating === 'import-studies' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate tabel dari teks</button><button type="button" className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working || !proposal.studies.some(r => r.author.trim() || r.title.trim())} onClick={regenerateStudiesNarrative}>Susun ulang narasi 2.2 dari tabel</button></div>
+        <p className="text-xs text-slate-600">Baris baru ditambahkan tanpa mengganti baris yang sudah diedit. Narasi yang sudah ditulis dipertahankan sampai Anda memilih susun ulang. Tabel dan sumber ikut unduhan BAB II serta gabungan BAB I–III.</p>
+      </div>}
       <textarea id={`section-${s.id}`} aria-describedby={`hint-${s.id}`} disabled={!ready || working} className={`${inputClass} leading-7`} rows={s.id === 'theory' ? 12 : 6} value={proposal.sections[s.id]} placeholder={s.hint} onChange={e => updateProposal({ ...proposal, sections: { ...proposal.sections, [s.id]: e.target.value } })} />
-      {s.id === 'studies' && <RowEditor disabled={!ready || working} title="Penelitian terdahulu" rows={proposal.studies} fields={studyFields} create={emptyStudy} onChange={rows => updateProposal({ ...proposal, studies: rows })} />}
+      {s.id === 'studies' && <>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200"><table className="w-full min-w-[680px] text-left text-sm"><caption className="bg-slate-50 p-3 font-semibold text-slate-900">Tabel 2.1 Penelitian Terdahulu · {proposal.studies.filter(r => r.author.trim() || r.title.trim()).length} penelitian</caption><thead className="bg-slate-100"><tr>{['No', 'Nama dan Judul Penelitian', 'Nama Jurnal', 'Hasil Penelitian'].map(h => <th key={h} className="border-b border-slate-200 p-3">{h}</th>)}</tr></thead><tbody>{proposal.studies.filter(r => r.author.trim() || r.title.trim()).map((row,i) => <tr key={i} className="align-top"><td className="border-b border-slate-200 p-3">{i + 1}</td><td className="border-b border-slate-200 p-3"><strong>{row.author || '[Peneliti dan tahun]'}</strong><p className="mt-2">{row.title || '[Judul penelitian]'}</p></td><td className="border-b border-slate-200 p-3">{row.journal || '[Lengkapi identitas jurnal]'}</td><td className="border-b border-slate-200 p-3">{row.result || '[Lengkapi hasil dari sumber]'}</td></tr>)}</tbody></table></div>
+        <details className="mt-3"><summary className="cursor-pointer text-sm font-semibold text-blue-700">Edit rincian penelitian, metode, dan perbandingan</summary><RowEditor disabled={!ready || working} title="Penelitian terdahulu" rows={proposal.studies} fields={studyFields} create={emptyStudy} onChange={rows => updateProposal({ ...proposal, studies: rows })} /></details>
+      </>}
       {s.id === 'framework' && <div className="mt-4"><Image src={`data:image/png;base64,${PROPOSAL_DIAGRAM_PNG}`} alt="X1 dan X2 memengaruhi Y secara parsial dan simultan; hipotesis H1, H2, H3" width={900} height={380} unoptimized className="mx-auto h-auto w-full max-w-lg" /><p className="mt-2 text-center text-sm font-medium">Gambar 2.1 Kerangka Berpikir</p><p className="mt-2 text-sm text-slate-600">X1: {thesis.x1 || '[Variabel X1]'} · X2: {thesis.x2 || '[Variabel X2]'} · Y: {thesis.y || '[Variabel Y]'}. Diagram dan keterangan ini disertakan otomatis dalam Word.</p><Link href="/kerangka" className="mt-3 inline-block text-sm text-blue-700 underline">Buka alat bantu kerangka berpikir</Link></div>}
       {s.id === 'operations' && <><RowEditor disabled={!ready || working} title="Operasional variabel" rows={proposal.operations} fields={operationFields} create={emptyOperation} onChange={rows => updateProposal({ ...proposal, operations: rows })} /><p className="mt-3 text-sm text-slate-500">Gunakan <Link href="/operasional" className="text-blue-700 underline">Operasional Variabel</Link> dan <Link href="/kuesioner" className="text-blue-700 underline">Kuesioner</Link> sebagai alat bantu penyusunan instrumen.</p></>}
     </section>)}

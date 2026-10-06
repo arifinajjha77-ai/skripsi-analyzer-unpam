@@ -4,6 +4,7 @@ import { febWritingInstructions } from '@/lib/templates/feb2021';
 import { PROPOSAL_SECTIONS, starterSections, type ProposalState, type SectionId } from './proposal';
 import type { ThesisState } from './store';
 import type { Bab1State } from './bab1Store';
+import { studyNarrative, studyReferences } from './priorStudies';
 
 export type GenerationScope = 'all' | 'bab2' | 'bab3' | SectionId;
 export type GenerationMode = 'generate' | 'polish';
@@ -23,7 +24,7 @@ export const generationInputSchema = z.object({
   }),
   proposal: z.object({
     sections: z.object({ theory: long, studies: long, framework: long, hypotheses: long, method: long, location: long, operations: long, sample: long, collection: long, analysis: long }),
-    studies: z.array(z.object({ author: short, title: long, method: long, result: long, comparison: long })).max(50),
+    studies: z.array(z.object({ author: short, title: long, method: long, result: long, comparison: long, journal: long.optional(), reference: long.optional() })).max(50),
     operations: z.array(z.object({ variable: short, definition: long, indicators: long, scale: short, source: long })).max(50), references: long,
   }),
   scope: z.enum(['all', 'bab2', 'bab3', ...PROPOSAL_SECTIONS.map(s => s.id)]),
@@ -104,7 +105,7 @@ export function contextualDraft(input: GenerationInput): Record<SectionId, strin
   const theoryLink = present(proposal.sections.theory) ? 'Definisi dan batasan variabel mengikuti pembahasan pada subbab 2.1. Batasan yang sama digunakan saat menyusun indikator dan instrumen agar konsep teoritis dapat diukur secara konsisten.' : 'Definisi dan batasan variabel perlu ditetapkan pada landasan teori sebelum diterapkan dalam instrumen penelitian.';
   return {
     theory,
-    studies: `${priorStudies}\n\nPemilihan rujukan diarahkan pada penelitian yang relevan dengan hubungan ${x1} dan ${x2} terhadap ${y}. Perbedaan objek tidak dengan sendirinya menunjukkan celah penelitian; alasan pemilihan ${object} perlu didukung oleh persoalan empiris maupun hasil kajian terdahulu.`,
+    studies: studies.length ? studyNarrative(studies, thesis, object) : `${priorStudies}\n\nPemilihan rujukan diarahkan pada penelitian yang relevan dengan hubungan ${x1} dan ${x2} terhadap ${y}. Perbedaan objek tidak dengan sendirinya menunjukkan celah penelitian; alasan pemilihan ${object} perlu didukung oleh persoalan empiris maupun hasil kajian terdahulu.`,
     framework: `Kerangka berpikir penelitian ini menempatkan ${x1} sebagai X1 dan ${x2} sebagai X2, sedangkan ${y} sebagai Y. ${context}\n\nHubungan ${x1} dengan ${y} ditelaah secara parsial, begitu pula hubungan ${x2} dengan ${y}. Kedua variabel bebas juga akan dianalisis secara bersama-sama untuk menilai keterkaitannya dengan variabel terikat. Hubungan yang digambarkan merupakan rancangan pengujian, sehingga arah dan besarnya pengaruh belum dapat dinyatakan sebagai hasil penelitian.\n\n[Tambahkan argumentasi teori dan sitasi penelitian terdahulu yang mendukung setiap hubungan.]`,
     hypotheses: `Hipotesis dirumuskan untuk menjawab pertanyaan penelitian yang telah dijelaskan pada BAB I. Pada penelitian ini, dugaan mengenai pengaruh ${x1} dan ${x2} terhadap ${y} akan diperiksa menggunakan data yang diperoleh dari objek penelitian.\n\n[Uraikan dasar teori dan temuan penelitian terdahulu untuk mendukung setiap hipotesis berikut.]\n\nH1: Diduga ${x1} berpengaruh terhadap ${y} pada ${object}.\n\nH2: Diduga ${x2} berpengaruh terhadap ${y} pada ${object}.\n\nH3: Diduga ${x1} dan ${x2} secara simultan berpengaruh terhadap ${y} pada ${object}.`,
     method: `Penelitian dengan judul “${researchTitle(thesis, bab1)}” direncanakan menggunakan pendekatan kuantitatif. Pendekatan ini dipilih karena pertanyaan penelitian diarahkan pada pengujian hubungan antarvariabel melalui data yang dapat diolah secara statistik.\n\nAnalisis akan menelaah pengaruh ${x1} dan ${x2} terhadap ${y}, baik secara parsial maupun simultan. ${theoryLink} Hasil pengujian diharapkan dapat menjawab rumusan masalah, dengan tetap memperhatikan batasan desain penelitian dan data yang tersedia.\n\n[Lengkapi jenis atau desain penelitian yang disetujui pembimbing beserta rujukan metodologinya.]`,
@@ -124,15 +125,17 @@ export function generationWarnings(input: GenerationInput): string[] {
 }
 export function localGeneration(input: GenerationInput): GenerationResult {
   const draft = contextualDraft(input);
-  const sections = Object.fromEntries(generationTargets(input).map(id => [id, input.mode === 'polish' || !isStarterSection(input.proposal.sections[id], id, input) ? polishProse(input.proposal.sections[id]) : draft[id]]));
+  const sections = Object.fromEntries(generationTargets(input).map(id => [id, input.mode === 'polish' || (id !== 'studies' && !isStarterSection(input.proposal.sections[id], id, input)) ? polishProse(input.proposal.sections[id]) : draft[id]]));
   return { sections, referencesToAdd: generatedReferenceAdditions(sections, input), warnings: generationWarnings(input), title: researchTitle(input.thesis, input.bab1), engine: 'contextual' };
 }
 export function generatedReferenceAdditions(sections: Partial<Record<SectionId, string>>, input: GenerationInput): string[] {
-  if (input.mode === 'polish' || !sections.theory) return [];
+  if (input.mode === 'polish') return [];
+  const studies = sections.studies ? studyReferences(input.proposal.studies) : [];
+  if (!sections.theory) return studies;
   const source = getCitationFor(input.thesis.x1);
   const year = source.citation.match(/\((\d{4})\)/)?.[1];
   const names = source.citation.replace(/\s*\(\d{4}\)/, '').split(/\s*(?:&|dan)\s*/);
-  return source.bibliography && year && sections.theory.includes(year) && names.every(name => sections.theory?.includes(name)) ? [source.bibliography] : [];
+  return source.bibliography && year && sections.theory.includes(year) && names.every(name => sections.theory?.includes(name)) ? [...studies, source.bibliography] : studies;
 }
 export function generationPrompt(input: GenerationInput): string {
   const ids = generationTargets(input);

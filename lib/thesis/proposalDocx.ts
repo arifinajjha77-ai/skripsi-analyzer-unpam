@@ -1,4 +1,4 @@
-import { AlignmentType, HeadingLevel, ImageRun, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from 'docx';
+import { AlignmentType, HeadingLevel, ImageRun, Packer, Paragraph, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType } from 'docx';
 import { academicRuns, createFebDocument, FEB_INDENT, febSection } from '@/lib/docx/feb2021';
 import { buildBab1Content } from './bab1DocxExport';
 import type { Bab1State } from './bab1Store';
@@ -6,6 +6,7 @@ import type { ThesisState } from './store';
 import { PROPOSAL_DIAGRAM_PNG } from './proposalDiagram';
 import { emptyProposal, PROPOSAL_SECTIONS, starterSections, type ProposalState } from './proposal';
 import { ProposalContents } from './proposalContents';
+import { studyReferences } from './priorStudies';
 
 export type ProposalExport = 'bab1' | 'bab2' | 'bab3' | 'combined';
 const chapterTitle = (text: string) => new Paragraph({ children: [new TextRun({ text, bold: true, font: 'Times New Roman', size: 24 })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 480 }, keepNext: true });
@@ -16,9 +17,10 @@ const blank = () => new Paragraph({ text: '', spacing: { before: 0, after: 0, li
 function caption(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 24, bold: true })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 240 }, keepNext: true }); }
 function source(text: string) { return new Paragraph({ children: [new TextRun({ text, font: 'Times New Roman', size: 20 })], spacing: { before: 0, after: 0, line: 240 } }); }
 function reference(text: string) { return new Paragraph({ children: academicRuns(text), spacing: { before: 0, after: 0, line: 240 }, indent: { left: FEB_INDENT, hanging: FEB_INDENT } }); }
-function dataTable(headers: string[], rows: string[][]): Table {
-  const cell = (text: string, header = false) => new TableCell({ children: [new Paragraph({ children: header ? [new TextRun({ text, bold: true, font: 'Times New Roman', size: 20 })] : academicRuns(text, 20), spacing: { before: 0, after: 0, line: 240 }, alignment: header ? AlignmentType.CENTER : AlignmentType.LEFT })] });
-  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ tableHeader: true, cantSplit: true, children: headers.map(h => cell(h, true)) }), ...rows.map(row => new TableRow({ cantSplit: true, children: row.map(t => cell(t)) }))] });
+function dataTable(headers: string[], rows: string[][], widths?: number[]): Table {
+  const size = widths ? 24 : 20;
+  const cell = (text: string, index: number, header = false) => new TableCell({ ...(widths ? { width: { size: widths[index], type: WidthType.DXA } } : {}), children: text.split(/\n+/).map(line => new Paragraph({ children: header ? [new TextRun({ text: line, bold: true, font: 'Times New Roman', size })] : academicRuns(line, size), spacing: { before: 0, after: 0, line: 240 }, alignment: header ? AlignmentType.CENTER : AlignmentType.LEFT })) });
+  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, ...(widths ? { columnWidths: widths, layout: TableLayoutType.FIXED } : {}), rows: [new TableRow({ tableHeader: true, cantSplit: true, children: headers.map((h,i) => cell(h,i,true)) }), ...rows.map(row => new TableRow({ cantSplit: !widths, children: row.map((t,i) => cell(t,i)) }))] });
 }
 function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisState, bab1: Bab1State, contents?: ProposalContents): (Paragraph | Table)[] {
   const defaults = starterSections(thesis, bab1);
@@ -28,8 +30,8 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
   for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === chapter)) {
     children.push(contents ? contents.heading(s.title, 2) : heading(s.title), ...textParagraphs(state.sections[s.id].trim() || defaults[s.id], contents));
     if (s.id === 'studies') {
-      const rows = state.studies.filter(r => Object.values(r).some(v => v.trim())).map(r => [r.author, r.title, r.method, r.result, r.comparison].map(v => v.trim() || '[Lengkapi]'));
-      children.push(caption('Tabel 2.1 Penelitian Terdahulu'), dataTable(['Peneliti dan Tahun', 'Judul', 'Metode', 'Hasil', 'Persamaan dan Perbedaan'], rows.length ? rows : [['[Peneliti, tahun]', '[Judul jurnal]', '[Metode]', '[Temuan asli]', '[Persamaan/perbedaan]']]));
+      const rows = state.studies.filter(r => Object.values(r).some(v => v?.trim())).map((r,i) => [String(i + 1), `${r.author.trim() || '[Peneliti dan tahun]'}\n${r.title.trim() || '[Judul penelitian]'}`, r.journal?.trim() || '[Lengkapi identitas jurnal]', [r.result.trim() || '[Lengkapi hasil penelitian]', r.method.trim() ? `Metode: ${r.method.trim()}` : '', r.comparison.trim() ? `Persamaan dan perbedaan: ${r.comparison.trim()}` : ''].filter(Boolean).join('\n')]);
+      children.push(caption('Tabel 2.1 Penelitian Terdahulu'), dataTable(['No', 'Nama dan Judul Penelitian', 'Nama Jurnal', 'Hasil Penelitian'], rows.length ? rows : [['1', '[Peneliti, tahun dan judul]', '[Nama jurnal, volume dan nomor]', '[Temuan asli]']], [567, 2800, 2000, 2570]));
       children.push(source('Sumber: Referensi penelitian terdahulu yang dicantumkan pada tabel.'));
     }
     if (s.id === 'framework') {
@@ -58,7 +60,7 @@ export async function exportProposalDocx(state: ProposalState, thesis: ThesisSta
   if (target === 'bab1' || target === 'combined') sections.push(febSection(first.children, 'chapter', 1));
   if (target === 'bab2' || target === 'combined') sections.push(febSection(chapterContent(2, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
   if (target === 'bab3' || target === 'combined') sections.push(febSection(chapterContent(3, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
-  const references = Array.from(new Set([...(target === 'bab1' || target === 'combined' ? first.references : []), ...state.references.split(/\n+/).map(s => s.trim()).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'id'));
+  const references = Array.from(new Set([...(target === 'bab1' || target === 'combined' ? first.references : []), ...state.references.split(/\n+/).map(s => s.trim()).filter(Boolean), ...(target === 'bab2' || target === 'combined' ? studyReferences(state.studies) : [])])).sort((a, b) => a.localeCompare(b, 'id'));
   sections.push(febSection([contents ? contents.heading('DAFTAR PUSTAKA', 1) : chapterTitle('DAFTAR PUSTAKA'), ...(references.length ? references.map(reference) : [reference('[Tuliskan daftar pustaka dari semua sumber yang disitasi; urutkan menurut abjad.]')])], 'back'));
   if (contents && contentsTitle) sections.unshift(febSection(contents.table(contentsTitle), 'front', 1));
   return Packer.toBlob(createFebDocument({ sections, ...(contents ? { styles: { paragraphStyles: contents.styles() } } : {}) }, 'proposal-skripsi'));
