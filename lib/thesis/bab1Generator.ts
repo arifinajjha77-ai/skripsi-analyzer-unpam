@@ -360,13 +360,16 @@ export function generateLatarBelakangBlocks(bab1: Bab1State, thesis: ThesisState
 
   // ── 3. DATA PENDUKUNG PENJUALAN ───────────────────────────────────────────────
   if (validSales.length > 0) {
+    const salesTrendSentence = salesValues.length >= 2
+      ? `realisasi penjualan ${saleTrend} dari tahun ke tahun.`
+      : `data yang dimasukkan belum mencakup dua periode numerik, sehingga tren penjualan belum dapat disimpulkan.`;
     let salesDesc = salesMode === "estimasi"
       ? `Berdasarkan data penjualan ${varRef(namaObjek, ++refN)} yang telah disamarkan guna ` +
         `menjaga kerahasiaan informasi perusahaan, gambaran kondisi penjualan pada periode ` +
-        `${salesPeriod} menunjukkan bahwa realisasi penjualan ${saleTrend} dari tahun ke tahun. ` +
+        `${salesPeriod} mencatat bahwa ${salesTrendSentence} ` +
         `(Catatan: Data merupakan estimasi yang disusun berdasarkan gambaran umum kondisi perusahaan.) `
       : `Berdasarkan data penjualan ${varRef(namaObjek, ++refN)} pada periode ${salesPeriod}, ` +
-        `realisasi penjualan tercatat ${saleTrend} dari tahun ke tahun. `;
+        `${salesTrendSentence} `;
 
     const rows = validSales.map(
       (r) =>
@@ -448,6 +451,11 @@ export function generateLatarBelakangBlocks(bab1: Bab1State, thesis: ThesisState
         `(Catatan: Data merupakan estimasi berdasarkan gambaran umum kondisi perusahaan.) `
       : `${transitionWord} ${varRef(namaObjek, ++refN)}, yang ${consumerTrend} ` +
         `selama periode yang diamati. `;
+
+    if (consumerValues.length < 2) {
+      consumerDesc = `Data jumlah konsumen ${namaObjek} belum mencakup dua periode numerik, sehingga tren belum dapat disimpulkan. ` +
+        (consumerMode === "estimasi" ? `Data yang dimasukkan merupakan estimasi. ` : "");
+    }
 
     const rows = validConsumers.map(
       (r) =>

@@ -80,6 +80,8 @@ assert(!withoutData.includes('masih sangat terbatas'));
 assert(withoutData.includes('tren penjualan dan pencapaian target belum dapat disimpulkan'));
 const placementState = { ...defaultBab1State, namaObjek: ' Usaha  Uji ', salesData: [{tahun: '2026', target: '100', realisasi: '80'}], consumerData: [{tahun: '2026', target: '100', realisasi: '70'}], competitors: [{ nama: 'Kompetitor Uji', produk: 'Produk', harga: 'Rp 25.000', source: 'manual' }] };
 const placementBlocks = generateLatarBelakangBlocks(placementState, thesis);
+assert(placementBlocks.find(b => b.tableAfter === 'sales').text.includes('tren penjualan belum dapat disimpulkan'));
+assert(!placementBlocks.find(b => b.tableAfter === 'sales').text.includes('mengalami fluktuasi'));
 assert(placementBlocks.find(b => b.tableAfter === 'sales').text.includes('80,0%'));
 assert(!placementBlocks.some(b => b.text.includes('Usaha  Uji')));
 const placementDoc = await inspect('bab1-table-placement', await generateBab1Docx(placementState, thesis));

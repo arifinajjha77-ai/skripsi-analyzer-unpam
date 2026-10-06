@@ -32,7 +32,7 @@ export function buildResearchGap(input: ResearchGapInput): string {
   if (input.hasFenomena) evidence.push("fenomena yang dicatat dalam rancangan penelitian");
   const data = evidence.length
     ? `Pembahasan kondisi ${namaObjek} dapat menggunakan ${evidence.join(", ")}, dengan memeriksa sumber dan keterbatasannya. `
-    : `Data empiris kondisi ${namaObjek} belum tersedia untuk menyimpulkan masalah atau tren tertentu. `;
+    : `Masalah atau tren tertentu pada ${namaObjek} belum dapat disimpulkan sebelum tersedia data empiris yang memadai. `;
   return `${literature}\n\n${data}` +
     `Penelitian direncanakan untuk menguji hubungan antarvariabel berdasarkan data yang dikumpulkan. ` +
     `Hasilnya diharapkan memberi masukan bagi ${namaObjek} serta memperkaya kajian dalam konteks ${context}.`;
