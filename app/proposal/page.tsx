@@ -12,7 +12,7 @@ import type { ProposalExport } from '@/lib/thesis/proposalDocx';
 import { isStarterSection, localGeneration, researchTitle, type GenerationInput, type GenerationMode, type GenerationResult, type GenerationScope } from '@/lib/thesis/proposalGeneration';
 import { referenceAgeWarnings } from '@/lib/templates/feb2021';
 import { completeGyfinDraft, isGyfinResearch } from '@/lib/thesis/gyfinCompletion';
-import { applyImportedStudies, parseStudyText, studyNarrative, suppliedStudies, suppliedStudyWarnings, type StudyImportResult } from '@/lib/thesis/priorStudies';
+import { applyImportedStudies, generateStudySection, parseStudyText, suppliedStudies, suppliedStudyWarnings, type StudyImportResult } from '@/lib/thesis/priorStudies';
 
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100';
 const buttonClass = 'inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50';
@@ -54,6 +54,7 @@ export default function ProposalPage() {
   const [generationNotes, setGenerationNotes] = useState<string[]>([]);
   const [undoSnapshot, setUndoSnapshot] = useState<ProposalState | null>(null);
   const [studySource, setStudySource] = useState('');
+  const [studyFeedback, setStudyFeedback] = useState<{ error: boolean; text: string } | null>(null);
   const generationAbort = useRef<AbortController | null>(null);
   const working = busy || Boolean(generating);
   const [error, setError] = useState('');
@@ -69,39 +70,57 @@ export default function ProposalPage() {
     const next = { ...thesis, [key]: value }; setThesis(next); saveThesisState(next);
     if (key === 'objek') { const nextBab1 = { ...bab1, namaObjek: value }; setBab1(nextBab1); saveBab1State(nextBab1); }
   }
-  function importStudyResult(result: StudyImportResult) {
-    const replaceNarrative = isStarterSection(proposal.sections.studies, 'studies', { thesis, bab1, proposal, scope: 'studies', mode: 'generate' });
+  function importStudyResult(result: StudyImportResult, regenerateNarrative = false) {
+    const replaceNarrative = regenerateNarrative || isStarterSection(proposal.sections.studies, 'studies', { thesis, bab1, proposal, scope: 'studies', mode: 'generate' });
     const applied = applyImportedStudies(proposal, result.studies, thesis, bab1.namaObjek || thesis.objek, replaceNarrative);
     const previous = proposal;
     updateProposal(applied.proposal); setUndoSnapshot(previous); setGenerationNotes(result.warnings);
-    setNotice(`${result.studies.length} penelitian terbaca; ${applied.added} baris baru ditambahkan. Tabel dan daftar pustaka tersimpan.${replaceNarrative ? ' Narasi 2.2 disusun mengikuti judul BAB I.' : ' Narasi yang sudah ditulis dipertahankan. Pilih Susun ulang narasi 2.2 dari tabel untuk memperbaruinya.'} Baris yang sama tidak digandakan.`);
+    const message = `${result.studies.length} penelitian terbaca; ${applied.added} baris baru ditambahkan. Tabel dan daftar pustaka tersimpan.${replaceNarrative ? ' Narasi 2.2 disusun mengikuti judul BAB I.' : ' Narasi yang sudah ditulis dipertahankan. Pilih Susun ulang narasi 2.2 dari tabel untuk memperbaruinya.'} Baris yang sama tidak digandakan.`;
+    setNotice(message); setStudyFeedback({ error: false, text: message });
   }
-  async function importStudyText() {
-    if (studySource.trim().length < 20 || studySource.length > 80000) { setError('Tempel teks penelitian sepanjang 20–80.000 karakter terlebih dahulu.'); return; }
+  function studyFailure(message: string) {
+    setError(message); setStudyFeedback({ error: true, text: message });
+  }
+  async function importStudyText(regenerateNarrative = false) {
+    if (studySource.trim().length < 20 || studySource.length > 80000) { studyFailure('Tempel teks penelitian sepanjang 20–80.000 karakter terlebih dahulu.'); return; }
     const controller = new AbortController(); generationAbort.current = controller;
     const timeout = window.setTimeout(() => controller.abort('timeout'), 55000);
-    setGenerating('import-studies'); setError(''); setGenerationNotes([]);
+    setGenerating('import-studies'); setError(''); setGenerationNotes([]); setStudyFeedback(null);
     try {
       const direct = parseStudyText(studySource);
-      if (direct) { importStudyResult({ studies: direct, engine: 'structured', warnings: ['Periksa kembali isi tabel terhadap jurnal asli.'] }); return; }
+      if (direct) { importStudyResult({ studies: direct, engine: 'structured', warnings: ['Periksa kembali isi tabel terhadap jurnal asli.'] }, regenerateNarrative); return; }
       const response = await fetch('/api/proposal/studies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: studySource }), signal: controller.signal });
       const result = await response.json();
-      if (!response.ok) { setError(result.error || 'Teks belum dapat dipisahkan. Tabel sebelumnya tetap tersimpan.'); return; }
+      if (!response.ok) { studyFailure(result.error || 'Teks belum dapat dipisahkan. Tabel sebelumnya tetap tersimpan.'); return; }
       if (!Array.isArray(result.studies) || !result.studies.length) throw new Error('Respons impor tidak lengkap.');
-      importStudyResult(result);
+      importStudyResult(result, regenerateNarrative);
     } catch (e) {
-      setError(controller.signal.aborted ? 'Impor terhenti. Teks dan tabel tetap tersedia; format berlabel dan pilihan 10 penelitian dapat dipakai tanpa koneksi generator.' : e instanceof Error ? e.message : 'Impor gagal. Teks dan tabel tetap tersedia.');
+      studyFailure(controller.signal.aborted ? 'Impor terhenti. Teks dan tabel tetap tersedia; format berlabel dan pilihan 10 penelitian dapat dipakai tanpa koneksi generator.' : e instanceof Error ? e.message : 'Impor gagal. Teks dan tabel tetap tersedia.');
     } finally { window.clearTimeout(timeout); generationAbort.current = null; setGenerating(null); }
   }
   function useSuppliedStudies() {
     setError('');
     try { importStudyResult({ studies: suppliedStudies, warnings: suppliedStudyWarnings, engine: 'structured' }); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Tabel belum dapat diperbarui.'); }
+    catch (e) { studyFailure(e instanceof Error ? e.message : 'Tabel belum dapat diperbarui.'); }
   }
-  function regenerateStudiesNarrative() {
+  function regenerateStudiesNarrative(useSupplied = false) {
     const previous = proposal;
-    updateProposal({ ...proposal, sections: { ...proposal.sections, studies: studyNarrative(proposal.studies, thesis, bab1.namaObjek || thesis.objek) } });
-    setUndoSnapshot(previous); setNotice('Narasi 2.2 disusun ulang dari tabel dan judul BAB I terbaru. Hasil penelitian tetap mengikuti sumber.');
+    const result = generateStudySection(proposal, thesis, bab1.namaObjek || thesis.objek, useSupplied);
+    if (!result) { studyFailure('Sumber penelitian belum tersedia. Tempel teks jurnal atau isi tabel terlebih dahulu, lalu generate kembali.'); return; }
+    updateProposal(result.proposal); setUndoSnapshot(previous); setError('');
+    setGenerationNotes(result.usedSupplied ? suppliedStudyWarnings : []);
+    const count = result.proposal.studies.filter(r => r.author.trim() || r.title.trim()).length;
+    const message = `${count} penelitian tersimpan pada Tabel 2.1. Narasi 2.2 dan daftar pustaka berhasil disusun mengikuti judul BAB I.${result.usedSupplied ? ' Menggunakan 10 penelitian yang sudah Anda kirim.' : ' Baris dan hasil yang sudah diedit tetap dipertahankan.'} Hasilnya ikut unduhan BAB II dan gabungan BAB I–III.`;
+    setNotice(message); setStudyFeedback({ error: false, text: message });
+  }
+  async function generatePriorStudies() {
+    setChapter(2); setError(''); setStudyFeedback(null);
+    if (studySource.trim()) { await importStudyText(true); return; }
+    if (![thesis.x1, thesis.x2, thesis.y, bab1.namaObjek || thesis.objek].every(v => v.trim())) {
+      studyFailure('Lengkapi variabel X1, X2, Y, dan objek penelitian di atas terlebih dahulu.'); return;
+    }
+    try { regenerateStudiesNarrative(isGyfinResearch({ thesis, bab1, proposal, scope: 'studies', mode: 'generate' })); }
+    catch (e) { studyFailure(e instanceof Error ? e.message : 'Penelitian belum dapat disusun. Tabel sebelumnya tetap tersimpan.'); }
   }
   function completeGyfin() {
     setError('');
@@ -113,6 +132,7 @@ export default function ProposalPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Draf belum dapat dilengkapi.'); }
   }
   async function generate(scope: GenerationScope, mode: GenerationMode = 'generate') {
+    if (scope === 'studies' && mode === 'generate') { await generatePriorStudies(); return; }
     if (![thesis.x1, thesis.x2, thesis.y, bab1.namaObjek || thesis.objek].every(v => v.trim())) {
       setError('Lengkapi variabel X1, X2, Y, dan objek penelitian pada BAB I terlebih dahulu.'); return;
     }
@@ -184,7 +204,7 @@ export default function ProposalPage() {
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Draf perlu dilengkapi</strong><p className="mt-1">{filled}/10 subbab memiliki narasi; {incomplete} bagian masih kosong atau berisi petunjuk. Sumber teori, hasil jurnal, populasi, sampel, dan waktu penelitian harus diisi dari data Anda. Bagian kosong tetap tampil sebagai [petunjuk] di Word.</p></section>
     <section className={cardClass} aria-labelledby="generate-heading"><h2 id="generate-heading" className="font-semibold text-slate-900">Generate otomatis sesuai judul</h2><p className="mb-4 mt-1 text-sm text-slate-600">Susun paragraf BAB II–III dari data BAB I, teori, dan penelitian terdahulu yang sudah diisi. Bahasa dibuat alami dan akademik. Generate per bab mempertahankan narasi yang sudah Anda tulis; petunjuk template akan diganti dengan draf.</p>
-      <div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={!ready || working} onClick={() => generate('all')}><Sparkles className="h-4 w-4" />Generate otomatis BAB II–III</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab2')}>Generate BAB II</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab3')}>Generate BAB III</button><button className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working} onClick={() => generate(`bab${chapter}` as GenerationScope, 'polish')}>Perhalus bahasa BAB {chapter === 2 ? 'II' : 'III'}</button></div>
+      <div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={!ready || working} onClick={() => generate('all')}><Sparkles className="h-4 w-4" />Generate otomatis BAB II–III</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab2')}>Generate BAB II</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab3')}>Generate BAB III</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('studies')}>Generate penelitian terdahulu</button><button className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working} onClick={() => generate(`bab${chapter}` as GenerationScope, 'polish')}>Perhalus bahasa BAB {chapter === 2 ? 'II' : 'III'}</button></div>
       {isGyfinResearch(context) && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><button type="button" className={`${buttonClass} bg-emerald-700 hover:bg-emerald-800`} disabled={!ready || working} onClick={completeGyfin}><Sparkles className="h-4 w-4" />Lengkapi draf GYFIN SOCK dengan sumber</button><p className="mt-2 text-sm text-slate-600">Melengkapi bagian kosong dan draf bawaan lama memakai buku, jurnal, serta kuesioner 30 butir yang dikirim. Indikator dinyatakan sebagai adaptasi peneliti. Tulisan yang sudah diedit tetap disimpan; angka sampel dan jadwal tidak ditebak. Pilihan ini dapat digunakan tanpa koneksi generator.</p></div>}
       {generating && <div role="status" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-blue-800"><LoaderCircle className="h-4 w-4 animate-spin" />Menyusun paragraf sesuai naskah penelitian…<button className="underline" onClick={() => generationAbort.current?.abort()}>Batalkan generate</button></div>}
       {undoSnapshot && <button disabled={working} className="mt-3 inline-flex items-center gap-1 text-sm text-blue-700 underline" onClick={() => { updateProposal(undoSnapshot); setGenerationNotes([]); setNotice('Tulisan sebelum generate terakhir sudah dipulihkan.'); }}><RotateCcw className="h-4 w-4" />Pulihkan tulisan sebelum generate terakhir</button>}
@@ -200,10 +220,12 @@ export default function ProposalPage() {
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-slate-900"><label htmlFor={`section-${s.id}`}>{s.title}</label></h2><button className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50" disabled={!ready || working} onClick={() => generate(s.id)}><Sparkles className="h-3 w-3" />{isStarterSection(proposal.sections[s.id], s.id, context) ? 'Generate' : 'Generate ulang'} {s.title.split(' ')[0]}</button></div><p id={`hint-${s.id}`} className="mb-3 mt-1 text-sm text-slate-500">{s.hint}</p>
       {s.id === 'studies' && <div className="mb-4 space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-4" aria-labelledby="import-studies-heading">
         <h3 id="import-studies-heading" className="font-semibold text-slate-900">Generate penelitian terdahulu dari teks</h3>
-        <p className="text-sm text-slate-600">Tempel salinan tabel atau ringkasan jurnal. Nama peneliti, judul, jurnal, dan hasil dipisahkan ke tabel; narasi mengikuti judul BAB I. Anda juga dapat langsung memakai 10 penelitian yang dikirim: Saputra, Rahardi, Cahyaningtyas, Solihin, Mardiana, Hartina, Romadon, Karamang, Bayu, dan Lestari.</p>
+        <p className="text-sm text-slate-600">Generate 2.2 memakai teks yang ditempel atau tabel yang sudah diisi. Untuk penelitian GYFIN SOCK dengan tabel kosong, 10 penelitian yang sudah dikirim langsung disusun otomatis. Teks berlabel dan tabel salinan Excel dapat diproses tanpa koneksi generator. Sumber jurnal baru perlu Anda tempel agar nama, tahun, dan temuannya sesuai sumber.</p>
         <button type="button" className={buttonClass} disabled={!ready || working} onClick={useSuppliedStudies}><Sparkles className="h-4 w-4" />Gunakan 10 penelitian yang dikirim</button>
         <label className="block text-sm font-medium text-slate-700" htmlFor="study-source">Teks penelitian terdahulu<textarea id="study-source" className={`${inputClass} mt-1 font-normal`} disabled={!ready || working} rows={5} maxLength={80000} value={studySource} onChange={e => setStudySource(e.target.value)} placeholder={'Tempel teks tabel di sini. Format tanpa koneksi generator:\nPeneliti: Nama (2024)\nJudul: Judul penelitian\nJurnal: Nama jurnal, volume dan nomor\nHasil: Temuan sesuai sumber\n\nPisahkan setiap penelitian dengan satu baris kosong.'} /></label>
-        <div className="flex flex-wrap gap-2"><button type="button" className={buttonClass} disabled={!ready || working || !studySource.trim()} onClick={importStudyText}>{generating === 'import-studies' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate tabel dari teks</button><button type="button" className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working || !proposal.studies.some(r => r.author.trim() || r.title.trim())} onClick={regenerateStudiesNarrative}>Susun ulang narasi 2.2 dari tabel</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" className={buttonClass} disabled={!ready || working || !studySource.trim()} onClick={() => importStudyText()}>{generating === 'import-studies' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate tabel dari teks</button><button type="button" className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working || !proposal.studies.some(r => r.author.trim() || r.title.trim())} onClick={() => regenerateStudiesNarrative()}>Susun ulang narasi 2.2 dari tabel</button></div>
+        {generating === 'import-studies' && <p role="status" className="text-sm text-blue-800">Memisahkan penelitian dari teks sumber…</p>}
+        {studyFeedback && <p role={studyFeedback.error ? 'alert' : 'status'} className={`rounded-lg p-3 text-sm ${studyFeedback.error ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-900'}`}>{studyFeedback.text}</p>}
         <p className="text-xs text-slate-600">Baris baru ditambahkan tanpa mengganti baris yang sudah diedit. Narasi yang sudah ditulis dipertahankan sampai Anda memilih susun ulang. Tabel dan sumber ikut unduhan BAB II serta gabungan BAB I–III.</p>
       </div>}
       <textarea id={`section-${s.id}`} aria-describedby={`hint-${s.id}`} disabled={!ready || working} className={`${inputClass} leading-7`} rows={s.id === 'theory' ? 12 : 6} value={proposal.sections[s.id]} placeholder={s.hint} onChange={e => updateProposal({ ...proposal, sections: { ...proposal.sections, [s.id]: e.target.value } })} />

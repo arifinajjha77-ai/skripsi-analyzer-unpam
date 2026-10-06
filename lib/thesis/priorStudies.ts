@@ -89,27 +89,62 @@ const studyList = z.array(importedStudySchema).min(1).max(50);
 function importedRows(rows: z.infer<typeof studyList>): Study[] {
   return rows.map(({ year, ...row }) => ({ ...row, author: year && !/\b\d{4}\b/.test(row.author) ? `${row.author.trim()} (${year})` : row.author }));
 }
-/** JSON and labelled blocks work without a connection or model. */
+const studyAliases: Record<string, keyof Study | 'year'> = {
+  peneliti: 'author', 'nama peneliti': 'author', 'nama dan tahun peneliti': 'author', 'peneliti dan tahun': 'author', author: 'author', authors: 'author',
+  tahun: 'year', year: 'year', judul: 'title', 'judul penelitian': 'title', title: 'title',
+  jurnal: 'journal', 'nama jurnal': 'journal', journal: 'journal', metode: 'method', 'metode penelitian': 'method', method: 'method',
+  hasil: 'result', 'hasil penelitian': 'result', result: 'result', sumber: 'reference', referensi: 'reference', reference: 'reference', url: 'reference', doi: 'reference',
+  perbandingan: 'comparison', 'persamaan dan perbedaan': 'comparison', comparison: 'comparison',
+};
+function parseStudyTable(text: string): Study[] | null {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const delimiter = text.includes('\t') ? '\t' : '|';
+  const cells = (line: string) => line.replace(/^\||\|$/g, '').split(delimiter).map(c => c.trim().replace(/<br\s*\/?\s*>/gi, '\n'));
+  const headerIndex = lines.findIndex(line => {
+    const keys = cells(line).map(c => studyAliases[clean(c)]);
+    return keys.includes('author') && keys.includes('title');
+  });
+  if (headerIndex < 0) return null;
+  const headers = cells(lines[headerIndex]).map(c => studyAliases[clean(c)]);
+  const rows = [];
+  for (const line of lines.slice(headerIndex + 1)) {
+    const values = cells(line);
+    if (values.every(c => /^:?-+:?$/.test(c))) continue;
+    if (values.length !== headers.length) return null;
+    const row: Record<string, string> = {};
+    headers.forEach((key, i) => { if (key) row[key] = values[i]; });
+    if (!row.author?.trim() || !row.title?.trim()) return null;
+    rows.push(row);
+  }
+  const parsed = studyList.safeParse(rows);
+  return parsed.success ? importedRows(parsed.data) : null;
+}
+/** JSON, labelled text and copied spreadsheet/Markdown tables work locally. */
 export function parseStudyText(text: string): Study[] | null {
   try {
     const json = JSON.parse(text);
     const parsed = studyList.safeParse(Array.isArray(json) ? json : json.studies);
     if (parsed.success && parsed.data.every(r => r.author.trim() && r.title.trim())) return importedRows(parsed.data);
   } catch { /* Try labelled text next. */ }
-  const blocks = text.split(/\n\s*\n/).filter(s => s.trim());
-  const aliases: Record<string, keyof Study> = { peneliti: 'author', judul: 'title', jurnal: 'journal', metode: 'method', hasil: 'result', sumber: 'reference', perbandingan: 'comparison' };
-  const rows: Study[] = [];
-  for (const block of blocks) {
-    const row: Study = { author: '', title: '', journal: '', method: '', result: '', reference: '', comparison: '' };
-    let active: keyof Study | undefined;
-    for (const line of block.split('\n')) {
-      const match = line.match(/^\s*(Peneliti|Judul|Jurnal|Metode|Hasil|Sumber|Perbandingan)\s*:\s*(.*)$/i);
-      if (match) { active = aliases[match[1].toLowerCase()]; row[active] = match[2].trim(); }
-      else if (active && line.trim()) row[active] = `${row[active]} ${line.trim()}`;
-    }
-    if (!row.author.trim() || !row.title.trim()) return null;
-    rows.push(row);
+  const table = parseStudyTable(text);
+  if (table) return table;
+  const rows: Record<string, string>[] = [];
+  let row: Record<string, string> = {};
+  let active: keyof Study | 'year' | undefined;
+  for (const line of text.split('\n')) {
+    const match = line.match(/^\s*(?:\d+[.)]\s*)?([^:：]+)\s*[:：]\s*(.*)$/);
+    const key = match && studyAliases[clean(match[1])];
+    if (key && match) {
+      if (key === 'author' && row.author) {
+        if (!row.title?.trim()) return null;
+        rows.push(row); row = {};
+      } else if (row[key]) return null;
+      active = key; row[key] = match[2].trim();
+    } else if (active && line.trim()) row[active] = `${row[active]} ${line.trim()}`.trim();
+    else if (line.trim()) return null;
   }
+  if (!row.author?.trim() || !row.title?.trim()) return null;
+  rows.push(row);
   const parsed = studyList.safeParse(rows);
   return parsed.success ? importedRows(parsed.data) : null;
 }
@@ -133,4 +168,13 @@ export function validateImportedStudies(value: unknown, text: string): Study[] |
 export function applyImportedStudies(state: ProposalState, incoming: Study[], thesis: ThesisState, object: string, replaceNarrative: boolean): { proposal: ProposalState; added: number } {
   const { rows, added } = mergeStudyRows(state.studies, incoming);
   return { added: added.length, proposal: { ...state, studies: rows, sections: { ...state.sections, studies: replaceNarrative ? studyNarrative(rows, thesis, object) : state.sections.studies }, references: mergeReferences(state.references, studyReferences(added)) } };
+}
+
+/** Explicit 2.2 generation fills the table, narrative and bibliography together. */
+export function generateStudySection(state: ProposalState, thesis: ThesisState, object: string, useSupplied = false): { proposal: ProposalState; added: number; usedSupplied: boolean } | null {
+  const hasStudies = state.studies.some(r => r.author.trim() || r.title.trim());
+  if (!hasStudies && !useSupplied) return null;
+  const usedSupplied = !hasStudies && useSupplied;
+  const applied = applyImportedStudies(state, usedSupplied ? suppliedStudies : [], thesis, object, true);
+  return { ...applied, usedSupplied, proposal: { ...applied.proposal, references: mergeReferences(applied.proposal.references, studyReferences(applied.proposal.studies)) } };
 }

@@ -5,7 +5,7 @@ import { xml2js } from 'xml-js';
 import { defaultBab1State } from '../lib/thesis/bab1Store.ts';
 import { emptyProposal, loadProposal } from '../lib/thesis/proposal.ts';
 import { generationInputSchema, localGeneration } from '../lib/thesis/proposalGeneration.ts';
-import { applyImportedStudies, mergeStudyRows, parseStudyText, studyNarrative, suppliedStudies, validateImportedStudies } from '../lib/thesis/priorStudies.ts';
+import { applyImportedStudies, generateStudySection, mergeStudyRows, parseStudyText, studyNarrative, suppliedStudies, validateImportedStudies } from '../lib/thesis/priorStudies.ts';
 import { exportProposalDocx } from '../lib/thesis/proposalDocx.ts';
 import { POST as importRoute } from '../app/api/proposal/studies/route.ts';
 import { POST as generationRoute } from '../app/api/proposal/generate/route.ts';
@@ -15,6 +15,14 @@ const thesis = { x1: 'Harga', x2: 'Promosi', y: 'Keputusan Pembelian', objek: 'G
 const bab1 = { ...defaultBab1State, namaObjek: thesis.objek };
 const original = emptyProposal();
 const imported = applyImportedStudies(original, suppliedStudies, thesis, thesis.objek, true);
+assert.equal(generateStudySection(original,thesis,thesis.objek),null,'No sources must not fabricate studies');
+const generated = generateStudySection(original,thesis,thesis.objek,true);
+assert.equal(generated.proposal.studies.length,10,'Generate 2.2 from an empty GYFIN table fills ten supplied studies');
+assert.equal(generated.added,10); assert.equal(generated.usedSupplied,true);
+assert.equal(generated.proposal.references.split('\n').length,10);
+assert(generated.proposal.sections.studies.includes('Harga memberikan arah pengaruh negatif'));
+assert.equal(generated.proposal.sections.sample,original.sections.sample,'Study generation preserves other sections');
+assert.equal(original.studies.length,1,'Generation does not mutate its input');
 assert.equal(imported.added,10); assert.equal(imported.proposal.studies.length,10);
 assert.equal(original.studies.length,1); assert.equal(original.sections.studies,'');
 assert.equal(imported.proposal.references.split('\n').length,10);
@@ -30,6 +38,16 @@ assert.equal(again.added,0); assert.equal(again.proposal.studies.length,10);
 assert.equal(again.proposal.studies[0].result,'Temuan sudah diperiksa sendiri.');
 assert.equal(again.proposal.sections.studies,'Narasi asli peneliti.');
 assert.equal(again.proposal.references,edited.references);
+const regenerated = generateStudySection(edited,thesis,thesis.objek,true);
+assert.equal(regenerated.added,0); assert.equal(regenerated.usedSupplied,false);
+assert.equal(regenerated.proposal.studies.length,10);
+assert.equal(regenerated.proposal.studies[0].result,'Temuan sudah diperiksa sendiri.');
+assert(regenerated.proposal.sections.studies.includes('Temuan sudah diperiksa sendiri.'));
+assert(!regenerated.proposal.sections.studies.includes('Narasi asli peneliti.'));
+const manualOnly={...emptyProposal(),studies:[{...suppliedStudies[9],result:'Harga berpengaruh negatif.'}]};
+const manualGenerated=generateStudySection(manualOnly,thesis,thesis.objek,true);
+assert.equal(manualGenerated.proposal.studies.length,1,'Existing sources are not supplemented with unrelated presets');
+assert(manualGenerated.proposal.references.includes(manualOnly.studies[0].title),'Manual table references are included');
 assert.throws(()=>mergeStudyRows(Array.from({length:50},(_,i)=>({...suppliedStudies[0],title:`Studi ${i}`})),[suppliedStudies[1]]),/50/);
 const changedTitle = studyNarrative(suppliedStudies,{...thesis,x1:'Kualitas Produk',x2:'Kualitas Pelayanan',y:'Kepuasan Konsumen'},'Objek Baru');
 assert(changedTitle.includes('Kualitas Produk dan Kualitas Pelayanan dengan Kepuasan Konsumen'));
@@ -43,6 +61,19 @@ assert.equal(localGeneration(input).sections.studies,studyNarrative(suppliedStud
 assert.equal(localGeneration(input).referencesToAdd.length,10);
 const labelled='Peneliti: Peneliti Uji (2024)\nJudul: Pengaruh Harga terhadap Keputusan Pembelian\nJurnal: Jurnal Uji, 1(1)\nHasil: Harga berpengaruh negatif.\nLanjutan temuan sesuai jurnal.\n\nPeneliti: Peneliti Kedua (2023)\nJudul: Promosi dan Keputusan Pembelian\nHasil: Promosi tidak berpengaruh signifikan.';
 assert.equal(parseStudyText(labelled).length,2);
+assert.equal(parseStudyText(labelled.replace(/\n\n/g,'\n')).length,2,'Adjacent studies must not overwrite one another');
+const aliases='1. Nama Peneliti: Peneliti Uji\nTahun: 2024\nJudul Penelitian: Pengaruh Harga terhadap Keputusan Pembelian\nNama Jurnal: Jurnal Uji\nHasil Penelitian: Harga berpengaruh negatif.\n\nLanjutan hasil sesuai sumber.\n2. Peneliti dan tahun: Peneliti Kedua (2023)\nJudul: Promosi dan Keputusan Pembelian\nHasil: Promosi tidak berpengaruh signifikan.';
+assert.equal(parseStudyText(aliases).length,2);
+assert.equal(parseStudyText(aliases)[0].author,'Peneliti Uji (2024)');
+assert(parseStudyText(aliases)[0].result.includes('Lanjutan hasil sesuai sumber.'));
+const spreadsheet='No\tNama Peneliti\tTahun\tJudul Penelitian\tNama Jurnal\tHasil Penelitian\n1\tPeneliti Uji\t2024\tPengaruh Harga terhadap Keputusan Pembelian\tJurnal Uji\tHarga berpengaruh negatif.\n2\tPeneliti Kedua\t2023\tPromosi dan Keputusan Pembelian\tJurnal Kedua\tPromosi tidak berpengaruh signifikan.';
+assert.equal(parseStudyText(spreadsheet).length,2);
+assert.equal(parseStudyText(spreadsheet)[1].result,'Promosi tidak berpengaruh signifikan.');
+const markdown='| Peneliti | Judul | Hasil |\n| --- | --- | --- |\n| Peneliti Uji (2024) | Pengaruh Harga | Harga berpengaruh negatif. |';
+assert.equal(parseStudyText(markdown).length,1);
+assert.equal(parseStudyText(markdown)[0].result,'Harga berpengaruh negatif.');
+assert.equal(parseStudyText(spreadsheet+'\n3\t\t2025\tJudul tanpa peneliti\tJurnal Uji\tHasil'),null,'A partial table must not be silently accepted');
+assert.equal(parseStudyText('Peneliti: Peneliti Uji\nPeneliti: Peneliti Kedua\nJudul: Judul kedua'),null,'Incomplete study blocks must not disappear');
 assert.equal(parseStudyText(labelled)[0].method,'');
 assert(parseStudyText(labelled)[0].result.includes('Lanjutan temuan'));
 assert.equal(parseStudyText('Hasil: Tidak ada identitas penelitian'),null);
@@ -57,6 +88,11 @@ const priorKey=process.env.OPENAI_API_KEY; delete process.env.OPENAI_API_KEY;
 try {
  const response=await importRoute(new Request('http://localhost/api/proposal/studies',{method:'POST',headers:{origin:'http://localhost'},body:JSON.stringify({text:labelled})}));
  assert.equal(response.status,200); const data=await response.json();assert.equal(data.engine,'structured');assert.equal(data.studies.length,2);assert.equal(response.headers.get('cache-control'),'no-store');
+ for(const text of [spreadsheet,aliases,labelled.replace(/\n\n/g,'\n')]){
+  const recovered=await importRoute(new Request('http://localhost/api/proposal/studies',{method:'POST',body:JSON.stringify({text})}));
+  assert.equal(recovered.status,200,'Copied study text works without an AI key');
+  const recovery=await recovered.json();assert.equal(recovery.engine,'structured');assert.equal(recovery.studies.length,2);
+ }
  const unavailable=await importRoute(new Request('http://localhost/api/proposal/studies',{method:'POST',body:JSON.stringify({text:'Teks jurnal tanpa pembatas atau format berlabel.'})}));assert.equal(unavailable.status,422);
  const bad=await importRoute(new Request('http://localhost/api/proposal/studies',{method:'POST',body:'{bad'}));assert.equal(bad.status,400);
  const cross=await importRoute(new Request('http://localhost/api/proposal/studies',{method:'POST',headers:{origin:'https://other.test'},body:JSON.stringify({text:labelled})}));assert.equal(cross.status,403);
@@ -91,4 +127,4 @@ for(const target of ['bab2','combined']){
  for(const spacing of all(table,'w:spacing'))assert.equal(spacing.attributes['w:line'],'240');
  const template=await exportProposalDocx(imported.proposal,thesis,bab1,target,true);const z=await JSZip.loadAsync(await template.arrayBuffer());assert(!(await z.file('word/document.xml').async('string')).includes('Saputra'));
 }
-console.log('PASS 10 supplied studies, preserved negative/non-significant claims, journal metadata migration, deduplication/manual edits, title-aware narrative, references, offline and AI import boundaries, rejected invented sources, four-column DOCX, repeat headers and flowing rows');
+console.log('PASS complete Generate 2.2, no fabricated sources, 10 supplied studies, adjacent blocks/field aliases/copied tables without AI, preserved negative/non-significant claims, manual edits, references, import/API boundaries, rejected invented sources, four-column DOCX and flowing rows');
