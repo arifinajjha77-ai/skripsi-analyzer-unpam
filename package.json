@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "start": "next start",
     "lint": "eslint",
-    "test:pedoman": "node --import tsx scripts/verify-feb2021.mjs"
+    "test:pedoman": "node --import tsx scripts/verify-feb2021.mjs",
+    "test:proposal": "node --import tsx scripts/verify-proposal-generation.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

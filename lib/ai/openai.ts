@@ -14,17 +14,20 @@ export function getOpenAIClient(): OpenAI | null {
   return client;
 }
 
-export async function generateJsonWithOpenAI<T>(prompt: string): Promise<{ data: T; model: string } | null> {
+export async function generateJsonWithOpenAI<T>(prompt: string, options?: { timeoutMs?: number; signal?: AbortSignal; maxOutputTokens?: number }): Promise<{ data: T; model: string } | null> {
   const openai = getOpenAIClient();
   if (!openai) return null;
+  const signal = options?.timeoutMs ? AbortSignal.any([AbortSignal.timeout(options.timeoutMs), ...(options.signal ? [options.signal] : [])]) : options?.signal;
 
   for (const model of [DEFAULT_MODEL, INTERNAL_FALLBACK_MODEL]) {
+    if (signal?.aborted) return null;
     try {
       const response = await openai.responses.create({
         model,
         input: prompt,
         text: { format: { type: "json_object" } },
-      });
+        ...(options?.maxOutputTokens ? { max_output_tokens: options.maxOutputTokens } : {}),
+      }, options ? { signal, timeout: options.timeoutMs, maxRetries: 0 } : undefined);
       const text = extractOutputText(response);
       if (!text) continue;
       return { data: JSON.parse(repairJson(text)) as T, model };
