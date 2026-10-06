@@ -29,7 +29,8 @@ assert.equal(imported.proposal.references.split('\n').length,10);
 assert(imported.proposal.sections.studies.includes('Gyfin Sock'));
 assert(imported.proposal.sections.studies.includes('Harga memberikan arah pengaruh negatif'));
 assert(imported.proposal.sections.studies.includes('Kajian literatur'));
-assert(imported.proposal.sections.studies.includes('Verifikasi tahun terbit'));
+assert(imported.proposal.studies[6].author.includes('(2022)'), 'Use the publisher citation year for Romadon and Ali');
+assert(imported.proposal.studies[3].result.includes('Harga berpengaruh negatif dan signifikan'), 'Preserve the original negative price coefficient');
 assert(imported.proposal.studies[2].author.includes('Rumahorbo'));
 assert(imported.proposal.studies[4].author.includes('Juhari'));
 const edited = structuredClone(imported.proposal); edited.studies[0].result = 'Temuan sudah diperiksa sendiri.'; edited.sections.studies='Narasi asli peneliti.';
@@ -117,14 +118,14 @@ for(const target of ['bab2','combined']){
  await fs.writeFile(`/tmp/prior-studies-evidence/studies-${target}.docx`,bytes);
  const zip=await JSZip.loadAsync(bytes), xml=xml2js(await zip.file('word/document.xml').async('string'));
  const table=all(xml,'w:tbl').find(n=>textOf(n).includes('Nama dan Judul Penelitian'));
- assert(table);assert.equal(all(table,'w:tr').length,11);assert.equal(all(all(table,'w:tr')[0],'w:tc').length,4);
+ assert(table);assert.equal(all(table,'w:tr').length,11);assert.equal(all(all(table,'w:tr')[0],'w:tc').length,5);
  assert.equal(all(table,'w:tblHeader').length,1);
  assert.equal(all(table,'w:tblLayout')[0].attributes['w:type'],'fixed');
  assert.equal(all(table,'w:gridCol').reduce((a,n)=>a+Number(n.attributes['w:w']),0),7937);
  assert.equal(all(table,'w:cantSplit').filter(n=>!['0','false'].includes(n.attributes?.['w:val'])).length,1,'Only the header is locked; long body rows may flow across pages');
  for(const row of suppliedStudies){assert(textOf(table).includes(row.author));assert(textOf(table).includes(row.journal));assert(textOf(table).includes(row.result));assert(textOf(xml).includes(row.reference));}
- for(const size of all(table,'w:sz'))assert.equal(size.attributes['w:val'],'24');
+ for(const size of all(table,'w:sz'))assert(['20', '24'].includes(size.attributes['w:val']));
  for(const spacing of all(table,'w:spacing'))assert.equal(spacing.attributes['w:line'],'240');
  const template=await exportProposalDocx(imported.proposal,thesis,bab1,target,true);const z=await JSZip.loadAsync(await template.arrayBuffer());assert(!(await z.file('word/document.xml').async('string')).includes('Saputra'));
 }
-console.log('PASS complete Generate 2.2, no fabricated sources, 10 supplied studies, adjacent blocks/field aliases/copied tables without AI, preserved negative/non-significant claims, manual edits, references, import/API boundaries, rejected invented sources, four-column DOCX and flowing rows');
+console.log('PASS Generate 2.2, 10 sourced studies, corrected negative price finding and citation year, preserved manual edits, import/API boundaries, separate method/results columns, flowing rows');

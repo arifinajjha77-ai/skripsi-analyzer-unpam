@@ -6,7 +6,7 @@ import { defaultBab1State } from '../lib/thesis/bab1Store.ts';
 import { emptyProposal, starterSections } from '../lib/thesis/proposal.ts';
 import { contextualDraft } from '../lib/thesis/proposalGeneration.ts';
 import { completeGyfinDraft, gyfinOperations, isGyfinResearch } from '../lib/thesis/gyfinCompletion.ts';
-import { exportProposalDocx } from '../lib/thesis/proposalDocx.ts';
+import { exportProposalDocx, manuscriptText } from '../lib/thesis/proposalDocx.ts';
 
 const input = {
   thesis: { x1: 'Harga', x2: 'Promosi', y: 'Keputusan Pembelian', objek: 'GYFIN SOCK' },
@@ -59,11 +59,28 @@ assert(text.includes('Tabel 3.2 Operasional Variabel Penelitian'));
 assert(text.includes('X2.8–X2.10'));
 assert.equal(all(xml, 'w:sectPr').length, 3);
 assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:start'] === '1').length, 1);
+assert(!text.includes('[Isi tanggal/bulan sebenarnya]'));
+assert(!text.includes('[Isi teknik sampling'));
+assert(!text.includes('[Lengkapi metode'));
+assert(result.proposal.sections.sample.includes('[Isi teknik sampling'), 'Export must not modify editable draft instructions');
+const tables = all(xml, 'w:tbl');
+const studiesTable = tables.find(t => textOf(t).includes('Nama dan Judul Penelitian'));
+const studyRows = all(studiesTable, 'w:tr');
+assert.equal(all(studyRows[0], 'w:tc').length, 5);
+assert.equal(textOf(all(studyRows[0], 'w:tc')[3]), 'Metode Penelitian');
+assert.equal(textOf(all(studyRows[1], 'w:tc')[3]), result.proposal.studies[0].method);
+assert.equal(textOf(all(studyRows[1], 'w:tc')[4]), result.proposal.studies[0].result);
+const schedule = tables.find(t => textOf(t).startsWith('TahapWaktu Pelaksanaan'));
+for (const row of all(schedule, 'w:tr').slice(1)) assert.equal(textOf(all(row, 'w:tc')[1]), '', 'Unknown dates remain blank');
+assert.equal(manuscriptText('Penelitian di Depok pada Oktober 2026. [Isi alamat rinci.]'), 'Penelitian di Depok pada Oktober 2026.');
+assert.equal(manuscriptText('Harga [X1] dan sumber [catatan responden].'), 'Harga [X1] dan sumber [catatan responden].');
+const templateZip = await JSZip.loadAsync(await (await exportProposalDocx(result.proposal, input.thesis, input.bab1, 'bab3', true)).arrayBuffer());
+assert(textOf(xml2js(await templateZip.file('word/document.xml').async('string'))).includes('[Isi'), 'Blank templates retain their fill-in prompts');
 for (const table of all(xml, 'w:tbl')) {
   assert(all(table, 'w:tr')[0] && all(all(table, 'w:tr')[0], 'w:tblHeader').length);
-  for (const size of all(table, 'w:sz')) assert.equal(size.attributes['w:val'], '24', 'All manuscript tables use TNR 12');
+  for (const size of all(table, 'w:sz')) assert(['20', '24'].includes(size.attributes['w:val']), 'Tables use TNR 10–12 within the FEB guide');
 }
 await fs.mkdir('/tmp/gyfin-revision-evidence', { recursive: true });
 await fs.writeFile('/tmp/gyfin-revision-evidence/Revisi-BAB-II-III-GYFIN-SOCK.docx', bytes);
 await fs.writeFile('/tmp/gyfin-revision-evidence/proposal.json', JSON.stringify(result.proposal, null, 2));
-console.log('PASS sourced GYFIN completion, old drafts, manual facts/dimensions preserved, no invented samples/dates, idempotence, 30-item mapping, two-chapter DOCX and TNR12 tables');
+console.log('PASS GYFIN completion, preserved manual facts, clean exports, separate method/results cells, blank unknown dates, editable templates, 30-item mapping, TNR10–12 tables');
