@@ -18,6 +18,13 @@ const cardClass = 'rounded-xl border border-slate-200 bg-white p-4 md:p-6';
 const studyFields: { key: keyof Study; label: string }[] = [{ key: 'author', label: 'Peneliti dan tahun' }, { key: 'title', label: 'Judul dan sumber jurnal' }, { key: 'method', label: 'Metode penelitian' }, { key: 'result', label: 'Hasil penelitian' }, { key: 'comparison', label: 'Persamaan dan perbedaan' }];
 const operationFields: { key: keyof Operation; label: string }[] = [{ key: 'variable', label: 'Variabel' }, { key: 'definition', label: 'Definisi operasional' }, { key: 'indicators', label: 'Indikator' }, { key: 'scale', label: 'Skala pengukuran' }, { key: 'source', label: 'Sumber teori' }];
 
+function GeneratedDownloadButton({ disabled, busy, onClick }: { disabled: boolean; busy: boolean; onClick: () => void }) {
+  return <button type="button" disabled={disabled} className={`${buttonClass} w-full bg-emerald-700 hover:bg-emerald-800 sm:w-auto`} onClick={onClick}>
+    {busy ? <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" /> : <Download aria-hidden="true" className="h-4 w-4 shrink-0" />}
+    {busy ? 'Menyiapkan Word gabungan…' : 'Unduh hasil generate gabungan BAB I–III'}
+  </button>;
+}
+
 function RowEditor<T extends object>({ title, rows, fields, onChange, create, disabled }: { disabled: boolean; title: string; rows: T[]; fields: { key: keyof T; label: string }[]; onChange: (rows: T[]) => void; create: () => T }) {
   return <div className="mt-5 border-t border-slate-200 pt-4">
     <h3 className="mb-3 font-semibold text-slate-800">{title}</h3>
@@ -134,6 +141,10 @@ export default function ProposalPage() {
       {generating && <div role="status" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-blue-800"><LoaderCircle className="h-4 w-4 animate-spin" />Menyusun paragraf sesuai naskah penelitian…<button className="underline" onClick={() => generationAbort.current?.abort()}>Batalkan generate</button></div>}
       {undoSnapshot && <button disabled={working} className="mt-3 inline-flex items-center gap-1 text-sm text-blue-700 underline" onClick={() => { updateProposal(undoSnapshot); setGenerationNotes([]); setNotice('Tulisan sebelum generate terakhir sudah dipulihkan.'); }}><RotateCcw className="h-4 w-4" />Pulihkan tulisan sebelum generate terakhir</button>}
       {generationNotes.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">{generationNotes.map((note,i) => <li key={i}>{note}</li>)}</ul>}
+      <div className="mt-4 border-t border-slate-200 pt-4">
+        <GeneratedDownloadButton disabled={!ready || working || filled === 0} busy={busy} onClick={() => download('combined')} />
+        <p className="mt-2 text-sm text-slate-600">{filled === 0 ? 'Generate atau isi narasi BAB II–III terlebih dahulu untuk mengunduh hasilnya.' : 'Menggabungkan BAB I yang tersimpan, hasil generate BAB II–III, edit terbaru, tabel, diagram, dan daftar pustaka ke satu file Word.'}</p>
+      </div>
       <p className="mt-3 text-xs text-slate-500">Format unduhan tetap FEB UNPAM 2021. Data sampel, waktu penelitian, dan sitasi yang belum tersedia perlu dilengkapi sebelum naskah diajukan.</p>
     </section>
     <nav aria-label="Pilih bab proposal" className="flex gap-2">{([2, 3] as const).map(c => <button key={c} aria-pressed={chapter === c} onClick={() => setChapter(c)} className={`rounded-lg px-4 py-3 text-sm font-semibold ${chapter === c ? 'bg-blue-700 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}>{c === 2 ? 'BAB II · Tinjauan Pustaka' : 'BAB III · Metode Penelitian'}</button>)}</nav>
@@ -145,5 +156,10 @@ export default function ProposalPage() {
       {s.id === 'operations' && <><RowEditor disabled={!ready || working} title="Operasional variabel" rows={proposal.operations} fields={operationFields} create={emptyOperation} onChange={rows => updateProposal({ ...proposal, operations: rows })} /><p className="mt-3 text-sm text-slate-500">Gunakan <Link href="/operasional" className="text-blue-700 underline">Operasional Variabel</Link> dan <Link href="/kuesioner" className="text-blue-700 underline">Kuesioner</Link> sebagai alat bantu penyusunan instrumen.</p></>}
     </section>)}
     <section className={cardClass}><h2 className="font-semibold text-slate-900"><label htmlFor="proposal-references">Daftar pustaka tambahan BAB II–III</label></h2><p className="mb-3 mt-1 text-sm text-slate-500">Satu entri lengkap per baris. Masukkan hanya sumber yang disitasi dan diverifikasi, maksimal 10 tahun terakhir menurut pedoman. Referensi BAB I ikut digabung dan diurutkan menurut abjad pada unduhan gabungan.</p><textarea id="proposal-references" disabled={!ready || working} className={inputClass} rows={6} placeholder="Penulis. (Tahun). Judul. Kota: Penerbit. / Metadata jurnal lengkap." value={proposal.references} onChange={e => updateProposal({ ...proposal, references: e.target.value })} />{referenceWarnings.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">{referenceWarnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>}</section>
+    <section className={`${cardClass} border-emerald-200 bg-emerald-50`} aria-labelledby="generated-download-heading">
+      <h2 id="generated-download-heading" className="font-semibold text-slate-900">Unduh hasil generate</h2>
+      <p className="mb-4 mt-1 text-sm text-slate-600">{filled}/10 subbab memiliki narasi. Unduh BAB I–III dan daftar pustaka dalam satu file Word dengan format FEB UNPAM 2021. Bagian bertanda [kurung siku] masih perlu dilengkapi.</p>
+      <GeneratedDownloadButton disabled={!ready || working || filled === 0} busy={busy} onClick={() => download('combined')} />
+    </section>
   </div>;
 }
