@@ -154,3 +154,62 @@ const thesisOutline = await generateOutline(normalizeInput({ ...input, judul: 'S
 assert.equal(thesisOutline.data.chapters.length, 5);
 assert.equal(thesisOutline.data.chapters[2].subsections.at(-1).title, 'Pemeriksaan Keabsahan Data');
 console.log('PASS reference age/metadata, official thesis/proposal structures, automatic profiles, numbering continuity, bibliography sorting, tables');
+
+// SmartCampus continuation: editable BAB II/III, combined manuscript and clean templates.
+const { exportProposalDocx } = await import('../lib/thesis/proposalDocx.ts');
+const { emptyProposal, fillEmptySections, PROPOSAL_SECTIONS } = await import('../lib/thesis/proposal.ts');
+const proposalState = emptyProposal();
+proposalState.sections.theory = marker;
+proposalState.sections.method = marker;
+proposalState.sections.sample = 'Populasi dan kriteria responden yang dimasukkan peneliti.';
+proposalState.studies = [{ author: 'Peneliti Uji (2025)', title: 'Studi Uji', method: 'Metode Uji', result: 'Temuan dari sumber uji', comparison: 'Perbedaan objek penelitian' }];
+proposalState.operations = [{ variable: 'X1', definition: 'Definisi yang diinput', indicators: 'Indikator A', scale: 'Ordinal', source: 'Peneliti Uji (2025)' }];
+proposalState.references = 'Zeta. (2025). Buku Z. Bandung: Penerbit.\nAlpha. (2024). Buku A. Jakarta: Penerbit.\nZeta. (2025). Buku Z. Bandung: Penerbit.';
+const started = fillEmptySections(proposalState, thesis, { ...defaultBab1State, namaObjek: 'Usaha Uji' });
+assert.equal(started.sections.theory, marker, 'Starting a draft preserves existing writing');
+assert(started.sections.sample === proposalState.sections.sample, 'Starting a draft preserves actual sampling text');
+assert(started.sections.hypotheses.includes(thesis.x1));
+for (const target of ['bab1', 'bab2', 'bab3', 'combined']) {
+  const { xml, zip } = await inspect(`sempro-${target}`, await exportProposalDocx(proposalState, thesis, { ...defaultBab1State, namaObjek: 'Usaha Uji' }, target), target === 'bab1' ? undefined : marker, 480);
+  const text = plainText(xml);
+  assert.equal(all(xml, 'w:sectPr').length, target === 'combined' ? 4 : 2, 'One section per chapter plus bibliography');
+  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:start'] === '1').length, 1, 'Arabic numbering restarts once');
+  if (target === 'bab2' || target === 'combined') {
+    for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === 2)) assert(text.includes(s.title));
+    assert(text.includes('Peneliti Uji (2025)'));
+    assert(text.includes('Temuan dari sumber uji'));
+    assert.equal(all(xml, 'w:drawing').length, 1, 'Framework image is embedded');
+    assert(Object.keys(zip.files).some(f => f.startsWith('word/media/') && f.endsWith('.png')), 'Framework PNG data exists');
+    assert(text.includes('Gambar 2.1 Kerangka Berpikir'));
+  }
+  if (target === 'bab3' || target === 'combined') {
+    for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === 3)) assert(text.includes(s.title));
+    assert(text.includes('Definisi yang diinput'));
+    assert(text.includes('Populasi dan kriteria responden yang dimasukkan peneliti.'));
+  }
+  if (target === 'combined') { assert(text.includes('1.5 Sistematika Penulisan')); assert(text.indexOf('BAB I') < text.indexOf('BAB II')); assert(text.indexOf('BAB II') < text.indexOf('BAB III')); }
+  const refs = all(xml, 'w:p').filter(p => /^(Alpha|Zeta)\./.test(plainText(p)));
+  assert.equal(refs.length, 2, 'Duplicate references removed');
+  assert(plainText(refs[0]).startsWith('Alpha'), 'References sorted alphabetically');
+  for (const p of refs) { assert.equal(all(p, 'w:spacing')[0].attributes['w:line'], '240'); assert.equal(all(p, 'w:ind')[0].attributes['w:hanging'], '850'); }
+  for (const table of all(xml, 'w:tbl')) {
+    assert.equal(all(table, 'w:tblHeader').length, 1, 'Table header repeats');
+    for (const p of all(table, 'w:p')) assert.equal(all(p, 'w:spacing')[0].attributes['w:line'], '240', 'Tables are single spaced');
+  }
+  for (const file of Object.keys(zip.files).filter(f => /^word\/footer\d+\.xml$/.test(f))) {
+    const footer = xml2js(await zip.file(file).async('string'));
+    for (const p of all(footer, 'w:p').filter(p => all(p, 'w:instrText').length)) {
+      assert.equal(all(p, 'w:jc')[0].attributes['w:val'], 'center');
+      assert.equal(all(p, 'w:ind')[0].attributes['w:right'], '567', 'Physical page center despite unequal margins');
+    }
+  }
+}
+for (const target of ['bab1', 'bab2', 'bab3', 'combined']) {
+  const { xml } = await inspect(`template-sempro-${target}`, await exportProposalDocx(proposalState, thesis, { ...defaultBab1State, namaObjek: 'Usaha Uji' }, target, true));
+  const text = plainText(xml);
+  assert(!text.includes('Usaha Uji') && !text.includes('Peneliti Uji') && !text.includes(marker), 'Template excludes previous manuscript inputs');
+  assert(!text.includes('Kotler'), 'Blank template does not inject manuscript references');
+  assert(text.includes('[Isi') || text.includes('[Variabel'), 'Template retains fill-in prompts');
+  assert.equal(all(xml, 'w:pgNumType').filter(n => n.attributes['w:start'] === '1').length, 1);
+}
+console.log('PASS BAB II/III editing, all four DOCX downloads and templates, framework, manuscript continuity, clean template data, preserved drafts');

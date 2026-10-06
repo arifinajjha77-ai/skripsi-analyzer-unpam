@@ -3,11 +3,11 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import {
-  GraduationCap, BookOpen, FileText, BookMarked, BarChart2,
-  PresentationIcon, Bookmark, Library, TrendingUp, Sparkles,
-  ChevronRight, ArrowRight, CheckCircle, Clock, Upload,
-  ClipboardList, GitFork, Table2, Users, ShieldCheck, Settings2,
-  Newspaper, Package, Zap, FolderOpen,
+  GraduationCap, BookOpen, FileText,
+  Sparkles,
+  ArrowRight, CheckCircle, Clock, Upload,
+  ClipboardList, GitFork, Users,
+  Newspaper, FolderOpen,
 } from "lucide-react";
 import { useAppContext } from "@/lib/context";
 import { loadThesisState } from "@/lib/thesis/store";
@@ -51,9 +51,9 @@ const ACADEMIC_MODULES: AcademicModule[] = [
   {
     icon: "📄",
     label: "Proposal",
-    desc: "Proposal penelitian terstruktur",
-    href: "#",
-    status: "soon",
+    desc: "Sempro BAB I–III, unduhan dan template Word",
+    href: "/proposal",
+    status: "ready",
     color: "bg-emerald-50",
     textColor: "text-emerald-700",
     borderColor: "border-emerald-200",
@@ -123,7 +123,6 @@ const ACADEMIC_MODULES: AcademicModule[] = [
 // ─── Roadmap Items ────────────────────────────────────────────────────────────
 
 const ROADMAP = [
-  { icon: "📄", label: "Proposal Penelitian" },
   { icon: "📑", label: "Format Jurnal Ilmiah" },
   { icon: "📊", label: "Slide Presentasi" },
   { icon: "📖", label: "Resume & CV Akademik" },
@@ -139,6 +138,7 @@ const SKRIPSI_TOOLS = [
   { label: "Generator Judul",      icon: BookOpen,      href: "/judul",          color: "bg-blue-500" },
   { label: "Kuesioner",            icon: ClipboardList, href: "/kuesioner",      color: "bg-blue-500" },
   { label: "Latar Belakang BAB I", icon: Newspaper,     href: "/latar-belakang", color: "bg-blue-600" },
+  { label: "Proposal BAB II–III", icon: FileText, href: "/proposal", color: "bg-blue-700" },
   { label: "Kerangka Berpikir",    icon: GitFork,       href: "/kerangka",       color: "bg-indigo-500" },
   { label: "Upload & Analisis",    icon: Upload,        href: "/upload",         color: "bg-violet-500" },
   { label: "Cek Kelayakan Data",   icon: CheckCircle,   href: "/kelayakan",      color: "bg-teal-500" },
@@ -152,7 +152,7 @@ const WIZARD_STEPS = [
   { num: 1, label: "Judul",       href: "/judul" },
   { num: 2, label: "Kuesioner",   href: "/kuesioner" },
   { num: 3, label: "BAB I",       href: "/latar-belakang" },
-  { num: 4, label: "Kerangka",    href: "/kerangka" },
+  { num: 4, label: "BAB II–III",   href: "/proposal" },
   { num: 5, label: "Operasional", href: "/operasional" },
   { num: 6, label: "Responden",   href: "/responden" },
   { num: 7, label: "Kelayakan",   href: "/kelayakan" },
@@ -179,7 +179,8 @@ export default function DashboardPage() {
     { label: "Variabel Penelitian (Judul)",  done: hasJudul },
     { label: "Kuesioner",                    done: hasJudul },
     { label: "Latar Belakang (BAB I)",       done: hasBab1 },
-    { label: "Kerangka Berpikir",            done: hasJudul },
+    { label: "Proposal BAB II–III", icon: FileText, href: "/proposal", color: "bg-blue-700" },
+  { label: "Kerangka Berpikir",            done: hasJudul },
     { label: "Operasional Variabel",         done: hasJudul },
     { label: "Upload Responden",             done: hasResp },
     { label: "Upload Data Analisis",         done: hasData },

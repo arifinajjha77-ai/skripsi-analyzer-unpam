@@ -835,6 +835,8 @@ export default function LatarBelakangPage() {
         </div>
       </div>
 
+      <a href="/proposal" className="block rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-800 hover:bg-blue-100">Lanjut ke BAB II dan BAB III · Unduh gabungan dan template proposal →</a>
+
       {/* Variabel status */}
       <div className="flex flex-wrap gap-2">
         {isReady ? (

@@ -13,6 +13,7 @@ const ROUTE_MAP: Record<string, { label: string; group?: string }> = {
   "/kuesioner":      { label: "Kuesioner",            group: "Generator" },
   "/variabel":       { label: "Belajar Variabel",     group: "Generator" },
   "/latar-belakang": { label: "Latar Belakang",       group: "Generator" },
+  "/proposal":       { label: "Proposal BAB I–III", group: "Skripsi" },
   "/kerangka":       { label: "Kerangka Berpikir",    group: "Generator" },
   "/operasional":    { label: "Operasional Variabel", group: "Generator" },
   "/responden":      { label: "Responden Center",     group: "Penelitian" },

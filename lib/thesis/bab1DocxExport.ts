@@ -203,7 +203,7 @@ function buildTujuan(thesis: ThesisState, namaObjek: string): string[] {
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
-export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Promise<Blob> {
+export function buildBab1Content(bab1: Bab1State, thesis: ThesisState): { children: (Paragraph | Table)[]; references: string[] } {
   bab1 = normalizeBab1State(bab1);
   const { namaObjek, lokasi } = bab1;
 
@@ -288,6 +288,11 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
   }
 
   const references = getBab1References([thesis.x1, thesis.x2, thesis.y]);
+  return { children, references };
+}
+
+export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Promise<Blob> {
+  const { children, references } = buildBab1Content(bab1, thesis);
   const bibliography = references.map(text => new Paragraph({ children: academicRuns(text), spacing: { before: 0, after: 0, line: 240 }, indent: { left: FEB_INDENT, hanging: FEB_INDENT } }));
 
   const doc = createFebDocument({

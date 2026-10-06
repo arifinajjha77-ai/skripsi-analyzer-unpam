@@ -10,7 +10,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const skripsiPage = ["/judul", "/kuesioner", "/variabel", "/latar-belakang", "/kerangka", "/operasional", "/responden", "/upload", "/mapping", "/kelayakan", "/deskriptif", "/validitas", "/reliabilitas", "/regresi", "/narasi"].includes(pathname);
+  const skripsiPage = ["/judul", "/kuesioner", "/variabel", "/latar-belakang", "/proposal", "/kerangka", "/operasional", "/responden", "/upload", "/mapping", "/kelayakan", "/deskriptif", "/validitas", "/reliabilitas", "/regresi", "/narasi"].includes(pathname);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -37,7 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <Breadcrumb />
           {skripsiPage && <section className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
-            <div className="flex flex-wrap items-center justify-between gap-2"><strong>{FEB_2021.title} · Skripsi</strong><a href={FEB_2021.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">Buka pedoman</a></div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><strong>{FEB_2021.title} · {pathname === "/proposal" ? "Proposal Skripsi" : "Skripsi"}</strong><a href={FEB_2021.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">Buka pedoman</a></div>
             <p className="mt-1 text-xs">A4 · Times New Roman 12 · Spasi isi 2 · Atas/kiri 4 cm · Kanan/bawah 3 cm · Indentasi 1,5 cm</p>
             <p className="mt-1 text-xs">Tabel dan daftar pustaka 1 spasi. Referensi maksimal 10 tahun terakhir. Ekspor per menu menghasilkan bagian skripsi untuk digabungkan ke dokumen utama.</p>
           </section>}
