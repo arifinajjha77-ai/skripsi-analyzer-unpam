@@ -25,8 +25,8 @@ export const defaultSettings: AppSettings = {
   namaPembimbing: "",
   namaKoPembimbing: "",
   tahunAjaran: "2024/2025",
-  margin: "4-3-3-3",
-  spasi: "1.5",
+  margin: "4-4-3-3",
+  spasi: "2.0",
   font: "Times New Roman",
   template: "unpam",
 };
@@ -36,7 +36,9 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return defaultSettings;
-    return { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) };
+    const saved = { ...defaultSettings, ...(JSON.parse(raw) as Partial<AppSettings>) };
+    // Identity is retained; UNPAM export geometry always follows the verified 2021 profile.
+    return saved.template === "unpam" ? { ...saved, margin: "4-4-3-3", spasi: "2.0", font: "Times New Roman" } : saved;
   } catch {
     return defaultSettings;
   }

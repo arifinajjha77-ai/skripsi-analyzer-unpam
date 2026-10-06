@@ -27,8 +27,8 @@ const FIELD_GROUPS = [
     label: "Format Dokumen Export",
     fields: [
       {
-        key: "margin", label: "Margin (cm)", type: "select",
-        options: ["4-3-3-3", "3-3-3-3", "4-4-3-3"],
+        key: "margin", label: "Margin Kiri-Atas-Kanan-Bawah (cm)", type: "select",
+        options: ["4-4-3-3", "4-3-3-3", "3-3-3-3"],
       },
       {
         key: "font", label: "Font", type: "select",
@@ -49,7 +49,8 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setSettings(loadSettings());
+    const timer = window.setTimeout(() => setSettings(loadSettings()), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleChange = useCallback((key: FieldKey, value: string) => {
@@ -103,7 +104,8 @@ export default function SettingsPage() {
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-        Pengaturan ini digunakan secara otomatis saat export DOCX (kuesioner, BAB I, operasional variabel, dll).
+        Identitas digunakan saat export. Format UNPAM mengikuti Pedoman Tugas Akhir FEB 2021:
+        margin atas/kiri 4 cm, kanan/bawah 3 cm, TNR 12, skripsi spasi 2 dan makalah spasi 1,5.
         Data disimpan di browser (localStorage).
       </div>
 
@@ -122,6 +124,7 @@ export default function SettingsPage() {
                 {"options" in field ? (
                   <select
                     value={val}
+                    disabled={settings.template === "unpam"}
                     onChange={(e) => handleChange(key, e.target.value)}
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
@@ -133,6 +136,7 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     value={val}
+                    disabled={settings.template === "unpam"}
                     onChange={(e) => handleChange(key, e.target.value)}
                     placeholder={"placeholder" in field ? field.placeholder : ""}
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

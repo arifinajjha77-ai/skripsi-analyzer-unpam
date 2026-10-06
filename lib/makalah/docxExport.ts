@@ -1,3 +1,4 @@
+import { academicRuns, createFebDocument, febSection, FEB_INDENT } from "@/lib/docx/feb2021";
 /**
  * SmartCampus V2.5 — Makalah DOCX Exporter
  *
@@ -9,13 +10,11 @@
  */
 
 import {
-  Document,
   Packer,
   Paragraph,
   TextRun,
   AlignmentType,
   PageBreak,
-  convertInchesToTwip,
   Table,
   TableRow,
   TableCell,
@@ -28,7 +27,6 @@ import { MakalahState, stateToCoverData } from "./store";
 import { MakalahOutput } from "./generator";
 import { AcademicTable } from "./writingEngine";
 import { buildDocxCover } from "@/lib/cover/docxCover";
-import { getUniversityInfo, getTemplate } from "@/lib/cover/templates";
 import {
   buildH1,
   buildH2,
@@ -47,25 +45,26 @@ const SZ   = 24;  // 12pt in half-points
 function body(text: string, firstIndent = true): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
-    spacing:   { line: 360, after: 120 },
-    indent:    firstIndent ? { firstLine: convertInchesToTwip(0.5) } : undefined,
-    children:  [new TextRun({ text, font: FONT, size: SZ })],
+    spacing:   { before: 0, after: 0, line: 360 },
+    indent:    firstIndent ? { firstLine: FEB_INDENT } : undefined,
+    children: academicRuns(text),
   });
 }
 
 function listItem(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.LEFT,
-    spacing:   { line: 360, after: 60 },
-    indent:    { left: convertInchesToTwip(0.5) },
-    children:  [new TextRun({ text, font: FONT, size: SZ })],
+    spacing:   { before: 0, after: 0, line: 360 },
+    indent:    { left: FEB_INDENT },
+    children: academicRuns(text),
   });
 }
 
 function tableCaption(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing:   { before: 120, after: 80 },
+    keepNext: true,
+    spacing:   { before: 0, after: 0, line: 240 },
     children:  [new TextRun({ text, font: FONT, size: SZ, bold: true })],
   });
 }
@@ -73,7 +72,7 @@ function tableCaption(text: string): Paragraph {
 function sourceNote(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.LEFT,
-    spacing:   { after: 200 },
+    spacing:   { before: 0, after: 0, line: 240 },
     children:  [new TextRun({ text: `Sumber: ${text}`, font: FONT, size: 20, italics: true })],
   });
 }
@@ -93,6 +92,7 @@ function buildAcademicTable(tbl: AcademicTable): (Paragraph | Table)[] {
   result.push(tableCaption(tbl.caption));
 
   const headerRow = new TableRow({
+    tableHeader: true,
     children: tbl.headers.map(
       (h) =>
         new TableCell({
@@ -100,6 +100,7 @@ function buildAcademicTable(tbl: AcademicTable): (Paragraph | Table)[] {
           margins:  { top: 60, bottom: 60, left: 100, right: 100 },
           children: [
             new Paragraph({
+              spacing: { before: 0, after: 0, line: 240 },
               alignment: AlignmentType.CENTER,
               children:  [new TextRun({ text: h, font: FONT, size: 20, bold: true, color: "FFFFFF" })],
             }),
@@ -118,6 +119,7 @@ function buildAcademicTable(tbl: AcademicTable): (Paragraph | Table)[] {
               margins: { top: 60, bottom: 60, left: 100, right: 100 },
               children: [
                 new Paragraph({
+                  spacing: { before: 0, after: 0, line: 240 },
                   alignment: ci === 0 ? AlignmentType.LEFT : AlignmentType.CENTER,
                   children:  [new TextRun({ text: wCell.value, font: FONT, size: 20, bold: wCell.bold ?? false })],
                 }),
@@ -178,6 +180,7 @@ function renderSection(
     result.push(tableCaption(tableData.caption));
 
     const headerRow = new TableRow({
+    tableHeader: true,
       children: tableData.headers.map(
         (h) =>
           new TableCell({
@@ -185,6 +188,7 @@ function renderSection(
             margins:  { top: 60, bottom: 60, left: 100, right: 100 },
             children: [
               new Paragraph({
+                spacing: { before: 0, after: 0, line: 240 },
                 alignment: AlignmentType.CENTER,
                 children:  [new TextRun({ text: h, font: FONT, size: 20, bold: true, color: "FFFFFF" })],
               }),
@@ -203,6 +207,7 @@ function renderSection(
                 margins: { top: 60, bottom: 60, left: 100, right: 100 },
                 children: [
                   new Paragraph({
+                    spacing: { before: 0, after: 0, line: 240 },
                     alignment: ci === 0 ? AlignmentType.LEFT : AlignmentType.CENTER,
                     children:  [new TextRun({ text: wCell.value, font: FONT, size: 20, bold: wCell.bold ?? false })],
                   }),
@@ -229,10 +234,7 @@ function renderSection(
       },
     });
 
-    result.push(new Paragraph({ children: [], spacing: { after: 0 } }));
-    result.push(new Paragraph({ children: [], spacing: { after: 0 } }));
-    result.push(new Paragraph({ children: [], spacing: { after: 0 } }));
-    result.push(new Paragraph({ children: [], spacing: { after: 0 } }));
+    result.push(tbl);
     result.push(sourceNote(tableData.source));
   }
   return result;
@@ -247,11 +249,13 @@ export async function exportMakalahDocx(
   // V2.5: children accepts Paragraph | Table | TableOfContents
   // Cast to unknown[] then to Paragraph[] for the Document constructor
   const children: (Paragraph | Table | TableOfContents)[] = [];
+  const boundaries: number[] = [];
 
   // ── Cover ──────────────────────────────────────────────────────────────────
   const coverData  = stateToCoverData(m);
   const coverPages = await buildDocxCover(coverData);
-  children.push(...coverPages);
+  children.push(...coverPages.slice(0, -1));
+  boundaries.push(children.length);
 
   // ── Kata Pengantar ─────────────────────────────────────────────────────────
   // buildH1 uses HeadingLevel.HEADING_1 — appears in TOC
@@ -272,6 +276,8 @@ export async function exportMakalahDocx(
   children.push(...buildTocSection(UNPAM_TOC_STYLE));
 
   // ── BAB I ──────────────────────────────────────────────────────────────────
+  boundaries.push(children.length - 1);
+  children.pop();
   children.push(buildH1("BAB I PENDAHULUAN", UNPAM_TOC_STYLE));
   for (const block of output.bab1.split(/\n(?=1\.\d+\s)/)) {
     const lines = block.split("\n");
@@ -288,6 +294,8 @@ export async function exportMakalahDocx(
   children.push(pageBreak());
 
   // ── BAB II ─────────────────────────────────────────────────────────────────
+  boundaries.push(children.length - 1);
+  children.pop();
   children.push(buildH1("BAB II PEMBAHASAN", UNPAM_TOC_STYLE));
   for (const section of output.bab2Sections) {
     children.push(buildH2(`${section.number} ${section.title}`, UNPAM_TOC_STYLE));
@@ -297,6 +305,8 @@ export async function exportMakalahDocx(
   children.push(pageBreak());
 
   // ── BAB III ────────────────────────────────────────────────────────────────
+  boundaries.push(children.length - 1);
+  children.pop();
   children.push(buildH1("BAB III PENUTUP", UNPAM_TOC_STYLE));
   for (const block of output.bab3.split(/\n(?=3\.\d+\s)/)) {
     const lines = block.split("\n");
@@ -313,14 +323,16 @@ export async function exportMakalahDocx(
   children.push(pageBreak());
 
   // ── DAFTAR PUSTAKA ─────────────────────────────────────────────────────────
+  boundaries.push(children.length - 1);
+  children.pop();
   children.push(buildH1("DAFTAR PUSTAKA", UNPAM_TOC_STYLE));
-  for (const entry of output.daftarPustaka.split("\n\n")) {
+  for (const entry of output.daftarPustaka.split("\n\n").sort((a, b) => a.localeCompare(b, "id"))) {
     if (entry.trim()) {
       children.push(
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          spacing:   { line: 360, after: 120 },
-          indent:    { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
+          spacing:   { before: 0, after: 0, line: 240 },
+          indent:    { left: FEB_INDENT, hanging: FEB_INDENT },
           children:  [new TextRun({ text: entry.replace(/\*/g, ""), font: FONT, size: SZ })],
         })
       );
@@ -328,26 +340,19 @@ export async function exportMakalahDocx(
   }
 
   // ── Document configuration ─────────────────────────────────────────────────
-  const uniInfo = getUniversityInfo(m.universityId ?? "unpam");
-  const tmpl    = getTemplate(uniInfo?.templateId ?? "generic");
 
   // V2.5: Include heading style overrides so headings look academic (black TNR, not blue)
   const headingStyles = buildDocumentStyles(UNPAM_TOC_STYLE);
 
-  const doc = new Document({
+  const doc = createFebDocument({
     styles: headingStyles,
     sections: [
-      {
-        properties: {
-          page: {
-            margin: tmpl.margins,
-          },
-        },
-        // Cast: docx accepts Paragraph | Table | TableOfContents in children
-        children: children as unknown as Paragraph[],
-      },
+      febSection(children.slice(0, boundaries[0]), "cover"),
+      febSection(children.slice(boundaries[0], boundaries[1]), "front", 1),
+      ...[1, 2, 3].map((index) => febSection(children.slice(boundaries[index], boundaries[index + 1]), "chapter", index === 1 ? 1 : undefined)),
+      febSection(children.slice(boundaries[4]), "back"),
     ],
-  });
+  }, "makalah");
 
   return Packer.toBlob(doc);
 }

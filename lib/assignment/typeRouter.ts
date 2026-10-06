@@ -1,4 +1,5 @@
 import type { AssignmentAnalysis, AssignmentTypeRouter } from "./types";
+import { febThesisOutline } from "@/lib/templates/feb2021";
 
 const ROUTES: Array<{ type: AssignmentTypeRouter; patterns: RegExp[] }> = [
   { type: "LAPORAN_PRAKTIKUM", patterns: [/laporan\s+praktikum/i, /\bpraktikum\b/i, /\blab(oratorium)?\b/i] },
@@ -34,7 +35,7 @@ export function defaultStructureForType(type: AssignmentTypeRouter): string[] {
     case "BUSINESS_PLAN":
       return ["Ringkasan Eksekutif", "Profil Usaha", "Analisis Pasar", "Strategi Operasional dan Pemasaran", "Rencana Keuangan", "Penutup"];
     case "SKRIPSI":
-      return ["Latar Belakang", "Rumusan Masalah", "Tujuan Penelitian", "Tinjauan Pustaka", "Metode Penelitian", "Daftar Pustaka"];
+      return febThesisOutline("proposal-skripsi");
     case "PKM":
       return ["Judul dan Ringkasan", "Latar Belakang", "Tujuan", "Metode Pelaksanaan", "Anggaran", "Jadwal Kegiatan"];
     case "LAPORAN_PRAKTIKUM":

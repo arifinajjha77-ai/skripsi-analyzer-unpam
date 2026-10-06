@@ -13,7 +13,7 @@ export const TEMPLATE_REGISTRY: Record<string, CampusTemplate> = {
 };
 
 export const TEMPLATE_OPTIONS: { id: string; label: string; available: boolean }[] = [
-  { id: "unpam",       label: "Universitas Pamulang (UNPAM)",  available: true  },
+  { id: "unpam",       label: "Universitas Pamulang (FEB · Pedoman 2021)",  available: true  },
   { id: "mercubuana",  label: "Universitas Mercu Buana",       available: false },
   { id: "gunadarma",   label: "Universitas Gunadarma",         available: false },
   { id: "esa_unggul",  label: "Universitas Esa Unggul",        available: false },
@@ -45,7 +45,7 @@ export function getActiveTemplate(): CampusTemplate {
 
 /** Convert template margin cm → docx twips (1 cm ≈ 567 twips) */
 export function marginTwips(template: CampusTemplate) {
-  const toTwips = (cm: number) => Math.round(cm * 567);
+  const toTwips = (cm: number) => Math.round(cm * 1440 / 2.54);
   return {
     top:    toTwips(template.marginCm.top),
     right:  toTwips(template.marginCm.right),

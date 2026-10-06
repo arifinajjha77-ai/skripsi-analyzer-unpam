@@ -5,6 +5,7 @@ import Image from "next/image";
 import { BookOpen, Save, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { loadSettings, saveSettings, type AppSettings } from "@/lib/settingsStore";
+import { FEB_2021 } from "@/lib/templates/feb2021";
 import { TEMPLATE_OPTIONS, TEMPLATE_REGISTRY } from "@/lib/templates";
 
 export default function TemplateSettingsPage() {
@@ -12,7 +13,8 @@ export default function TemplateSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setSettings(loadSettings());
+    const timer = window.setTimeout(() => setSettings(loadSettings()), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleSelect = useCallback((id: string) => {
@@ -57,7 +59,9 @@ export default function TemplateSettingsPage() {
 
       {/* Info */}
       <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-700 dark:text-blue-300">
-        Template yang dipilih mengatur format semua dokumen yang dieksport: margin, font, spasi, penomoran, sitasi, daftar pustaka, dan logo institusi.
+        Acuan UNPAM: Pedoman Tugas Akhir FEB 2021 (cetakan Oktober 2021).
+        Skripsi/proposal skripsi memakai spasi 2; makalah memakai spasi 1,5. Tabel dan daftar pustaka memakai spasi 1.
+        <a href={FEB_2021.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 block underline">Baca pedoman FEB 2021</a>
       </div>
 
       {/* Active template hero card */}
@@ -178,7 +182,9 @@ export default function TemplateSettingsPage() {
             ["Fakultas",       activeTemplate.namaFakultas],
             ["Program Studi",  activeTemplate.programStudi],
             ["Font",           `${activeTemplate.font} ${activeTemplate.fontSize}pt`],
-            ["Spasi",          `${activeTemplate.lineSpacingMultiple}x`],
+            ["Spasi Isi",       "Skripsi 2x · Makalah 1,5x"],
+            ["Pedoman",         activeTemplate.pedomanNama || "Standar umum"],
+            ["Indentasi",       `${activeTemplate.paragraphIndentCm} cm`],
             ["Margin",         `K${activeTemplate.marginCm.left} · Ka${activeTemplate.marginCm.right} · A${activeTemplate.marginCm.top} · B${activeTemplate.marginCm.bottom} cm`],
             ["Indentasi",      `${activeTemplate.paragraphIndentCm} cm`],
             ["Heading BAB",    activeTemplate.headingBabFormat],

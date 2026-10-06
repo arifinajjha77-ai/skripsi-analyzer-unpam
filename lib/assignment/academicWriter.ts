@@ -196,6 +196,6 @@ function buildReferences(): string[] {
     "Kotler, P., & Keller, K. L. (2016). Marketing management. Pearson Education.",
     "Kotler, P., Kartajaya, H., & Setiawan, I. (2021). Marketing 5.0: Technology for humanity. John Wiley & Sons.",
     "Tuten, T. L., & Solomon, M. R. (2018). Social media marketing. SAGE Publications.",
-    "Zimmerer, T. W., Scarborough, N. M., & Wilson, D. (2008). Essentials of entrepreneurship and small business management. Pearson.",
+    "Barringer, B. R., & Ireland, R. D. (2019). Entrepreneurship: Successfully launching new ventures (6th ed.). Harlow: Pearson.",
   ];
 }

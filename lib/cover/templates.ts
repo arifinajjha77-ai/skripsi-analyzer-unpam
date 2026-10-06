@@ -18,11 +18,11 @@ const CM = (cm: number) => convertInchesToTwip(cm / 2.54);
 
 // ─── Built-in Templates ───────────────────────────────────────────────────────
 
-/** UNPAM Standard Cover (4cm left, 3cm others, TNR, uppercase title) */
+/** UNPAM FEB 2021 Cover (4cm top/left, 3cm right/bottom, TNR, uppercase title) */
 const UNPAM_TEMPLATE: UniversityTemplate = {
   id: "unpam",
-  name: "UNPAM Standard",
-  margins: { top: CM(3), right: CM(3), bottom: CM(3), left: CM(4) },
+  name: "UNPAM FEB 2021",
+  margins: { top: CM(4), right: CM(3), bottom: CM(3), left: CM(4) },
   fontTitle: "Times New Roman",
   fontBody:  "Times New Roman",
   titleSizePt: 12,

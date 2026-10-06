@@ -12,6 +12,7 @@ const analyzeInputSchema = z.object({
 });
 
 const generateInputSchema = z.object({
+  writingProfile: z.enum(["proposal-skripsi", "skripsi", "makalah", "komprehensif"]).optional(),
   analysis: assignmentAnalysisSchema,
   answers: assignmentAnswerSchema,
   optionalNotes: z.string().max(10000).optional(),
@@ -60,7 +61,7 @@ export async function generateAssignmentAction(input: unknown) {
   }
 
   try {
-    const report = await generateAssignmentReport(parsed.data.analysis, parsed.data.answers, parsed.data.optionalNotes);
+    const report = await generateAssignmentReport(parsed.data.analysis, parsed.data.answers, parsed.data.optionalNotes, parsed.data.writingProfile);
     return { ok: true as const, data: report };
   } catch (error) {
     return { ok: false as const, error: messageOf(error) };

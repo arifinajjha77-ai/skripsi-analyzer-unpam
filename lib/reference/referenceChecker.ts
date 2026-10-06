@@ -13,7 +13,6 @@
 
 import { AcademicReference, AcademicDisciplineRef } from "./referenceEngine";
 import { validateReference, ReferenceValidationResult } from "./referenceValidator";
-import { isClassicReference } from "./referenceRules";
 import { CitationTracker } from "./citationSynchronizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,7 +92,7 @@ function buildRecommendations(summary: Omit<ReferenceQualitySummary, "recommenda
     );
   }
   if (summary.total < 10) {
-    recs.push("Idealnya makalah/skripsi memiliki minimal 10 referensi. Tambahkan lebih banyak sumber.");
+    recs.push("Periksa jumlah referensi sesuai jenis tugas. FEB 2021 mewajibkan minimal 5 referensi untuk makalah komprehensif.");
   }
   if (summary.total >= 10 && summary.verified === summary.total - summary.classic) {
     recs.push("Referensi sudah lengkap dan terverifikasi. Pastikan semua sitasi muncul dalam teks.");

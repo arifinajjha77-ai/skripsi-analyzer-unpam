@@ -1,3 +1,5 @@
+import { Paragraph, TextRun, HeadingLevel, AlignmentType, LineRuleType, LevelFormat, Packer } from "docx";
+import { createFebDocument, FEB_INDENT, febSection } from "@/lib/docx/feb2021";
 /**
  * Export BAB IV narasi + Daftar Pustaka as a single DOCX file,
  * formatted according to the active campus template (UNPAM by default).
@@ -5,25 +7,15 @@
 
 import type { Reference } from "@/lib/reference-engine";
 import { dedupeRefs } from "@/lib/reference-engine";
-import { getActiveTemplate, marginTwips, lineSpacingDocx } from "@/lib/templates";
-import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
+import { getActiveTemplate, lineSpacingDocx } from "@/lib/templates";
 
 export async function generateBab4Docx(
   narasiText: string,
   refsUsed: Reference[]
 ): Promise<Blob> {
-  const {
-    Document, Paragraph, TextRun, HeadingLevel, AlignmentType,
-    LineRuleType, LevelFormat, convertInchesToTwip,
-  } = await import("docx");
 
   const template = getActiveTemplate();
-  const margins  = marginTwips(template);
   const lineVal  = lineSpacingDocx(template);
-
-  // Logo + institution header
-  const logoBuffer = await fetchLogoBuffer();
-  const institutionHeader = await buildInstitutionHeader({ logoBuffer, fontName: template.font, withRule: true });
 
   /** Helper: normal paragraph with optional indent */
   function para(
@@ -42,14 +34,13 @@ export async function generateBab4Docx(
         : opts.align === "right" ? AlignmentType.RIGHT
         : opts.align === "both"  ? AlignmentType.JUSTIFIED
         : AlignmentType.JUSTIFIED,
-      spacing: { line: lineVal, lineRule: LineRuleType.AUTO, after: 0 },
-      indent: opts.indent ? { firstLine: convertInchesToTwip(0.5) } : undefined,
+      spacing: { before: 0, after: 0, line: lineVal, lineRule: LineRuleType.AUTO },
+      indent: opts.indent ? { firstLine: FEB_INDENT } : undefined,
     });
   }
 
   function heading1(text: string): InstanceType<typeof Paragraph> {
     return new Paragraph({
-      text,
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
       spacing: {
@@ -64,7 +55,6 @@ export async function generateBab4Docx(
 
   function heading2(text: string): InstanceType<typeof Paragraph> {
     return new Paragraph({
-      text,
       heading: HeadingLevel.HEADING_2,
       spacing: {
         before: template.spacingBeforeHeadingPt * 20,
@@ -108,13 +98,13 @@ export async function generateBab4Docx(
       new Paragraph({
         children: [new TextRun({ text: ref.apaFull, font: template.font, size: template.fontSize * 2 })],
         alignment: AlignmentType.JUSTIFIED,
-        spacing: { line: lineVal, lineRule: LineRuleType.AUTO, after: 240 },
-        indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
+        spacing: { before: 0, after: 0, line: 240, lineRule: LineRuleType.AUTO },
+        indent: { left: FEB_INDENT, hanging: FEB_INDENT },
       })
     ),
   ];
 
-  const doc = new Document({
+  const doc = createFebDocument({
     numbering: {
       config: [{
         reference: "decimal",
@@ -126,23 +116,8 @@ export async function generateBab4Docx(
         }],
       }],
     },
-    sections: [{
-      properties: {
-        page: {
-          margin: {
-            top: margins.top, right: margins.right,
-            bottom: margins.bottom, left: margins.left,
-          },
-        },
-      },
-      children: [
-        ...institutionHeader,
-        ...narasiParas,
-        ...daftarPustakaParas,
-      ],
-    }],
+    sections: [febSection(narasiParas, "chapter", 1), febSection(daftarPustakaParas, "back")],
   });
 
-  const { Packer } = await import("docx");
   return Packer.toBlob(doc);
 }

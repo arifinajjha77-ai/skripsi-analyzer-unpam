@@ -15,7 +15,6 @@
 
 import { AcademicReference, ReferenceStatus } from "./referenceEngine";
 import {
-  isClassicReference,
   isAgeValid,
   getAgeWarning,
   getAgeStatus,
@@ -46,7 +45,7 @@ export interface ReferenceValidationResult {
 // ─── Required Fields by Type ──────────────────────────────────────────────────
 
 const REQUIRED_FIELDS: Record<string, string[]> = {
-  book:       ["author", "year", "title", "publisher"],
+  book:       ["author", "year", "title", "publisher", "city"],
   journal:    ["author", "year", "title", "journal"],
   proceeding: ["author", "year", "title"],
   thesis:     ["author", "year", "title"],
@@ -59,7 +58,7 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
 
 function checkFields(ref: AcademicReference): FieldStatus[] {
   const required = REQUIRED_FIELDS[ref.type] ?? ["author", "year", "title"];
-  const allFields = ["author", "year", "title", "publisher", "journal", "discipline", "keywords"];
+  const allFields = ["author", "year", "title", "publisher", "city", "url", "journal", "discipline", "keywords"];
 
   return allFields.map((field) => {
     const value = (ref as unknown as Record<string, unknown>)[field];
@@ -89,9 +88,8 @@ function resolveStatus(
   isComplete: boolean,
   documentYear: number
 ): ReferenceStatus {
-  if (isClassicReference(ref))           return "classic";
-  if (!isComplete || !ref.verified)      return "needs_verification";
-  if (!isAgeValid(ref, documentYear))    return "too_old";
+  if (!isAgeValid(ref, documentYear)) return "too_old";
+  if (!isComplete || !ref.verified) return "needs_verification";
   return "verified";
 }
 

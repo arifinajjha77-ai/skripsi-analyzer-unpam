@@ -133,6 +133,8 @@ export const assignmentReportImageSchema = z.object({
 });
 
 export const assignmentReportSchema = z.object({
+  studentMeta: z.object({ name: z.string(), nim: z.string(), program: z.string(), year: z.string() }).optional(),
+  writingProfile: z.enum(["proposal-skripsi", "skripsi", "makalah", "komprehensif"]).optional(),
   title: z.string(),
   course: z.string(),
   outputType: z.string(),

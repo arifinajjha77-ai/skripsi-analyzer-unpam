@@ -1,3 +1,4 @@
+import { febThesisOutline, inferFebProfile } from "@/lib/templates/feb2021";
 import type { EngineResult, MakalahEngineInput, MakalahOutline } from "./types";
 import { buildOutlinePrompt, DEFAULT_MODEL } from "./prompts";
 import { generateJsonWithOpenAI } from "@/lib/ai/openai";
@@ -25,8 +26,8 @@ function normalizeOutline(outline: MakalahOutline, input: MakalahEngineInput): M
       ...actual,
       id: expected.id,
       number: expected.number,
-      title: actual?.title?.trim() || expected.title,
-      subsections: actual?.subsections?.length ? actual.subsections : expected.subsections,
+      title: /skripsi|proposal penelitian/i.test(`${input.judul} ${input.tema}`) ? expected.title : actual?.title?.trim() || expected.title,
+      subsections: /skripsi|proposal penelitian/i.test(`${input.judul} ${input.tema}`) ? expected.subsections.map((sub) => ({ ...sub, bullets: actual?.subsections?.find((item) => item.id === sub.id)?.bullets || sub.bullets })) : actual?.subsections?.length ? actual.subsections : expected.subsections,
     };
   });
 
@@ -40,6 +41,20 @@ function normalizeOutline(outline: MakalahOutline, input: MakalahEngineInput): M
 
 function buildFallbackOutline(input: MakalahEngineInput): MakalahOutline {
   const focus = input.tema || input.judul;
+  const profile = inferFebProfile(`${input.judul} ${input.tema}`);
+  if (profile === "skripsi" || profile === "proposal-skripsi") {
+    const chapters: MakalahOutline["chapters"] = [];
+    for (const entry of febThesisOutline(profile, /kualitatif/i.test(`${input.tema} ${input.pedoman}`))) {
+      const chapter = entry.match(/^BAB ([IVX]+) (.+)$/);
+      if (chapter) chapters.push({ id: (["bab1", "bab2", "bab3", "bab4", "bab5"] as const)[chapters.length], number: `BAB ${chapter[1]}`, title: chapter[2], purpose: `Uraian penelitian ${focus}`, subsections: [] });
+      else if (/^\d+\./.test(entry)) {
+        const [id, ...words] = entry.split(" ");
+        chapters.at(-1)?.subsections.push({ id, title: words.join(" "), bullets: ["Gunakan data dan sumber penelitian yang telah diberikan; jelaskan keterbatasan data."] });
+      }
+    }
+    return { title: input.judul, chapters, bibliographyPlan: ["Referensi relevan maksimal 10 tahun terakhir; APA sesuai pedoman FEB 2021"], appendixPlan: [] };
+  }
+
   const primary = input.assignmentAnalysis?.requiredDeliverables.find((item) => item.type === "proposal" || item.type === "makalah")
     || input.assignmentAnalysis?.requiredDeliverables[0];
   const isProposal = primary?.type === "proposal";

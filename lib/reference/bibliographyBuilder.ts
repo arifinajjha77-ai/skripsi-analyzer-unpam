@@ -23,7 +23,7 @@ function formatBook(ref: AcademicReference): string {
   if (ref.edition) parts[0] += ` (${ref.edition} ed.)`;
   parts[0] += ".";
   if (ref.publisher) {
-    const pub = ref.city ? `${ref.publisher}.` : `${ref.publisher}.`;
+    const pub = ref.city ? `${ref.city}: ${ref.publisher}.` : `${ref.publisher}.`;
     parts.push(pub);
   }
   return parts.join(" ");

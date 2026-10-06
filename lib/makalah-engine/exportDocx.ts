@@ -1,17 +1,21 @@
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
+import { academicRuns, createFebDocument, febSection, FEB_INDENT } from "@/lib/docx/feb2021";
+import { academicTitle, febBodyLine, inferFebProfile } from "@/lib/templates/feb2021";
 import {
   AlignmentType,
   BorderStyle,
-  Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   PageBreak,
   Paragraph,
   Table,
   TableCell,
   TableRow,
+  TableOfContents,
   TextRun,
   WidthType,
-  convertInchesToTwip,
 } from "docx";
 import type { MakalahDocument, MakalahEngineInput } from "./types";
 
@@ -19,81 +23,46 @@ const FONT = "Times New Roman";
 const SIZE = 24;
 
 export async function exportMakalahEngineDocx(document: MakalahDocument): Promise<Buffer> {
-  const children: Array<Paragraph | Table> = [
-    ...buildCover(document.input),
-    pageBreak(),
-    heading("KATA PENGANTAR", HeadingLevel.HEADING_1, AlignmentType.CENTER),
-    ...paragraphs(document.kataPengantar),
-    pageBreak(),
-    heading("DAFTAR ISI", HeadingLevel.HEADING_1, AlignmentType.CENTER),
-    ...tocParagraphs(document.daftarIsi),
-    pageBreak(),
+  const profile = inferFebProfile(`${document.input.judul} ${document.input.tema}`);
+  const line = febBodyLine(profile);
+  const sections = [
+    febSection(buildCover(document.input), "cover"),
+    febSection([
+      heading("KATA PENGANTAR", HeadingLevel.HEADING_1, AlignmentType.CENTER),
+      ...paragraphs(document.kataPengantar, 360), pageBreak(),
+      heading("DAFTAR ISI", HeadingLevel.HEADING_1, AlignmentType.CENTER),
+      new TableOfContents("Daftar Isi", { hyperlink: true, headingStyleRange: "1-3" }),
+    ], "front", 1),
   ];
-
-  for (const chapter of document.chapters) {
-    children.push(heading(`${chapter.number} ${chapter.title}`, HeadingLevel.HEADING_1, AlignmentType.CENTER));
+  for (const [index, chapter] of document.chapters.entries()) {
+    const children: Paragraph[] = [heading(`${chapter.number} ${chapter.title}`, HeadingLevel.HEADING_1, AlignmentType.CENTER)];
     for (const subsection of chapter.subsections) {
-      children.push(heading(`${subsection.id} ${subsection.title}`, HeadingLevel.HEADING_2, AlignmentType.LEFT));
-      children.push(...paragraphs(subsection.content));
+      children.push(heading(`${subsection.id} ${subsection.title}`, HeadingLevel.HEADING_2, AlignmentType.LEFT), ...paragraphs(subsection.content, line));
     }
-    children.push(pageBreak());
+    sections.push(febSection(children, "chapter", index === 0 ? 1 : undefined));
   }
-
-  children.push(heading("DAFTAR PUSTAKA", HeadingLevel.HEADING_1, AlignmentType.CENTER));
-  for (const entry of document.daftarPustaka) children.push(bibliography(entry));
-
-  if (document.lampiran.length > 0) {
-    children.push(pageBreak(), heading("LAMPIRAN", HeadingLevel.HEADING_1, AlignmentType.CENTER));
-    for (const item of document.lampiran) children.push(body(item));
-  }
-
-  const doc = new Document({
-    styles: {
-      default: {
-        document: { run: { font: FONT, size: SIZE }, paragraph: { spacing: { line: 360 } } },
-      },
-      paragraphStyles: [
-        {
-          id: "Heading1",
-          name: "Heading 1",
-          basedOn: "Normal",
-          next: "Normal",
-          quickFormat: true,
-          run: { font: FONT, size: 28, bold: true, color: "111827" },
-          paragraph: { spacing: { before: 240, after: 180 }, alignment: AlignmentType.CENTER },
-        },
-        {
-          id: "Heading2",
-          name: "Heading 2",
-          basedOn: "Normal",
-          next: "Normal",
-          quickFormat: true,
-          run: { font: FONT, size: SIZE, bold: true, color: "111827" },
-          paragraph: { spacing: { before: 180, after: 120 } },
-        },
-      ],
-    },
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1.18),
-            },
-          },
-        },
-        children: children as Paragraph[],
-      },
-    ],
-  });
-
-  return Packer.toBuffer(doc);
+  const back = [heading("DAFTAR PUSTAKA", HeadingLevel.HEADING_1, AlignmentType.CENTER),
+    ...[...document.daftarPustaka].sort((a, b) => a.localeCompare(b, "id")).map(bibliography)];
+  if (document.lampiran.length) back.push(pageBreak(), heading("LAMPIRAN", HeadingLevel.HEADING_1, AlignmentType.CENTER), ...document.lampiran.map((text) => body(text, line)));
+  sections.push(febSection(back, "back"));
+  return Packer.toBuffer(createFebDocument({ sections }, profile));
 }
 
 function buildCover(input: MakalahEngineInput): Array<Paragraph | Table> {
+  const profile = inferFebProfile(`${input.judul} ${input.tema}`);
+  if (profile === "skripsi" || profile === "proposal-skripsi") {
+    const logo = join(process.cwd(), "public", "logo-unpam.png");
+    return [
+      center(input.judul.toUpperCase(), 28, true, 480),
+      center(profile === "skripsi" ? "SKRIPSI" : "PROPOSAL SKRIPSI", 28, true, 480),
+      ...(existsSync(logo) ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ type: "png", data: readFileSync(logo), transformation: { width: 189, height: 189 } })] })] : []),
+      center("Ditulis Oleh", 24, false, 0), center(input.namaMahasiswa, 24, false, 0), center(`NIM. ${input.nim}`, 24, false, 480),
+      center(`PROGRAM STUDI ${input.programStudi}`.replace(/PROGRAM STUDI PROGRAM STUDI/i, "PROGRAM STUDI").toUpperCase(), 28, true, 0),
+      center("FAKULTAS EKONOMI DAN BISNIS", 28, true, 0), center("UNIVERSITAS PAMULANG", 28, true, 0),
+      center("TANGERANG SELATAN", 28, true, 0), center(String(new Date().getFullYear()), 28, true, 0),
+    ];
+  }
+
   const isProposal = /proposal|mini project/i.test([
     input.judul,
     input.tema,
@@ -140,41 +109,29 @@ function tableCell(text: string, bold: boolean): TableCell {
       left: { style: BorderStyle.SINGLE, size: 1, color: "9CA3AF" },
       right: { style: BorderStyle.SINGLE, size: 1, color: "9CA3AF" },
     },
-    children: [new Paragraph({ children: [new TextRun({ text, font: FONT, size: SIZE, bold })] })],
+    children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [new TextRun({ text, font: FONT, size: SIZE, bold })] })],
   });
 }
 
-function paragraphs(text: string): Paragraph[] {
-  return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean).map((part) => body(part));
+function paragraphs(text: string, line = 360): Paragraph[] {
+  return text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean).map((part) => body(part, line));
 }
 
-function tocParagraphs(text: string): Paragraph[] {
-  return text.split("\n").map((line) => {
-    const trimmed = line.trimEnd();
-    const isSubsection = /^\d+\.\d+/.test(trimmed.trim());
-    return new Paragraph({
-      spacing: { line: 360, after: 80 },
-      indent: isSubsection ? { left: convertInchesToTwip(0.35) } : undefined,
-      children: [new TextRun({ text: trimmed, font: FONT, size: SIZE, bold: /^BAB|^DAFTAR|^KATA|^LAMPIRAN/.test(trimmed) })],
-    });
-  });
-}
-
-function body(text: string): Paragraph {
+function body(text: string, line = 360): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { line: 360, after: 120 },
-    indent: { firstLine: convertInchesToTwip(0.5) },
-    children: [new TextRun({ text, font: FONT, size: SIZE })],
+    spacing: { before: 0, after: 0, line },
+    indent: { firstLine: FEB_INDENT },
+    children: academicRuns(text),
   });
 }
 
 function bibliography(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { line: 360, after: 120 },
-    indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.5) },
-    children: [new TextRun({ text, font: FONT, size: SIZE })],
+    spacing: { before: 0, after: 0, line: 240 },
+    indent: { left: FEB_INDENT, hanging: FEB_INDENT },
+    children: academicRuns(text),
   });
 }
 
@@ -186,15 +143,16 @@ function heading(
   return new Paragraph({
     heading: level,
     alignment,
-    spacing: { before: 180, after: 160 },
-    children: [new TextRun({ text, font: FONT, size: level === HeadingLevel.HEADING_1 ? 28 : SIZE, bold: true })],
+    spacing: { before: 0, after: 0, line: 360 },
+    keepNext: true,
+    children: (level === HeadingLevel.HEADING_1 ? text.toUpperCase().replace(/^(BAB\s+[IVXLC\d]+)\s+/, "$1\n") : academicTitle(text)).split("\n").map((part, index) => new TextRun({ text: part, break: index > 0 ? 1 : undefined, font: FONT, size: SIZE, bold: true })),
   });
 }
 
 function center(text: string, size: number, bold: boolean, after: number): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { after },
+    spacing: { before: 0, after, line: 360 },
     children: [new TextRun({ text, font: FONT, size, bold })],
   });
 }

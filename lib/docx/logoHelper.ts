@@ -1,6 +1,6 @@
+import { Paragraph, ImageRun, TextRun, AlignmentType, BorderStyle } from "docx";
 /**
  * Shared DOCX logo + institution header helper.
- * Uses dynamic docx imports to avoid SSR bundle issues.
  * All DOCX exports should use this helper for consistent headers.
  */
 
@@ -38,7 +38,7 @@ export interface InstitutionHeaderOptions {
 }
 
 /**
- * Build standard UNPAM institution header paragraphs using dynamic docx import.
+ * Build standard UNPAM institution header paragraphs using the shared docx module.
  * Output:
  *   [LOGO]
  *   UNIVERSITAS PAMULANG
@@ -47,9 +47,6 @@ export interface InstitutionHeaderOptions {
  *   ───────────────────────────── (rule)
  */
 export async function buildInstitutionHeader(opts: InstitutionHeaderOptions) {
-  const {
-    Paragraph, ImageRun, TextRun, AlignmentType, BorderStyle,
-  } = await import("docx");
 
   const template = getActiveTemplate();
   const kampus   = opts.namaKampus  ?? template.nama.toUpperCase();

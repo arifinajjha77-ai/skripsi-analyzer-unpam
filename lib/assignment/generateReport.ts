@@ -1,5 +1,6 @@
 import { generateJsonWithOpenAI } from "@/lib/ai/openai";
 import { DEFAULT_MODEL } from "@/lib/ai/models";
+import { febThesisOutline, febWritingInstructions, inferFebProfile, type FebWritingProfile } from "@/lib/templates/feb2021";
 import { canWriteAcademicMiniProject, writeAcademicMiniProjectProposal } from "./academicWriter";
 import { buildAnsweredFacts } from "./missingData";
 import { assignmentReportSchema, type AssignmentAnalysis, type AssignmentAnswers, type AssignmentReport } from "./types";
@@ -11,25 +12,33 @@ type ReportPayload = {
 export async function generateAssignmentReport(
   analysis: AssignmentAnalysis,
   answers: AssignmentAnswers,
-  optionalNotes = ""
+  optionalNotes = "",
+  selectedProfile?: FebWritingProfile
 ): Promise<AssignmentReport> {
-  if (canWriteAcademicMiniProject(analysis, answers)) {
-    return writeAcademicMiniProjectProposal(analysis, answers);
+  const writingProfile = selectedProfile || inferFebProfile(`${analysis.title} ${analysis.assignmentType} ${analysis.routedType}`);
+  const thesis = writingProfile === "skripsi" || writingProfile === "proposal-skripsi";
+  if (thesis) {
+    analysis = { ...analysis, reportStructure: febThesisOutline(writingProfile, /kualitatif/i.test(`${analysis.summary} ${optionalNotes} ${JSON.stringify(answers)}`)) };
+  }
+  if (!thesis && canWriteAcademicMiniProject(analysis, answers)) {
+    return { ...writeAcademicMiniProjectProposal(analysis, answers), writingProfile };
   }
 
-  const ai = await generateJsonWithOpenAI<ReportPayload>(buildPrompt(analysis, answers, optionalNotes));
+  const ai = await generateJsonWithOpenAI<ReportPayload>(buildPrompt(analysis, answers, optionalNotes, writingProfile));
   if (ai) {
     const parsed = assignmentReportSchema.safeParse(ai.data.report);
     if (parsed.success) {
-      return { ...parsed.data, generatedWith: { model: ai.model, fallback: false } };
+      return { ...parsed.data, writingProfile, generatedWith: { model: ai.model, fallback: false } };
     }
   }
 
-  return fallbackReport(analysis, answers);
+  return { ...fallbackReport(analysis, answers), writingProfile };
 }
 
-function buildPrompt(analysis: AssignmentAnalysis, answers: AssignmentAnswers, optionalNotes: string): string {
+function buildPrompt(analysis: AssignmentAnalysis, answers: AssignmentAnswers, optionalNotes: string, profile: FebWritingProfile): string {
   return [
+    febWritingInstructions(profile),
+    "Jika profil skripsi/proposal skripsi, ikuti reportStructure resmi FEB 2021 secara berurutan. Buat section judul BAB dengan body kosong dan section subbab dengan isi. Jangan memasukkan daftar pustaka ke sections karena references diekspor terpisah. Jangan mengarang hasil penelitian yang belum diberikan.",
     "Anda adalah SmartCampus Dynamic Assignment Workspace.",
     "Generate proposal/laporan berdasarkan analisis instruksi tugas dan jawaban user. Jangan hardcode produk tertentu.",
     "Jika data performa, angka penjualan, atau engagement tidak diberikan, tulis sebagai simulasi/rencana, bukan fakta aktual.",
@@ -65,7 +74,7 @@ function fallbackReport(analysis: AssignmentAnalysis, answers: AssignmentAnswers
 
   const sections = analysis.reportStructure.map((title, index) => ({
     title,
-    body: buildFallbackSection(title, index, analysis, facts, object, course),
+    body: /^BAB\s+|^DAFTAR PUSTAKA/i.test(title) ? "" : buildFallbackSection(title, index, analysis, facts, object, course),
   }));
 
   return {
@@ -114,9 +123,8 @@ function buildReferences(course: string): string[] {
     ];
   }
   return [
-    "Creswell, J. W. (2018). Research design: Qualitative, quantitative, and mixed methods approaches. SAGE Publications.",
-    "Sugiyono. (2019). Metode penelitian kuantitatif, kualitatif, dan R&D. Alfabeta.",
-    "Referensi tambahan disesuaikan dengan topik dan instruksi dosen.",
+    "Creswell, J. W., & Creswell, J. D. (2018). Research design: Qualitative, quantitative, and mixed methods approaches. SAGE Publications.",
+    "Sugiyono. (2019). Metode penelitian kuantitatif, kualitatif, dan R&D. Bandung: Alfabeta.",
   ];
 }
 

@@ -1,5 +1,5 @@
+import { createFebDocument, FEB_INDENT } from "@/lib/docx/feb2021";
 import {
-  Document,
   Packer,
   Paragraph,
   Table,
@@ -15,7 +15,7 @@ import { KarakteristikResult, QualityReport, FreqRow } from "./types";
 
 function h2(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 26 })],
+    children: [new TextRun({ text, bold: true, size: 24 })],
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 300, after: 150 },
   });
@@ -25,16 +25,17 @@ function bodyP(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text, size: 24 })],
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: 180, line: 360 },
-    indent: { firstLine: 720 },
+    spacing: { before: 0, after: 0, line: 480 },
+    indent: { firstLine: FEB_INDENT },
   });
 }
 
 function captionP(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 22 })],
+    children: [new TextRun({ text, bold: true, size: 24 })],
     alignment: AlignmentType.CENTER,
-    spacing: { before: 200, after: 120 },
+    spacing: { before: 0, after: 0, line: 240 },
+    keepNext: true,
   });
 }
 
@@ -48,7 +49,7 @@ function buildFreqTable(rows: FreqRow[]): Table {
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "DBEAFE" },
         width: { size: widths[i], type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 60 } })],
+        children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 24 })], alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0, line: 240 } })],
       })
     ),
   });
@@ -59,17 +60,17 @@ function buildFreqTable(rows: FreqRow[]): Table {
         new TableCell({
           shading: i % 2 === 1 ? { type: ShadingType.SOLID, color: "F8FAFC" } : undefined,
           width: { size: 60, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ children: [new TextRun({ text: r.kategori, size: 22 })], spacing: { after: 60 } })],
+          children: [new Paragraph({ children: [new TextRun({ text: r.kategori, size: 24 })], spacing: { before: 0, after: 0, line: 240 } })],
         }),
         new TableCell({
           shading: i % 2 === 1 ? { type: ShadingType.SOLID, color: "F8FAFC" } : undefined,
           width: { size: 20, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ children: [new TextRun({ text: String(r.frekuensi), size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 60 } })],
+          children: [new Paragraph({ children: [new TextRun({ text: String(r.frekuensi), size: 24 })], alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0, line: 240 } })],
         }),
         new TableCell({
           shading: i % 2 === 1 ? { type: ShadingType.SOLID, color: "F8FAFC" } : undefined,
           width: { size: 20, type: WidthType.PERCENTAGE },
-          children: [new Paragraph({ children: [new TextRun({ text: r.persentase, size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 60 } })],
+          children: [new Paragraph({ children: [new TextRun({ text: r.persentase, size: 24 })], alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0, line: 240 } })],
         }),
       ],
     })
@@ -82,17 +83,17 @@ function buildFreqTable(rows: FreqRow[]): Table {
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "EFF6FF" },
         width: { size: 60, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: "Total", bold: true, size: 22 })], spacing: { after: 60 } })],
+        children: [new Paragraph({ children: [new TextRun({ text: "Total", bold: true, size: 24 })], spacing: { before: 0, after: 0, line: 240 } })],
       }),
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "EFF6FF" },
         width: { size: 20, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: String(totalFreq), bold: true, size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 60 } })],
+        children: [new Paragraph({ children: [new TextRun({ text: String(totalFreq), bold: true, size: 24 })], alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0, line: 240 } })],
       }),
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "EFF6FF" },
         width: { size: 20, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: "100%", bold: true, size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 60 } })],
+        children: [new Paragraph({ children: [new TextRun({ text: "100%", bold: true, size: 24 })], alignment: AlignmentType.RIGHT, spacing: { before: 0, after: 0, line: 240 } })],
       }),
     ],
   });
@@ -122,7 +123,7 @@ export async function generateKarakteristikDocx(
       children: [
         new TextRun({
           text: `Jumlah Responden: ${report.totalResponden}  |  Data Lengkap: ${report.completeResponden} (${report.completenessPercent}%)`,
-          size: 22,
+          size: 24,
           color: "444444",
         }),
       ],
@@ -138,8 +139,9 @@ export async function generateKarakteristikDocx(
     const [first] = result.jenisKelamin;
     sections.push(
       h2("Jenis Kelamin"),
-      captionP(`Tabel ${tableNo++}. Karakteristik Responden Berdasarkan Jenis Kelamin`),
+      captionP(`Tabel 4.${tableNo++} Karakteristik Responden Berdasarkan Jenis Kelamin`),
       buildFreqTable(result.jenisKelamin),
+      new Paragraph({ children: [new TextRun({ text: "Sumber: Data Responden Diolah Peneliti", size: 20 })], spacing: { before: 0, after: 0, line: 240 } }),
       blank(),
       bodyP(
         `Berdasarkan Tabel di atas, responden terbanyak berdasarkan jenis kelamin adalah ${first.kategori} ` +
@@ -153,8 +155,9 @@ export async function generateKarakteristikDocx(
     const sorted = [...result.usia].filter((u) => u.kategori !== "Tidak diisi").sort((a, b) => b.frekuensi - a.frekuensi);
     sections.push(
       h2("Usia"),
-      captionP(`Tabel ${tableNo++}. Karakteristik Responden Berdasarkan Usia`),
+      captionP(`Tabel 4.${tableNo++} Karakteristik Responden Berdasarkan Usia`),
       buildFreqTable(result.usia),
+      new Paragraph({ children: [new TextRun({ text: "Sumber: Data Responden Diolah Peneliti", size: 20 })], spacing: { before: 0, after: 0, line: 240 } }),
       blank(),
       bodyP(
         sorted.length > 0
@@ -170,8 +173,9 @@ export async function generateKarakteristikDocx(
     const [first] = result.pendidikan;
     sections.push(
       h2("Pendidikan Terakhir"),
-      captionP(`Tabel ${tableNo++}. Karakteristik Responden Berdasarkan Pendidikan`),
+      captionP(`Tabel 4.${tableNo++} Karakteristik Responden Berdasarkan Pendidikan`),
       buildFreqTable(result.pendidikan),
+      new Paragraph({ children: [new TextRun({ text: "Sumber: Data Responden Diolah Peneliti", size: 20 })], spacing: { before: 0, after: 0, line: 240 } }),
       blank(),
       bodyP(
         `Berdasarkan data pendidikan responden, tingkat pendidikan terbanyak adalah ${first.kategori} ` +
@@ -185,8 +189,9 @@ export async function generateKarakteristikDocx(
     const [first] = result.pekerjaan;
     sections.push(
       h2("Pekerjaan"),
-      captionP(`Tabel ${tableNo++}. Karakteristik Responden Berdasarkan Pekerjaan`),
+      captionP(`Tabel 4.${tableNo++} Karakteristik Responden Berdasarkan Pekerjaan`),
       buildFreqTable(result.pekerjaan),
+      new Paragraph({ children: [new TextRun({ text: "Sumber: Data Responden Diolah Peneliti", size: 20 })], spacing: { before: 0, after: 0, line: 240 } }),
       blank(),
       bodyP(
         `Berdasarkan data pekerjaan, jenis pekerjaan yang paling banyak dimiliki responden adalah ${first.kategori} ` +
@@ -204,7 +209,7 @@ export async function generateKarakteristikDocx(
     })
   );
 
-  const doc = new Document({
+  const doc = createFebDocument({
     sections: [
       {
         properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1800 } } },

@@ -1,5 +1,5 @@
+import { createFebDocument } from "@/lib/docx/feb2021";
 import {
-  Document,
   Packer,
   Paragraph,
   Table,
@@ -58,19 +58,19 @@ function buildQuestionTable(items: VariableQuestionnaire["items"]): Table {
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "DBEAFE" },
         width: { size: 5, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [bold("No", 20)], alignment: AlignmentType.CENTER })],
+        children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [bold("No", 20)], alignment: AlignmentType.CENTER })],
       }),
       new TableCell({
         shading: { type: ShadingType.SOLID, color: "DBEAFE" },
         width: { size: 45, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [bold("Pernyataan", 20)], alignment: AlignmentType.CENTER })],
+        children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [bold("Pernyataan", 20)], alignment: AlignmentType.CENTER })],
       }),
       ...SCALE_LABELS.map(
         (label) =>
           new TableCell({
             shading: { type: ShadingType.SOLID, color: "DBEAFE" },
             width: { size: 10, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ children: [bold(label, 18)], alignment: AlignmentType.CENTER })],
+            children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [bold(label, 20)], alignment: AlignmentType.CENTER })],
           })
       ),
     ],
@@ -82,17 +82,17 @@ function buildQuestionTable(items: VariableQuestionnaire["items"]): Table {
         children: [
           new TableCell({
             width: { size: 5, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ children: [normal(String(item.no), 20)], alignment: AlignmentType.CENTER })],
+            children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [normal(String(item.no), 20)], alignment: AlignmentType.CENTER })],
           }),
           new TableCell({
             width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ children: [normal(item.statement, 20)] })],
+            children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [normal(item.statement, 20)] })],
           }),
           ...SCALE_LABELS.map(
             () =>
               new TableCell({
                 width: { size: 10, type: WidthType.PERCENTAGE },
-                children: [new Paragraph({ children: [normal("", 20)], alignment: AlignmentType.CENTER })],
+                children: [new Paragraph({ spacing: { before: 0, after: 0, line: 240 }, children: [normal("", 20)], alignment: AlignmentType.CENTER })],
               })
           ),
         ],
@@ -112,7 +112,7 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
   const logoBuffer = await fetchLogoBuffer();
   const institutionHeader = await buildInstitutionHeader({ logoBuffer, withRule: true });
 
-  const doc = new Document({
+  const doc = createFebDocument({
     sections: [
       {
         properties: {

@@ -8,6 +8,9 @@ import type { AssignmentAcademicSection, AssignmentAnalysis, AssignmentAnswers, 
 import { getCurrentQuestion, getNextStateAfterAnswers, getQuestionProgress } from "@/lib/assignment/questionEngine";
 import { mergeAnswer } from "@/lib/assignment/missingData";
 
+import { loadSettings } from "@/lib/settingsStore";
+import { FEB_2021, FEB_PROFILE_LABELS, inferFebProfile, referenceAgeWarnings, type FebWritingProfile } from "@/lib/templates/feb2021";
+
 const STORAGE_KEY = "smartcampus.assignment.workspace.v1";
 const SMARTSCAN_STORAGE_KEY = "smartcampus.smartscan.latestPdf";
 const PRODUCT_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
@@ -45,6 +48,8 @@ export default function AssignmentWorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const productImageUrlRef = useRef<string | null>(null);
   const storageLoadedRef = useRef(false);
+  const [studentMeta, setStudentMeta] = useState({ name: "", nim: "", program: "Manajemen", year: String(new Date().getFullYear()) });
+  const [writingProfile, setWritingProfile] = useState<FebWritingProfile | "auto">("auto");
   const [state, setState] = useState<AssignmentWorkspaceState>("UPLOAD");
   const [file, setFile] = useState<File | null>(null);
   const [userNotes, setUserNotes] = useState("");
@@ -61,11 +66,14 @@ export default function AssignmentWorkspacePage() {
   const [productImagePreviewFailed, setProductImagePreviewFailed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const activeProfile = writingProfile === "auto" ? report?.writingProfile || inferFebProfile(`${analysis?.title || ""} ${analysis?.assignmentType || ""} ${analysis?.routedType || ""}`) : writingProfile;
   const currentQuestion = useMemo(() => analysis ? getCurrentQuestion(analysis, answers) : null, [analysis, answers]);
   const progress = useMemo(() => analysis ? getQuestionProgress(analysis, answers) : { answered: 0, total: 0, remaining: 0 }, [analysis, answers]);
   const canGenerate = Boolean(analysis && state === "READY_TO_GENERATE" && !isPending);
 
   useEffect(() => {
+    const settings = loadSettings();
+    window.setTimeout(() => setStudentMeta({ name: settings.namaMahasiswa, nim: settings.npm, program: settings.programStudi, year: String(new Date().getFullYear()) }), 0);
     let raw: string | null = null;
     try {
       raw = window.localStorage.getItem(STORAGE_KEY);
@@ -100,7 +108,7 @@ export default function AssignmentWorkspacePage() {
       } catch {
         // Ignore storage access failures during recovery.
       }
-      setSessionWarning("Sesi tugas tidak bisa dibaca dan sudah direset. Silakan mulai ulang analisis tugas.");
+      window.setTimeout(() => setSessionWarning("Sesi tugas tidak bisa dibaca dan sudah direset. Silakan mulai ulang analisis tugas."), 0);
       storageLoadedRef.current = true;
     }
   }, []);
@@ -263,7 +271,7 @@ export default function AssignmentWorkspacePage() {
 
     startTransition(async () => {
       const generationAnswers = sanitizeAssignmentAnswers(answers);
-      const result = await generateAssignmentAction({ analysis, answers: generationAnswers, optionalNotes: userNotes });
+      const result = await generateAssignmentAction({ analysis, answers: generationAnswers, optionalNotes: userNotes, writingProfile: activeProfile });
       if (!result.ok) {
         setState("READY_TO_GENERATE");
         setError(result.error);
@@ -322,9 +330,13 @@ export default function AssignmentWorkspacePage() {
 
   function exportDocx() {
     if (!report) return;
+    if ((activeProfile === "skripsi" || activeProfile === "proposal-skripsi") && (!studentMeta.name.trim() || !studentMeta.nim.trim())) {
+      toast.error("Lengkapi nama mahasiswa dan NIM untuk sampul skripsi.");
+      return;
+    }
     startTransition(async () => {
       const exportReport = await buildExportReport(report, productImage);
-      const result = await exportAssignmentAction({ report: exportReport });
+      const result = await exportAssignmentAction({ report: { ...exportReport, writingProfile: activeProfile, studentMeta } });
       if (!result.ok) {
         setError(result.error);
         toast.error("Gagal export DOCX.");
@@ -345,6 +357,30 @@ export default function AssignmentWorkspacePage() {
           Upload instruksi tugas dosen, lengkapi data yang kurang satu per satu, lalu generate proposal atau laporan dan export ke DOCX.
         </p>
       </header>
+
+      <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-bold">{FEB_2021.title}</p>
+            <p className="mt-1 text-xs">A4 · TNR 12 · Atas/kiri 4 cm · Kanan/bawah 3 cm · Indentasi 1,5 cm</p>
+          </div>
+          <a href={FEB_2021.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold underline">Buka pedoman</a>
+        </div>
+        <label className="mt-3 block font-medium" htmlFor="writing-profile">Format dokumen</label>
+        <select id="writing-profile" value={writingProfile} onChange={(event) => setWritingProfile(event.target.value as FebWritingProfile | "auto")} disabled={isPending} className="mt-1 w-full rounded-lg border border-blue-200 bg-white p-2 sm:max-w-md">
+          <option value="auto">Otomatis sesuai jenis tugas</option>
+          {Object.entries(FEB_PROFILE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        {(activeProfile === "skripsi" || activeProfile === "proposal-skripsi") && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {([ ["name", "Nama mahasiswa"], ["nim", "NIM"], ["program", "Program studi"], ["year", "Tahun penulisan"] ] as const).map(([key, label]) => (
+              <label key={key} className="text-xs font-medium">{label}<input value={studentMeta[key]} onChange={(event) => setStudentMeta((current) => ({ ...current, [key]: event.target.value }))} className="mt-1 block w-full rounded-lg border border-blue-200 bg-white p-2 text-sm" /></label>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-xs">Aktif: {FEB_PROFILE_LABELS[activeProfile]}. Bagian awal 1,5 spasi; tabel, gambar, dan daftar pustaka 1 spasi. Daftar isi diperbarui di Word melalui Update Field.</p>
+        <p className="mt-1 text-xs">Tugas kuliah memakai 1,5 spasi sebagai default. Ketentuan minimal 30 halaman dan 5 referensi berlaku khusus makalah komprehensif. Untuk mengubah struktur dokumen lama, generate ulang setelah memilih format.</p>
+      </section>
 
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -764,6 +800,13 @@ function ReportPreview({ report }: { report: AssignmentReport | null }) {
                 <p key={warning} className="text-xs text-amber-900">{warning}</p>
               ))}
             </div>
+          </div>
+        )}
+        {referenceAgeWarnings(report.references).length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            <p className="font-bold">Periksa referensi · maksimal 10 tahun terakhir</p>
+            {referenceAgeWarnings(report.references).map((warning) => <p key={warning} className="mt-1">{warning}</p>)}
+            <p className="mt-2">Metadata kota/penerbit dan nomor halaman kutipan harus diverifikasi dari sumber asli.</p>
           </div>
         )}
         <PreviewBlock title="Ringkasan" body={report.executiveSummary} />

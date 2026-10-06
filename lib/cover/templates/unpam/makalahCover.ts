@@ -63,10 +63,10 @@ export const UNPAM_SP = {
   footerLineGap:       4,   // between campus identity lines
 };
 
-// A4 usable height with 3cm top + bottom margins:
-//   (297 - 30 - 30) mm = 237 mm
+// A4 usable height with 4cm top + 3cm bottom margins:
+//   (297 - 40 - 30) mm = 227 mm
 //   237 / 25.4 * 72 ≈ 672 pt
-const A4_CONTENT_PT = 672;
+const A4_CONTENT_PT = 643;
 
 // Logo occupies ~3cm = 85pt in height
 const LOGO_H_PT = UNPAM_FONT.logoSizePt;

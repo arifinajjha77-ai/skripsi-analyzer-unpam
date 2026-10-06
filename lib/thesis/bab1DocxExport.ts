@@ -1,16 +1,16 @@
+import { academicRuns, createFebDocument, FEB_INDENT, febSection } from "@/lib/docx/feb2021";
 /**
  * BAB I DOCX Export — UNPAM Compliant
  *
  * Complies with UNPAM thesis format:
  * - Direct start: BAB I → PENDAHULUAN → 1.1 Latar Belakang
  * - No cover, no logo, no decorative header/footer, no HR lines
- * - Times New Roman, bold headings (black), 12pt body, 1.5 line spacing
+ * - Times New Roman, bold headings (black), 12pt body, 2 line spacing
  * - Table captions above table (bold, centered), source italic below
- * - Margins: top/right/bottom 3cm, left 4cm (UNPAM standard)
+ * - Margins: top/left 4cm, right/bottom 3cm (UNPAM standard)
  */
 
 import {
-  Document,
   Packer,
   Paragraph,
   Table,
@@ -37,7 +37,7 @@ import {
 
 const FONT = "Times New Roman";
 const SIZE_BODY = 24;     // 12pt in half-points
-const SIZE_HEADING1 = 28; // 14pt
+const SIZE_HEADING1 = 24; // 14pt
 const SIZE_HEADING2 = 24; // 12pt bold
 
 // ─── Paragraph Helpers ────────────────────────────────────────────────────────
@@ -55,7 +55,8 @@ function h1(text: string): Paragraph {
       }),
     ],
     alignment: AlignmentType.CENTER,
-    spacing: { before: 480, after: 240 },
+    spacing: { before: 0, after: 0, line: 480 },
+    keepNext: true,
   });
 }
 
@@ -72,26 +73,28 @@ function h2(text: string): Paragraph {
       }),
     ],
     alignment: AlignmentType.LEFT,
-    spacing: { before: 360, after: 180 },
+    spacing: { before: 0, after: 0, line: 480 },
+    keepNext: true,
   });
 }
 
-/** Body paragraph: justified, first-line indent, Times New Roman, 1.5 spacing */
+/** Body paragraph: justified, first-line indent, Times New Roman, 2 spacing */
 function bodyPara(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, size: SIZE_BODY, font: FONT })],
+    children: academicRuns(text),
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: 200, line: 360 },
-    indent: { firstLine: 720 },
+    spacing: { before: 0, after: 0, line: 480 },
+    indent: { firstLine: FEB_INDENT },
   });
 }
 
 /** Table caption: bold, centered, above table — "Tabel X.X Judul Tabel" */
 function tableCaption(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 22, font: FONT })],
+    children: [new TextRun({ text, bold: true, size: 24, font: FONT })],
     alignment: AlignmentType.CENTER,
-    spacing: { before: 240, after: 120 },
+    spacing: { before: 0, after: 0, line: 240 },
+    keepNext: true,
   });
 }
 
@@ -100,16 +103,16 @@ function sourceNote(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text, italics: true, size: 20, font: FONT, color: "555555" })],
     alignment: AlignmentType.LEFT,
-    spacing: { before: 80, after: 160 },
+    spacing: { before: 0, after: 0, line: 240 },
   });
 }
 
 /** Numbered list item */
 function listItem(text: string): Paragraph {
   return new Paragraph({
-    children: [new TextRun({ text, size: SIZE_BODY, font: FONT })],
+    children: academicRuns(text),
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: 120, line: 360 },
+    spacing: { before: 0, after: 0, line: 480 },
     indent: { left: 720, hanging: 360 },
   });
 }
@@ -121,7 +124,7 @@ function blank(): Paragraph {
 // ─── Table Builder ────────────────────────────────────────────────────────────
 
 function buildDocxTable(table: GeneratedTable): Table {
-  const colWidth = Math.floor(9000 / table.headers.length);
+  const colWidth = Math.floor(7937 / table.headers.length);
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -131,9 +134,9 @@ function buildDocxTable(table: GeneratedTable): Table {
           shading: { type: ShadingType.SOLID, color: "D9E1F2" },
           children: [
             new Paragraph({
-              children: [new TextRun({ text: h, bold: true, size: 22, font: FONT })],
+              children: [new TextRun({ text: h, bold: true, size: 24, font: FONT })],
               alignment: AlignmentType.CENTER,
-              spacing: { after: 80 },
+              spacing: { before: 0, after: 0, line: 240 },
             }),
           ],
           width: { size: colWidth, type: WidthType.DXA },
@@ -149,9 +152,9 @@ function buildDocxTable(table: GeneratedTable): Table {
             new TableCell({
               children: [
                 new Paragraph({
-                  children: [new TextRun({ text: cell, size: 22, font: FONT })],
+                  children: [new TextRun({ text: cell, size: 24, font: FONT })],
                   alignment: ci === 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
-                  spacing: { after: 60 },
+                  spacing: { before: 0, after: 0, line: 240 },
                 }),
               ],
               width: { size: colWidth, type: WidthType.DXA },
@@ -161,7 +164,7 @@ function buildDocxTable(table: GeneratedTable): Table {
   );
 
   return new Table({
-    width: { size: 9000, type: WidthType.DXA },
+    width: { size: 7937, type: WidthType.DXA },
     rows: [headerRow, ...dataRows],
   });
 }
@@ -295,7 +298,7 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
     ]),
   ];
 
-  const doc = new Document({
+  const doc = createFebDocument({
     styles: {
       default: {
         document: {
@@ -303,22 +306,7 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
         },
       },
     },
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              // UNPAM: left 4cm, others 3cm — in twips (1cm ≈ 567 twips)
-              top: 1701,    // ~3cm
-              right: 1701,  // ~3cm
-              bottom: 1701, // ~3cm
-              left: 2268,   // ~4cm
-            },
-          },
-        },
-        children,
-      },
-    ],
+    sections: [febSection(children, "chapter", 1)],
   });
 
   return Packer.toBlob(doc);

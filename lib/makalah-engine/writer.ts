@@ -84,12 +84,11 @@ function fallbackSubsectionContent(input: MakalahEngineInput, chapterTitle: stri
   ].join("\n\n");
 }
 
-function buildDaftarPustaka(input: MakalahEngineInput): string[] {
-  const year = new Date().getFullYear();
+function buildDaftarPustaka(_input: MakalahEngineInput): string[] {
+  // Publication years are bibliographic facts, never shifted to pass age rules.
   return [
-    `Creswell, J. W. (${Math.max(2018, year - 6)}). Research design: Qualitative, quantitative, and mixed methods approaches. SAGE Publications.`,
-    `Sugiyono. (${Math.max(2019, year - 5)}). Metode penelitian kuantitatif, kualitatif, dan R&D. Alfabeta.`,
-    `Referensi akademik terkait ${input.tema || input.judul}. (${year}). Disesuaikan dengan instruksi mata kuliah ${input.mataKuliah}.`,
+    "Creswell, J. W., & Creswell, J. D. (2018). Research design: Qualitative, quantitative, and mixed methods approaches. SAGE Publications.",
+    "Sugiyono. (2019). Metode penelitian kuantitatif, kualitatif, dan R&D. Bandung: Alfabeta.",
   ];
 }
 

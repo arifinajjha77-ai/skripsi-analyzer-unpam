@@ -1,5 +1,7 @@
 export interface CampusTemplate {
   id: string;
+  pedomanTahun?: number;
+  pedomanNama?: string;
   nama: string;
   namaFakultas: string;
   programStudi: string;
@@ -32,6 +34,6 @@ export interface CampusTemplate {
   halamanAwal: "romawi" | "arab";
   halamanIsi: "romawi" | "arab";
   // References
-  daftarPustakaGaya: "APA7" | "APA6";
+  daftarPustakaGaya: "APA7" | "APA6" | "APA-FEB2021";
   sitasiGaya: "APA" | "Chicago";
 }

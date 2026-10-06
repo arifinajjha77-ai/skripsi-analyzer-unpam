@@ -1,4 +1,4 @@
-import { exportMakalahEngineDocx } from "@/lib/makalah-engine";
+import { exportMakalahEngineDocx } from "@/lib/makalah-engine/exportDocx";
 import type { MakalahDocument } from "@/lib/makalah-engine";
 
 export async function POST(request: Request) {

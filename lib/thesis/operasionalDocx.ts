@@ -1,5 +1,5 @@
+import { createFebDocument } from "@/lib/docx/feb2021";
 import {
-  Document,
   Packer,
   Paragraph,
   Table,
@@ -58,7 +58,7 @@ function makeCell(text: string, width: number, isHeader = false, bg = "FFFFFF"):
       new Paragraph({
         children: [new TextRun({ text, bold: isHeader, size: isHeader ? 20 : 20 })],
         alignment: AlignmentType.LEFT,
-        spacing: { after: 60 },
+        spacing: { before: 0, after: 0, line: 240 },
       }),
     ],
   });
@@ -106,7 +106,7 @@ export async function generateOperasionalDocx(thesis: ThesisState): Promise<Blob
   const uniqueVars = [...new Set(rows.map((r) => r.variabelKey))].length;
   const uniqueIndicators = [...new Set(rows.map((r) => r.indikator))].length;
 
-  const doc = new Document({
+  const doc = createFebDocument({
     sections: [
       {
         properties: {
@@ -134,6 +134,7 @@ export async function generateOperasionalDocx(thesis: ThesisState): Promise<Blob
             ],
             spacing: { after: 300 },
           }),
+          new Paragraph({ children: [new TextRun({ text: "Tabel 3.1 Operasional Variabel Penelitian", bold: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 240 }, keepNext: true }),
           table,
           new Paragraph({ text: "", spacing: { after: 400 } }),
           new Paragraph({

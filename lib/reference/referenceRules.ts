@@ -2,14 +2,14 @@
  * SmartCampus — Reference Age Rules & Classic Theory Exceptions
  * Sprint 2: Age validation rules per reference type
  *
- * Rules (per Indonesian academic standards):
- *   Journal   → max 5 years  from document year
+ * Rules (FEB UNPAM 2021, sections 2.3/3.5/4.9):
+ *   Journal   → max 10 years  from document year
  *   Book      → max 10 years from document year
- *   Classic   → EXEMPT — always allowed regardless of age
- *   Proceeding→ max 5 years (same as journal)
+ *   Classic   → must also satisfy the 10-year limit
+ *   Proceeding→ max 10 years (same as journal)
  *   Thesis    → max 10 years (same as book)
- *   Website   → max 3 years
- *   Report    → max 5 years
+ *   Website   → max 10 years
+ *   Report    → max 10 years
  */
 
 import { AcademicReference, ReferenceType } from "./referenceEngine";
@@ -17,10 +17,10 @@ import { AcademicReference, ReferenceType } from "./referenceEngine";
 // ─── Age Limits by Type ───────────────────────────────────────────────────────
 
 export const AGE_LIMITS: Record<ReferenceType, number> = {
-  journal:    5,
-  proceeding: 5,
-  report:     5,
-  website:    3,
+  journal:    10,
+  proceeding: 10,
+  report:     10,
+  website:    10,
   book:       10,
   thesis:     10,
   standard:   10,
@@ -80,13 +80,12 @@ export function getReferenceAge(ref: AcademicReference, documentYear: number): n
 
 /**
  * Returns true if the reference satisfies the age rule for its type.
- * Classic references always return true.
+ * FEB 2021 does not declare an age exemption for classic theories.
  */
 export function isAgeValid(ref: AcademicReference, documentYear: number): boolean {
-  if (isClassicReference(ref)) return true;
   const age   = getReferenceAge(ref, documentYear);
   const limit = AGE_LIMITS[ref.type] ?? 10;
-  return age <= limit;
+  return age >= 0 && age <= limit;
 }
 
 /**
@@ -97,10 +96,9 @@ export function getAgeWarning(
   ref: AcademicReference,
   documentYear: number
 ): string | null {
-  if (isClassicReference(ref)) return null;
   const age   = getReferenceAge(ref, documentYear);
   const limit = AGE_LIMITS[ref.type] ?? 10;
-  if (age <= limit) return null;
+  if (age >= 0 && age <= limit) return null;
 
   const typeLabel: Record<ReferenceType, string> = {
     journal:    "Jurnal",
@@ -121,6 +119,5 @@ export function getAgeWarning(
 export type AgeStatus = "ok" | "too_old" | "classic";
 
 export function getAgeStatus(ref: AcademicReference, documentYear: number): AgeStatus {
-  if (isClassicReference(ref)) return "classic";
   return isAgeValid(ref, documentYear) ? "ok" : "too_old";
 }

@@ -1,3 +1,5 @@
+import { Paragraph, TextRun, HeadingLevel, AlignmentType, LineRuleType, BorderStyle, Packer } from "docx";
+import { createFebDocument, FEB_INDENT } from "@/lib/docx/feb2021";
 import type { InsightReport, StatusLevel } from "./analyzer";
 import { getActiveTemplate, marginTwips, lineSpacingDocx } from "@/lib/templates";
 import { fetchLogoBuffer, buildInstitutionHeader } from "@/lib/docx/logoHelper";
@@ -16,11 +18,6 @@ export async function generateInsightDocx(
   statusLabel: StatusLevel,
   namaFile?: string
 ): Promise<Blob> {
-  const {
-    Document, Paragraph, TextRun, HeadingLevel, AlignmentType,
-    LineRuleType, BorderStyle, convertInchesToTwip,
-  } = await import("docx");
-  const { Packer } = await import("docx");
 
   const template  = getActiveTemplate();
   const margins   = marginTwips(template);
@@ -33,8 +30,8 @@ export async function generateInsightDocx(
     return new Paragraph({
       children: [new TextRun({ text, font: template.font, size: halfPt })],
       alignment: AlignmentType.JUSTIFIED,
-      spacing: { line: lineVal, lineRule: LineRuleType.AUTO, after: 120 },
-      indent: indent ? { firstLine: convertInchesToTwip(0.5) } : undefined,
+      spacing: { before: 0, after: 0, line: lineVal, lineRule: LineRuleType.AUTO },
+      indent: indent ? { firstLine: FEB_INDENT } : undefined,
     });
   }
 
@@ -42,8 +39,8 @@ export async function generateInsightDocx(
     return new Paragraph({
       children: [new TextRun({ text: `• ${text}`, font: template.font, size: halfPt })],
       alignment: AlignmentType.JUSTIFIED,
-      spacing: { line: lineVal, lineRule: LineRuleType.AUTO, after: 80 },
-      indent: { left: convertInchesToTwip(0.5) },
+      spacing: { before: 0, after: 0, line: lineVal, lineRule: LineRuleType.AUTO },
+      indent: { left: FEB_INDENT },
     });
   }
 
@@ -51,8 +48,8 @@ export async function generateInsightDocx(
     return new Paragraph({
       children: [new TextRun({ text: `${num}. ${text}`, font: template.font, size: halfPt })],
       alignment: AlignmentType.JUSTIFIED,
-      spacing: { line: lineVal, lineRule: LineRuleType.AUTO, after: 80 },
-      indent: { left: convertInchesToTwip(0.5) },
+      spacing: { before: 0, after: 0, line: lineVal, lineRule: LineRuleType.AUTO },
+      indent: { left: FEB_INDENT },
     });
   }
 
@@ -163,7 +160,7 @@ export async function generateInsightDocx(
     })
   );
 
-  const doc = new Document({
+  const doc = createFebDocument({
     sections: [{
       properties: {
         page: {

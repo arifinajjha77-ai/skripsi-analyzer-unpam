@@ -47,9 +47,9 @@ export interface TocStyleOptions {
 
 export const UNPAM_TOC_STYLE: TocStyleOptions = {
   font:        "Times New Roman",
-  titleSizePt: 16,   // "DAFTAR ISI" heading — 16pt per requirement
+  titleSizePt: 12,   // "DAFTAR ISI" heading — 16pt per requirement
   bodySizePt:  12,   // body text
-  h1SizePt:    14,   // BAB I, II, III
+  h1SizePt:    12,   // BAB I, II, III
   h2SizePt:    12,   // 1.1, 1.2, 2.1, etc.
   h3SizePt:    12,   // deeper sub-headings
 };
@@ -79,7 +79,7 @@ export function buildDocumentStyles(opts: TocStyleOptions = UNPAM_TOC_STYLE) {
         },
         paragraph: {
           alignment: AlignmentType.CENTER,
-          spacing:   { before: 240, after: 240, line: 480, lineRule: "auto" as const },
+          spacing:   { before: 0, after: 0, line: 360, lineRule: "auto" as const },
         },
       },
       heading2: {
@@ -91,7 +91,7 @@ export function buildDocumentStyles(opts: TocStyleOptions = UNPAM_TOC_STYLE) {
         },
         paragraph: {
           alignment: AlignmentType.LEFT,
-          spacing:   { before: 200, after: 120 },
+          spacing:   { before: 0, after: 0, line: 360 },
         },
       },
       heading3: {
@@ -125,7 +125,7 @@ export function buildH1(
   return new Paragraph({
     heading:   HeadingLevel.HEADING_1,
     alignment: AlignmentType.CENTER,
-    spacing:   { before: 240, after: 240, line: 480, lineRule: "auto" as const },
+    spacing:   { before: 0, after: 0, line: 360, lineRule: "auto" as const },
     children:  [
       new TextRun({
         text,
@@ -149,7 +149,7 @@ export function buildH2(
   return new Paragraph({
     heading:   HeadingLevel.HEADING_2,
     alignment: AlignmentType.LEFT,
-    spacing:   { before: 200, after: 120 },
+    spacing:   { before: 0, after: 0, line: 360 },
     children:  [
       new TextRun({
         text,
@@ -232,24 +232,6 @@ export function buildTocSection(opts: TocStyleOptions = UNPAM_TOC_STYLE): (Parag
     new TableOfContents("Daftar Isi", {
       hyperlink:          true,
       headingStyleRange:  "1-3",
-    })
-  );
-
-  // ── Update Field Instruction ──────────────────────────────────────────────
-  // Helpful note for users — will be invisible after Word refreshes TOC
-  result.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing:   { before: 240, after: 120 },
-      children:  [
-        new TextRun({
-          text:    "[ Buka di Microsoft Word → klik kanan Daftar Isi → Update Field untuk memperbarui nomor halaman ]",
-          font:    opts.font,
-          size:    18,           // 9pt — small instruction text
-          italics: true,
-          color:   "888888",
-        }),
-      ],
     })
   );
 

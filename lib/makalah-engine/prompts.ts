@@ -1,7 +1,9 @@
+import { febThesisOutline, febWritingInstructions, inferFebProfile } from "@/lib/templates/feb2021";
 import type { MakalahChapterOutline, MakalahEngineInput, MakalahOutline } from "./types";
 export { DEFAULT_MODEL } from "@/lib/ai/models";
 
 export function normalizeInput(input: Partial<MakalahEngineInput>): MakalahEngineInput {
+  const profile = inferFebProfile(`${input.judul || ""} ${input.tema || ""}`);
   const isProposal = input.assignmentAnalysis?.requiredDeliverables.some((item) => item.type === "proposal") || /proposal/i.test(clean(input.judul));
   return {
     judul: clean(input.judul) || (isProposal ? "Proposal Akademik" : "Makalah Akademik"),
@@ -14,7 +16,7 @@ export function normalizeInput(input: Partial<MakalahEngineInput>): MakalahEngin
     nim: clean(input.nim) || "-",
     kelas: clean(input.kelas) || "-",
     tema: clean(input.tema) || clean(input.judul) || "studi kasus akademik",
-    jumlahBab: clamp(Number(input.jumlahBab) || 5, 5, 7),
+    jumlahBab: profile === "proposal-skripsi" ? 3 : profile === "skripsi" ? 5 : clamp(Number(input.jumlahBab) || 5, 5, 7),
     targetHalaman: clamp(Number(input.targetHalaman) || 10, 5, 30),
     pedoman: clean(input.pedoman),
     mode: input.mode === "complete" ? "complete" : "fast",
@@ -72,6 +74,8 @@ export function buildFrontMatterPrompt(input: MakalahEngineInput, outline: Makal
 
 function inputContext(input: MakalahEngineInput): string {
   return [
+    febWritingInstructions(inferFebProfile(`${input.judul} ${input.tema}`)),
+    ...(/skripsi|proposal penelitian/i.test(input.judul) ? [`Sistematika resmi FEB 2021: ${febThesisOutline(inferFebProfile(input.judul) === "proposal-skripsi" ? "proposal-skripsi" : "skripsi").join("; ")}`] : []),
     `Judul: ${input.judul}`,
     `Kampus: ${input.namaKampus}`,
     `Fakultas: ${input.fakultas}`,
