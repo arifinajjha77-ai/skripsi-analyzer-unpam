@@ -8,7 +8,7 @@ import { emptyProposal, PROPOSAL_SECTIONS, starterSections, type ProposalState }
 import { ProposalContents } from './proposalContents';
 import { studyReferences } from './priorStudies';
 
-export type ProposalExport = 'bab1' | 'bab2' | 'bab3' | 'combined';
+export type ProposalExport = 'bab1' | 'bab2' | 'bab3' | 'bab2-bab3' | 'combined';
 const chapterTitle = (text: string) => new Paragraph({ children: [new TextRun({ text, bold: true, font: 'Times New Roman', size: 24 })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 480 }, keepNext: true });
 const heading = (text: string, third = false) => new Paragraph({ heading: third ? HeadingLevel.HEADING_3 : HeadingLevel.HEADING_2, children: [new TextRun({ text, bold: true, font: 'Times New Roman', size: 24 })], spacing: { before: 0, after: 0, line: 480 }, keepNext: true });
 const body = (text: string) => new Paragraph({ children: academicRuns(text), alignment: AlignmentType.JUSTIFIED, spacing: { before: 0, after: 0, line: 480 }, indent: { firstLine: FEB_INDENT }, widowControl: true });
@@ -27,6 +27,7 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
   const number = chapter === 2 ? 'BAB II' : 'BAB III';
   const title = chapter === 2 ? 'TINJAUAN PUSTAKA' : 'METODE PENELITIAN';
   const children: (Paragraph | Table)[] = [contents ? contents.heading(number, 1, `${number}\t${title}`) : chapterTitle(number), chapterTitle(title)];
+  const pendingSchedule = state.sections.location.includes('[Isi periode dan jadwal penelitian sebenarnya, sejak penyusunan proposal sampai sidang.]');
   for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === chapter)) {
     children.push(contents ? contents.heading(s.title, 2) : heading(s.title), ...textParagraphs(state.sections[s.id].trim() || defaults[s.id], contents));
     if (s.id === 'studies') {
@@ -37,9 +38,12 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
     if (s.id === 'framework') {
       children.push(new Paragraph({ children: [new ImageRun({ type: 'png', data: Uint8Array.from(atob(PROPOSAL_DIAGRAM_PNG), c => c.charCodeAt(0)), transformation: { width: 500, height: 211 }, altText: { title: 'Kerangka berpikir', description: 'X1 dan X2 menuju Y secara parsial (H1, H2) dan simultan (H3).', name: 'Kerangka berpikir' } })], alignment: AlignmentType.CENTER, keepNext: true }), caption('Gambar 2.1 Kerangka Berpikir'), source('Sumber: Rancangan model penelitian.'), body(`Keterangan: X1 = ${thesis.x1 || '[Variabel X1]'}; X2 = ${thesis.x2 || '[Variabel X2]'}; Y = ${thesis.y || '[Variabel Y]'}. H1 dan H2 menunjukkan pengaruh parsial, sedangkan H3 menunjukkan pengaruh simultan yang akan diuji.`));
     }
+    if (s.id === 'location' && pendingSchedule) {
+      children.push(caption('Tabel 3.1 Rencana Jadwal Penelitian'), dataTable(['Tahap', 'Waktu Pelaksanaan'], ['Penyusunan proposal', 'Penelaahan dan uji coba instrumen', 'Pengumpulan data', 'Pengolahan dan analisis', 'Penyusunan laporan', 'Sidang'].map(stage => [stage, '[Isi tanggal/bulan sebenarnya]']), [4700, 3237]), source('Sumber: Rencana peneliti; waktu pelaksanaan belum ditetapkan.'));
+    }
     if (s.id === 'operations') {
       const rows = state.operations.filter(r => Object.values(r).some(v => v.trim())).map(r => [r.variable, r.definition, r.indicators, r.scale, r.source].map(v => v.trim() || '[Lengkapi]'));
-      children.push(caption('Tabel 3.1 Operasional Variabel Penelitian'), dataTable(['Variabel', 'Definisi Operasional', 'Indikator', 'Skala', 'Sumber'], rows.length ? rows : [thesis.x1 || '[X1]', thesis.x2 || '[X2]', thesis.y || '[Y]'].map(v => [v, '[Definisi]', '[Indikator]', '[Skala]', '[Penulis, tahun]'])));
+      children.push(caption(`Tabel 3.${pendingSchedule ? '2' : '1'} Operasional Variabel Penelitian`), dataTable(['Variabel', 'Definisi Operasional', 'Indikator', 'Skala', 'Sumber'], rows.length ? rows : [thesis.x1 || '[X1]', thesis.x2 || '[X2]', thesis.y || '[Y]'].map(v => [v, '[Definisi]', '[Indikator]', '[Skala]', '[Penulis, tahun]']), [1300, 2037, 2000, 1000, 1600]));
       children.push(source('Sumber: Rujukan teori yang dicantumkan pada tabel.'));
     }
     children.push(blank());
@@ -58,9 +62,9 @@ export async function exportProposalDocx(state: ProposalState, thesis: ThesisSta
   const first = template ? { children: templateBab1(contents), references: [] as string[] } : buildBab1Content({ ...bab1, documentType: 'proposal-skripsi', namaObjek: bab1.namaObjek || thesis.objek }, thesis, contents);
   const sections = [];
   if (target === 'bab1' || target === 'combined') sections.push(febSection(first.children, 'chapter', 1));
-  if (target === 'bab2' || target === 'combined') sections.push(febSection(chapterContent(2, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
-  if (target === 'bab3' || target === 'combined') sections.push(febSection(chapterContent(3, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
-  const references = Array.from(new Set([...(target === 'bab1' || target === 'combined' ? first.references : []), ...state.references.split(/\n+/).map(s => s.trim()).filter(Boolean), ...(target === 'bab2' || target === 'combined' ? studyReferences(state.studies) : [])])).sort((a, b) => a.localeCompare(b, 'id'));
+  if (target === 'bab2' || target === 'bab2-bab3' || target === 'combined') sections.push(febSection(chapterContent(2, state, thesis, bab1, contents), 'chapter', target === 'combined' ? undefined : 1));
+  if (target === 'bab3' || target === 'bab2-bab3' || target === 'combined') sections.push(febSection(chapterContent(3, state, thesis, bab1, contents), 'chapter', target === 'combined' || target === 'bab2-bab3' ? undefined : 1));
+  const references = Array.from(new Set([...(target === 'bab1' || target === 'combined' ? first.references : []), ...state.references.split(/\n+/).map(s => s.trim()).filter(Boolean), ...(target === 'bab2' || target === 'bab2-bab3' || target === 'combined' ? studyReferences(state.studies) : [])])).sort((a, b) => a.localeCompare(b, 'id'));
   sections.push(febSection([contents ? contents.heading('DAFTAR PUSTAKA', 1) : chapterTitle('DAFTAR PUSTAKA'), ...(references.length ? references.map(reference) : [reference('[Tuliskan daftar pustaka dari semua sumber yang disitasi; urutkan menurut abjad.]')])], 'back'));
   if (contents && contentsTitle) sections.unshift(febSection(contents.table(contentsTitle), 'front', 1));
   return Packer.toBlob(createFebDocument({ sections, ...(contents ? { styles: { paragraphStyles: contents.styles() } } : {}) }, 'proposal-skripsi'));

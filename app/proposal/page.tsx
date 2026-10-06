@@ -11,6 +11,7 @@ import { emptyOperation, emptyProposal, emptyStudy, loadProposal, PROPOSAL_SECTI
 import type { ProposalExport } from '@/lib/thesis/proposalDocx';
 import { isStarterSection, localGeneration, researchTitle, type GenerationInput, type GenerationMode, type GenerationResult, type GenerationScope } from '@/lib/thesis/proposalGeneration';
 import { referenceAgeWarnings } from '@/lib/templates/feb2021';
+import { completeGyfinDraft, isGyfinResearch } from '@/lib/thesis/gyfinCompletion';
 import { applyImportedStudies, parseStudyText, studyNarrative, suppliedStudies, suppliedStudyWarnings, type StudyImportResult } from '@/lib/thesis/priorStudies';
 
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100';
@@ -102,6 +103,15 @@ export default function ProposalPage() {
     updateProposal({ ...proposal, sections: { ...proposal.sections, studies: studyNarrative(proposal.studies, thesis, bab1.namaObjek || thesis.objek) } });
     setUndoSnapshot(previous); setNotice('Narasi 2.2 disusun ulang dari tabel dan judul BAB I terbaru. Hasil penelitian tetap mengikuti sumber.');
   }
+  function completeGyfin() {
+    setError('');
+    try {
+      const result = completeGyfinDraft({ thesis, bab1, proposal, scope: 'all', mode: 'generate' });
+      const previous = proposal;
+      updateProposal(result.proposal); setUndoSnapshot(previous); setGenerationNotes(result.warnings);
+      setNotice(`${result.completed.length} subbab dilengkapi dengan sumber buku/jurnal dan kuesioner yang dikirim. Tabel operasional, penelitian terdahulu, serta daftar pustaka ikut unduhan. Narasi yang sudah diedit dipertahankan; alamat, jadwal, dan sampel yang belum tersedia tetap ditandai.`);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Draf belum dapat dilengkapi.'); }
+  }
   async function generate(scope: GenerationScope, mode: GenerationMode = 'generate') {
     if (![thesis.x1, thesis.x2, thesis.y, bab1.namaObjek || thesis.objek].every(v => v.trim())) {
       setError('Lengkapi variabel X1, X2, Y, dan objek penelitian pada BAB I terlebih dahulu.'); return;
@@ -143,7 +153,7 @@ export default function ProposalPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url;
       const name = (bab1.namaObjek || thesis.objek || 'Penelitian').replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 80);
-      const label = { bab1: 'BAB-I', bab2: 'BAB-II', bab3: 'BAB-III', combined: 'BAB-I-III' }[target];
+      const label = { bab1: 'BAB-I', bab2: 'BAB-II', bab3: 'BAB-III', 'bab2-bab3': 'BAB-II-III', combined: 'BAB-I-III' }[target];
       a.download = `${template ? 'Template' : 'Draf'}-Sempro-${label}-${template ? 'FEB-2021' : name}.docx`;
       document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setNotice(`${template ? 'Template' : 'Draf'} ${label} berhasil diunduh.${target === 'combined' ? ' Daftar isi sudah disertakan. Di Microsoft Word, pilih Perbarui seluruh tabel agar nomor halaman mengikuti naskah; tanda — menunggu pembaruan.' : ''} Bagian bertanda [kurung siku] masih perlu dilengkapi.`);
@@ -165,7 +175,7 @@ export default function ProposalPage() {
     <section className={cardClass} aria-labelledby="download-heading">
       <h2 id="download-heading" className="font-semibold text-slate-900">Unduh Word dan template</h2>
       <p className="mb-4 mt-1 text-sm text-slate-600">Unduhan gabungan berisi daftar isi, BAB I–III, dan daftar pustaka. Sampul dan kata pengantar dapat ditambahkan sesuai naskah Anda. BAB I memakai data di menu Latar Belakang dan menambahkan 1.5 Sistematika Penulisan.</p>
-      <div className="flex flex-wrap gap-2">{([{ key: 'bab1', label: 'Unduh BAB I' }, { key: 'bab2', label: 'Unduh BAB II' }, { key: 'bab3', label: 'Unduh BAB III' }, { key: 'combined', label: 'Unduh gabungan BAB I–III' }] as const).map(item => <button key={item.key} type="button" disabled={!ready || working} className={buttonClass} onClick={() => download(item.key)}><Download className="h-4 w-4" />{item.label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{([{ key: 'bab1', label: 'Unduh BAB I' }, { key: 'bab2', label: 'Unduh BAB II' }, { key: 'bab3', label: 'Unduh BAB III' }, { key: 'bab2-bab3', label: 'Unduh BAB II–III' }, { key: 'combined', label: 'Unduh gabungan BAB I–III' }] as const).map(item => <button key={item.key} type="button" disabled={!ready || working} className={buttonClass} onClick={() => download(item.key)}><Download className="h-4 w-4" />{item.label}</button>)}</div>
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4"><label className="text-sm text-slate-700" htmlFor="template-target">Pilih template<select id="template-target" className={`${inputClass} mt-1`} value={templateTarget} onChange={e => setTemplateTarget(e.target.value as ProposalExport)}><option value="combined">Isi BAB I–III</option><option value="bab1">BAB I</option><option value="bab2">BAB II</option><option value="bab3">BAB III</option></select></label><button className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working} onClick={() => download(templateTarget, true)}><FileText className="h-4 w-4" />Unduh template Word</button></div>
       <p className="mt-3 text-xs text-slate-500">A4, Times New Roman 12, isi 2 spasi, tabel 1 spasi. Daftar isi 1,5 spasi, titik penghubung, dan nomor rata kanan; halaman awal memakai Romawi. BAB I dimulai dari 1 dan nomor berlanjut antar bab; halaman pembuka bab di tengah bawah, halaman berikutnya di kanan atas.</p>
       <p className="mt-2 text-xs text-slate-500">Di Microsoft Word, klik kanan daftar isi → Perbarui Bidang → Perbarui seluruh tabel. Lakukan kembali setelah mengubah naskah atau menambah halaman awal. Tanda — pada daftar isi akan diganti nomor halaman sebenarnya.</p>
@@ -175,6 +185,7 @@ export default function ProposalPage() {
     <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Draf perlu dilengkapi</strong><p className="mt-1">{filled}/10 subbab memiliki narasi; {incomplete} bagian masih kosong atau berisi petunjuk. Sumber teori, hasil jurnal, populasi, sampel, dan waktu penelitian harus diisi dari data Anda. Bagian kosong tetap tampil sebagai [petunjuk] di Word.</p></section>
     <section className={cardClass} aria-labelledby="generate-heading"><h2 id="generate-heading" className="font-semibold text-slate-900">Generate otomatis sesuai judul</h2><p className="mb-4 mt-1 text-sm text-slate-600">Susun paragraf BAB II–III dari data BAB I, teori, dan penelitian terdahulu yang sudah diisi. Bahasa dibuat alami dan akademik. Generate per bab mempertahankan narasi yang sudah Anda tulis; petunjuk template akan diganti dengan draf.</p>
       <div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={!ready || working} onClick={() => generate('all')}><Sparkles className="h-4 w-4" />Generate otomatis BAB II–III</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab2')}>Generate BAB II</button><button className={buttonClass} disabled={!ready || working} onClick={() => generate('bab3')}>Generate BAB III</button><button className={`${buttonClass} bg-slate-800 hover:bg-slate-900`} disabled={!ready || working} onClick={() => generate(`bab${chapter}` as GenerationScope, 'polish')}>Perhalus bahasa BAB {chapter === 2 ? 'II' : 'III'}</button></div>
+      {isGyfinResearch(context) && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><button type="button" className={`${buttonClass} bg-emerald-700 hover:bg-emerald-800`} disabled={!ready || working} onClick={completeGyfin}><Sparkles className="h-4 w-4" />Lengkapi draf GYFIN SOCK dengan sumber</button><p className="mt-2 text-sm text-slate-600">Melengkapi bagian kosong dan draf bawaan lama memakai buku, jurnal, serta kuesioner 30 butir yang dikirim. Indikator dinyatakan sebagai adaptasi peneliti. Tulisan yang sudah diedit tetap disimpan; angka sampel dan jadwal tidak ditebak. Pilihan ini dapat digunakan tanpa koneksi generator.</p></div>}
       {generating && <div role="status" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-blue-800"><LoaderCircle className="h-4 w-4 animate-spin" />Menyusun paragraf sesuai naskah penelitian…<button className="underline" onClick={() => generationAbort.current?.abort()}>Batalkan generate</button></div>}
       {undoSnapshot && <button disabled={working} className="mt-3 inline-flex items-center gap-1 text-sm text-blue-700 underline" onClick={() => { updateProposal(undoSnapshot); setGenerationNotes([]); setNotice('Tulisan sebelum generate terakhir sudah dipulihkan.'); }}><RotateCcw className="h-4 w-4" />Pulihkan tulisan sebelum generate terakhir</button>}
       {generationNotes.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">{generationNotes.map((note,i) => <li key={i}>{note}</li>)}</ul>}

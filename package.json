@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test:pedoman": "node --import tsx scripts/verify-feb2021.mjs",
     "test:proposal": "node --import tsx scripts/verify-proposal-generation.mjs",
-    "test:studies": "node --import tsx scripts/verify-prior-studies.mjs"
+    "test:studies": "node --import tsx scripts/verify-prior-studies.mjs",
+    "test:gyfin": "node --import tsx scripts/verify-gyfin-completion.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

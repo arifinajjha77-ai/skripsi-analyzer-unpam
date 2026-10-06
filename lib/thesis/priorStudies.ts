@@ -44,7 +44,26 @@ export function studyNarrative(rows: Study[], thesis: ThesisState, object: strin
   return [intro, ...paragraphs, ending].join('\n\n');
 }
 export function studyReferences(rows: Study[]): string[] {
-  return rows.filter(r => r.author.trim() && r.title.trim()).map(r => `${r.author.trim()}. ${sentence(r.title)} ${r.journal?.trim() || '[Lengkapi identitas jurnal].'}${r.reference?.trim() ? ` ${r.reference.trim()}` : ''}`);
+  return rows.filter(r => r.author.trim() && r.title.trim()).map(r => {
+    // Reformat only the verified preset authors; arbitrary user author strings
+    // may already be APA entries or contain comma-separated surnames.
+    const preset = suppliedStudies.some(s => s.author === r.author && s.title === r.title);
+    let author = r.author.trim(), journal = r.journal?.trim() || '[Lengkapi identitas jurnal].';
+    if (preset) {
+      const year = author.match(/\((\d{4})\)/);
+      if (year) {
+        const names = author.slice(0, year.index).trim().split(/,\s*(?:dan\s+)?|\s+dan\s+/).map(name => {
+          const parts = name.trim().split(/\s+/);
+          return parts.length === 1 ? name : `${parts.pop()}, ${parts.map(p => `${p[0]}.`).join(' ')}`;
+        });
+        author = `${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')}, & ${names.at(-1)}`} (${year[1]}).${author.slice((year.index || 0) + year[0].length).trim() ? ` ${author.slice((year.index || 0) + year[0].length).trim()}` : ''}`;
+      }
+      const pending = journal.match(/\[[^\]]+\]/g) || [];
+      journal = journal.replace(/\[[^\]]+\]/g, '').replace(/(?:e-ISSN|p-ISSN|ISSN cetak|ISSN daring|ISSN)[\s\S]*$/i, '').replace(/,\s*(?:Januari(?:–Maret)?|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+\d{4}/g, '').replace(/[.;\s]+$/, '');
+      journal = `${journal}.${pending.length ? ` ${pending.join(' ')}` : ''}`;
+    }
+    return `${author}${author.endsWith('.') ? '' : '.'} ${sentence(r.title)} ${journal}${r.reference?.trim() ? ` ${r.reference.trim()}` : ''}`;
+  });
 }
 /** Appends unique sources; re-importing never replaces manually edited rows. */
 export function mergeStudyRows(current: Study[], incoming: Study[]): { rows: Study[]; added: Study[] } {
