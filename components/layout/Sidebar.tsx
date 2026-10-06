@@ -105,17 +105,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     const Icon     = item.icon;
     return (
       <Link
-        href={disabled ? "#" : item.href}
-        onClick={(e) => { if (disabled) e.preventDefault(); else onClose(); }}
+        href={item.href}
+        onClick={onClose}
+        title={disabled ? item.href === "/mapping" ? "Upload data responden terlebih dahulu" : "Upload data dan mapping variabel terlebih dahulu" : item.label}
         className={cn(
           "flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors group",
           active   ? "bg-blue-50 text-blue-700"
-          : disabled ? "text-slate-300 cursor-not-allowed"
+          : disabled ? "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         )}
       >
         <Icon className={cn("w-4 h-4 shrink-0",
-          active ? "text-blue-600" : disabled ? "text-slate-300" : "text-slate-400 group-hover:text-slate-600"
+          active ? "text-blue-600" : disabled ? "text-slate-400" : "text-slate-400 group-hover:text-slate-600"
         )} />
         <span className="truncate text-xs">{item.label}</span>
         {item.badge && (
@@ -202,7 +203,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{section.emoji}</span>
                     <span className={cn("text-[11px] font-bold uppercase tracking-wider", section.color)}>
-                      {section.label}
+                      {section.label}{section.id === "skripsi" && <span className="ml-2 rounded bg-blue-50 px-1 text-[9px]">2021</span>}
                     </span>
                   </div>
                   {isCollapsed
@@ -211,6 +212,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   }
                 </button>
 
+                {section.id === "skripsi" && !isCollapsed && !hasMapping && <p className="mx-3 mb-2 text-[10px] leading-relaxed text-slate-500">Analisis statistik memerlukan Upload Data → Mapping Variabel.</p>}
                 {/* Section items */}
                 {!isCollapsed && (
                   <div className="pl-1 space-y-0.5 mt-0.5">

@@ -114,39 +114,30 @@ export async function generateOperasionalDocx(thesis: ThesisState): Promise<Blob
         },
         children: [
           new Paragraph({
-            children: [new TextRun({ text: "OPERASIONAL VARIABEL PENELITIAN", bold: true, size: 28 })],
+            children: [new TextRun({ text: "OPERASIONAL VARIABEL PENELITIAN", bold: true, size: 24 })],
             heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
             children: [new TextRun({ text: judul, size: 24, color: "555555" })],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 600 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
             children: [
               new TextRun({
                 text: `Jumlah Variabel: ${uniqueVars}  |  Jumlah Indikator: ${uniqueIndicators}  |  Jumlah Item: ${rows.length}`,
-                size: 22,
+                size: 24,
                 bold: true,
               }),
             ],
-            spacing: { after: 300 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({ children: [new TextRun({ text: "Tabel 3.1 Operasional Variabel Penelitian", bold: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: 240 }, keepNext: true }),
           table,
-          new Paragraph({ text: "", spacing: { after: 400 } }),
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "⚠ Pastikan data berasal dari responden asli. Dokumen dibuat menggunakan Skripsi Analyzer UNPAM.",
-                size: 18,
-                color: "888888",
-              }),
-            ],
-            alignment: AlignmentType.CENTER,
-          }),
+          new Paragraph({ children: [new TextRun({ text: "Sumber: Rancangan instrumen penelitian penulis", size: 20 })], spacing: { before: 0, after: 0, line: 240 } }),
+
         ],
       },
     ],

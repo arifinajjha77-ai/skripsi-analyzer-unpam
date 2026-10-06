@@ -21,7 +21,7 @@ export function dedupeRefs(refs: Reference[]): Reference[] {
   return out;
 }
 
-/** APA-7 sorted bibliography */
+/** APA bibliography following FEB 2021 examples */
 export function buildDaftarPustaka(refs: Reference[]): string {
   const unique = dedupeRefs(refs);
   const sorted = [...unique].sort((a, b) => {

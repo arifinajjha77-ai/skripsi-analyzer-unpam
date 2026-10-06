@@ -28,6 +28,7 @@ export interface CompetitorRow {
 }
 
 export interface Bab1State {
+  documentType?: "skripsi" | "proposal-skripsi";
   namaObjek: string;
   jenisUsaha: string;
   lokasi: string;
@@ -44,6 +45,7 @@ export const DEFAULT_CATATAN_KERAHASIAAN =
   "Data yang digunakan merupakan data estimasi/disamarkan untuk menjaga kerahasiaan informasi perusahaan.";
 
 export const defaultBab1State: Bab1State = {
+  documentType: "skripsi",
   namaObjek: "",
   jenisUsaha: "",
   lokasi: "",

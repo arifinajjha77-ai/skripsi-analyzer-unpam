@@ -16,11 +16,13 @@ import {
 import { loadThesisState, ThesisState } from "@/lib/thesis/store";
 import {
   generateLatarBelakang,
+  generateSistematikaProposal,
   generateManfaatPenelitian,
   buildSalesTable,
   buildConsumerTable,
   buildCompetitorTable,
 } from "@/lib/thesis/bab1Generator";
+import { getBab1References } from "@/lib/bab1-engine/authorMapping";
 import { checkBab1Quality, getBab1Score } from "@/lib/bab1-engine/qualityChecker";
 import type { QualityItem } from "@/lib/bab1-engine/qualityChecker";
 import { generateSyncEstimation } from "@/lib/thesis/dataEstimator";
@@ -712,8 +714,8 @@ export default function LatarBelakangPage() {
   const qualityTotal  = qualityItems.length;
 
   useEffect(() => {
-    setForm(loadBab1State());
-    setThesis(loadThesisState());
+    const timer = window.setTimeout(() => { setForm(loadBab1State()); setThesis(loadThesisState()); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const updateForm = useCallback((patch: Partial<Bab1State>) => {
@@ -842,6 +844,13 @@ export default function LatarBelakangPage() {
         </Alert>
       )}
 
+      <section className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <label htmlFor="bab1-document-type" className="text-sm font-semibold text-blue-950">Jenis dokumen BAB I</label>
+        <select id="bab1-document-type" value={form.documentType || "skripsi"} onChange={(event) => updateForm({ documentType: event.target.value as "skripsi" | "proposal-skripsi" })} className="mt-2 block w-full rounded-lg border border-blue-200 bg-white p-2 text-sm">
+          <option value="skripsi">Skripsi · Subbab 1.1–1.4</option><option value="proposal-skripsi">Proposal skripsi / sempro · Subbab 1.1–1.5</option>
+        </select>
+        <p className="mt-2 text-xs text-blue-900">Proposal menambahkan 1.5 Sistematika Penulisan sesuai pedoman. Definisi dan kutipan perlu dicocokkan kembali dengan sumber asli.</p>
+      </section>
       {/* ── FORM SECTIONS ── */}
 
       {/* Informasi Objek */}
@@ -1302,6 +1311,8 @@ export default function LatarBelakangPage() {
             </CardContent>
           </Card>
 
+          {form.documentType === "proposal-skripsi" && <Card><CardHeader><CardTitle className="text-sm">1.5 Sistematika Penulisan</CardTitle></CardHeader><CardContent className="whitespace-pre-line text-sm text-slate-700">{generateSistematikaProposal()}</CardContent></Card>}
+          <Card><CardHeader><CardTitle className="text-sm">Daftar Pustaka · FEB UNPAM 2021</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-slate-700">{getBab1References([thesis.x1, thesis.x2, thesis.y]).map(reference => <p key={reference}>{reference}</p>)}<p className="text-xs text-slate-500">Gunakan edisi yang benar-benar dibaca. Tambahkan sumber khusus variabel dan penelitian terdahulu yang telah diperiksa.</p></CardContent></Card>
           {/* Export button repeated at bottom */}
           <div className="flex justify-end gap-3 pb-4">
             <button

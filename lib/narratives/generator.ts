@@ -8,7 +8,6 @@ import {
   VariableConfig,
 } from "@/types";
 import {
-  REFERENCE_DB,
   getReferencesByTopic,
   type Reference,
   type TopicKey,
@@ -295,26 +294,26 @@ export function generateBab4Enhanced(params: {
   }
 
   const sections = [
-    "# BAB IV – HASIL PENELITIAN DAN PEMBAHASAN\n",
-    narrativeValiditas(validityResults),
+    "# BAB IV HASIL PENELITIAN DAN PEMBAHASAN\n",
+    "## 4.2 Hasil Penelitian\n",
+    narrativeValiditas(validityResults).replace(/^\*\*(.+?)\*\*/, "### 4.2.1 $1"),
     "---\n",
-    narrativeReliabilitas(reliabilityResults),
+    narrativeReliabilitas(reliabilityResults).replace(/^\*\*(.+?)\*\*/, "### 4.2.2 $1"),
     "---\n",
-    narrativeMultikolinearitas(multicollinearityResults),
+    narrativeMultikolinearitas(multicollinearityResults).replace(/^\*\*(.+?)\*\*/, "### 4.2.3 $1"),
     "---\n",
-    narrativeNormalitas(normalityResult),
+    narrativeNormalitas(normalityResult).replace(/^\*\*(.+?)\*\*/, "### 4.2.4 $1"),
     "---\n",
-    narrativeHeteroskedastisitas(heteroskedasticityResults),
+    narrativeHeteroskedastisitas(heteroskedasticityResults).replace(/^\*\*(.+?)\*\*/, "### 4.2.5 $1"),
     "---\n",
-    narrativeRegresi(regressionResult, yVariable.name),
+    narrativeRegresi(regressionResult, yVariable.name).replace(/^\*\*(.+?)\*\*/, "### 4.2.6 $1"),
     "---\n",
-    narrativeUjiT(regressionResult, yVariable.name),
+    narrativeUjiT(regressionResult, yVariable.name).replace(/^\*\*(.+?)\*\*/, "### 4.2.7 $1"),
     "---\n",
-    narrativeUjiF(regressionResult, yVariable.name),
+    narrativeUjiF(regressionResult, yVariable.name).replace(/^\*\*(.+?)\*\*/, "### 4.2.8 $1"),
     "---\n",
-    narrativeRSquare(regressionResult, yVariable.name),
-    "\n---\n",
-    "> ⚠️ **Catatan:** Pastikan data berasal dari responden asli. Seluruh hasil analisis di atas diperoleh berdasarkan data yang Anda unggah.",
+    narrativeRSquare(regressionResult, yVariable.name).replace(/^\*\*(.+?)\*\*/, "### 4.2.9 $1"),
+
   ];
 
   return { text: sections.join("\n"), refsUsed };

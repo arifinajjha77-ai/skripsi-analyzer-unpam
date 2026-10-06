@@ -22,7 +22,7 @@ export interface Reference {
 
   /** Short in-text citation, e.g. "(Ghozali, 2018)" */
   apaInText: string;
-  /** Full APA-7 bibliography entry */
+  /** Full APA bibliography entry following FEB 2021 examples */
   apaFull: string;
 
   /** Criterion/rule stated by this reference for each topic */
@@ -212,7 +212,7 @@ export const REFERENCE_DB: Reference[] = [
 // ── Topic → References Map ───────────────────────────────────────────────────
 
 export function getReferencesByTopic(topic: TopicKey): Reference[] {
-  return REFERENCE_DB.filter((r) => r.topik.includes(topic));
+  return REFERENCE_DB.filter((r) => r.topik.includes(topic) && new Date().getFullYear() - r.tahun >= 0 && new Date().getFullYear() - r.tahun <= 10);
 }
 
 export function getReferenceById(id: string): Reference | undefined {

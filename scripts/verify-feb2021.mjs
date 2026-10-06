@@ -11,6 +11,9 @@ import { generateKarakteristikDocx } from '../lib/responden/karakteristikDocx.ts
 import { generateOperasionalDocx } from '../lib/thesis/operasionalDocx.ts';
 import { generateDocx } from '../lib/thesis/docxExport.ts';
 import { generateInsightDocx } from '../lib/kelayakan/docxExport.ts';
+import { generateBab4Enhanced } from '../lib/narratives/generator.ts';
+import { buildSalesTable } from '../lib/thesis/bab1Generator.ts';
+import { getCitationFor, getBab1References } from '../lib/bab1-engine/authorMapping.ts';
 import { defaultBab1State } from '../lib/thesis/bab1Store.ts';
 import { defaultMakalahState } from '../lib/makalah/store.ts';
 import { getQuestionnaire } from '../lib/thesis/questionnaire.ts';
@@ -69,7 +72,21 @@ for (const profile of ['proposal-skripsi', 'skripsi', 'makalah']) {
 }
 const thesis = { x1: 'Kualitas Pelayanan', x2: 'Harga', y: 'Kepuasan Pelanggan', objek: 'Usaha Uji' };
 await inspect('bab1', await generateBab1Docx({ ...defaultBab1State, namaObjek: 'Usaha Uji', lokasi: 'Cirebon', fenomena: marker, salesData: [{tahun: '2026', target: '100', realisasi: '80'}], consumerData: [], competitors: [] }, thesis));
+const proposalBab1 = await inspect('bab1-sempro', await generateBab1Docx({ ...defaultBab1State, documentType: 'proposal-skripsi', namaObjek: 'Usaha Uji', fenomena: marker }, thesis));
+assert(plainText(proposalBab1.xml).includes('1.5 Sistematika Penulisan'));
+assert.equal(all(proposalBab1.xml, 'w:sectPr').length, 2, 'BAB I plus bibliography section');
+assert.equal(getCitationFor('media sosial').citation, 'Tuten & Solomon (2018)');
+assert.equal(getCitationFor('kompetensi pegawai').citation, '', 'Do not assign an unrelated marketing citation');
+assert(getBab1References(['media sosial']).every(entry => entry.includes('Los Angeles: SAGE')));
 await inspect('bab4', await generateBab4Docx(`# BAB IV HASIL PENELITIAN DAN PEMBAHASAN\n${marker}`, REFERENCE_DB.slice(0, 2)), marker, 480);
+const regressionFixture = { coefficients: { intercept: 1, X1: 0.2, X2: 0.3 }, tValues: { intercept: 1, X1: 2, X2: 3 }, pValues: { intercept: 0.1, X1: 0.02, X2: 0.01 }, r: 0.7, rSquare: 0.49, adjustedRSquare: 0.45, fValue: 4, fSig: 0.01, n: 30, variables: ['X1', 'X2'], variableNames: ['Kualitas Pelayanan', 'Harga'] };
+const bab4 = generateBab4Enhanced({ validityResults: [], reliabilityResults: [], regressionResult: regressionFixture, multicollinearityResults: [], normalityResult: { meanResidual: 0, stdResidual: 1, n: 30, interpretation: 'Hasil pengujian' }, heteroskedasticityResults: [], yVariable: { name: 'Kepuasan Pelanggan', key: 'Y', items: ['Y.1'] } });
+assert(bab4.text.includes('## 4.2 Hasil Penelitian'));
+assert(bab4.text.includes('### 4.2.9 Koefisien Determinasi'));
+const numberedBab4 = await inspect('bab4-official-numbering', await generateBab4Docx(bab4.text, bab4.refsUsed));
+assert(plainText(numberedBab4.xml).includes('4.2.9 Koefisien Determinasi'));
+assert(!plainText(numberedBab4.xml).includes('###'));
+assert.equal(buildSalesTable([{ tahun: '2026', target: '100', realisasi: '80' }], 'Uji', 'tidak_tersedia').rows.length, 0);
 const demo = [{ kategori: 'Kategori Uji', frekuensi: 2, persentase: '100%' }];
 const karakter = await inspect('karakteristik', await generateKarakteristikDocx({ jenisKelamin: demo, usia: [], pendidikan: [], pekerjaan: [] }, { totalResponden: 2, totalItems: 3, totalVariables: 3, completeResponden: 2, completenessPercent: 100, issues: [], cleanRowIndices: [0, 1] }));
 assert(plainText(karakter.xml).includes('Tabel 4.1'));

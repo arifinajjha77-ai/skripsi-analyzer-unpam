@@ -1,5 +1,5 @@
 import { Paragraph, TextRun, HeadingLevel, AlignmentType, LineRuleType, LevelFormat, Packer } from "docx";
-import { createFebDocument, FEB_INDENT, febSection } from "@/lib/docx/feb2021";
+import { academicRuns, createFebDocument, FEB_INDENT, febSection } from "@/lib/docx/feb2021";
 /**
  * Export BAB IV narasi + Daftar Pustaka as a single DOCX file,
  * formatted according to the active campus template (UNPAM by default).
@@ -23,12 +23,7 @@ export async function generateBab4Docx(
     opts: { bold?: boolean; indent?: boolean; align?: "left" | "center" | "right" | "both" } = {}
   ): InstanceType<typeof Paragraph> {
     return new Paragraph({
-      children: [new TextRun({
-        text,
-        bold: opts.bold ?? false,
-        font: template.font,
-        size: template.fontSize * 2, // half-points
-      })],
+      children: opts.bold ? [new TextRun({ text, bold: true, font: template.font, size: 24 })] : academicRuns(text),
       alignment:
         opts.align === "center" ? AlignmentType.CENTER
         : opts.align === "right" ? AlignmentType.RIGHT
@@ -49,7 +44,7 @@ export async function generateBab4Docx(
         line: lineVal,
         lineRule: LineRuleType.AUTO,
       },
-      children: [new TextRun({ text, bold: true, font: template.font, size: template.fontSize * 2 })],
+      children: text.toUpperCase().replace(/^(BAB\s+[IVX]+)\s+/, "$1\n").split("\n").map((part, index) => new TextRun({ text: part, break: index ? 1 : undefined, bold: true, font: template.font, size: 24 })),
     });
   }
 
@@ -75,6 +70,7 @@ export async function generateBab4Docx(
     const trimmed = line.trim();
     if (!trimmed || trimmed === "---") return [spacer()];
     if (trimmed.startsWith("# ")) return [heading1(trimmed.replace(/^# /, ""))];
+    if (trimmed.startsWith("### ")) return [new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: trimmed.slice(4), bold: true, size: 24, font: template.font })], spacing: { before: 0, after: 0, line: 480 }, keepNext: true })];
     if (trimmed.startsWith("## ")) return [heading2(trimmed.replace(/^## /, ""))];
     if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
       return [para(trimmed.replace(/\*\*/g, ""), { bold: true })];

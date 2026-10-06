@@ -151,7 +151,7 @@ export function buildSalesTable(
 ): GeneratedTable {
   const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Penjualan", "Realisasi Penjualan", "Persentase", "Keterangan"];
-  const rows = salesData
+  const rows = (mode === "tidak_tersedia" ? [] : salesData)
     .filter((r) => r.tahun)
     .map((r) => ({
       cols: [
@@ -176,7 +176,7 @@ export function buildConsumerTable(
 ): GeneratedTable {
   const modeLabel = mode === "estimasi" ? " (Estimasi/Disamarkan)" : mode === "tidak_tersedia" ? " (Tidak Tersedia)" : "";
   const headers = ["Tahun", "Target Konsumen", "Realisasi Konsumen", "Persentase", "Keterangan"];
-  const rows = consumerData
+  const rows = (mode === "tidak_tersedia" ? [] : consumerData)
     .filter((r) => r.tahun)
     .map((r) => ({
       cols: [
@@ -634,3 +634,8 @@ export function generateManfaatPenelitian(bab1: Bab1State, thesis: ThesisState):
 }
 
 export { pct, keterangan, formatNumber };
+
+/** Proposal BAB I includes systematics; final thesis does not (FEB 2021 pp.11/25). */
+export function generateSistematikaProposal(): string {
+  return "BAB I PENDAHULUAN\nBab ini menguraikan latar belakang penelitian, rumusan masalah, tujuan penelitian, manfaat penelitian, dan sistematika penulisan.\n\nBAB II TINJAUAN PUSTAKA\nBab ini menyajikan landasan teori, penelitian terdahulu, kerangka berpikir, dan pengembangan hipotesis.\n\nBAB III METODE PENELITIAN\nBab ini menjelaskan jenis penelitian, tempat dan waktu penelitian, operasional variabel, populasi dan sampel, teknik pengumpulan data, serta teknik analisis data.";
+}

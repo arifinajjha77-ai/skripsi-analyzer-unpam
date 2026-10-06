@@ -11,7 +11,7 @@
  * Theory is an ANALYTICAL TOOL, not a dictionary.
  */
 
-import { getCitationFor, getTwoCitations } from "./authorMapping";
+import { getCitationFor } from "./authorMapping";
 
 export interface BridgeParagraph {
   varName: string;
@@ -75,24 +75,6 @@ function getAcademicFraming(vLower: string, varName: string): string {
 
 // ─── Extension Sentences ──────────────────────────────────────────────────────
 
-function getExtension(vLower: string, citation: string): string {
-  if (/influencer/.test(vLower))
-    return `${citation} menambahkan bahwa tingkat kepercayaan konsumen terhadap pesan yang disampaikan melalui influencer cenderung lebih tinggi dibandingkan iklan konvensional, karena dipersepsikan sebagai rekomendasi yang lebih autentik dan personal.`;
-  if (/media.?sosial|social.?media/.test(vLower))
-    return `${citation} menegaskan bahwa konten yang relevan, konsisten, dan menarik di platform media sosial terbukti mampu meningkatkan keterlibatan konsumen secara organik dan memperkuat kesadaran merek tanpa biaya yang besar.`;
-  if (/harga|price/.test(vLower))
-    return `${citation} mengemukakan bahwa persepsi konsumen terhadap kewajaran harga dipengaruhi tidak hanya oleh angka nominal yang tertera, tetapi juga oleh nilai yang dirasakan, perbandingan dengan kompetitor, dan konteks pembelian itu sendiri.`;
-  if (/kualitas.?produk|product.?quality/.test(vLower))
-    return `${citation} menggarisbawahi bahwa kualitas yang dirasakan konsumen bersifat multidimensi, mencakup aspek performa, keandalan, daya tahan, estetika, dan kesesuaian dengan kebutuhan spesifik konsumen tersebut.`;
-  if (/kualitas.?layanan|pelayanan|service/.test(vLower))
-    return `${citation} menegaskan bahwa gap antara harapan konsumen dan pengalaman aktual yang diterima merupakan inti dari evaluasi kualitas layanan, sehingga konsistensi layanan di setiap titik interaksi menjadi sangat krusial.`;
-  if (/brand|merek|citra/.test(vLower))
-    return `${citation} menjelaskan bahwa ekuitas merek yang kuat memungkinkan perusahaan untuk menetapkan harga premium, memperoleh loyalitas konsumen yang lebih besar, dan lebih mudah dalam memperkenalkan produk baru ke pasar.`;
-  if (/keputusan.?pembelian|purchase|minat.?beli/.test(vLower))
-    return `${citation} mengidentifikasi bahwa proses pengambilan keputusan pembelian konsumen dipengaruhi oleh kombinasi faktor internal seperti motivasi dan persepsi, serta faktor eksternal seperti stimulus pemasaran dan pengaruh sosial.`;
-  return `${citation} menekankan pentingnya pemahaman yang komprehensif terhadap variabel ini sebagai dasar bagi perusahaan dalam merancang strategi pemasaran yang tepat sasaran dan terukur.`;
-}
-
 // ─── Application Sentences ────────────────────────────────────────────────────
 
 function getApplication(vLower: string, namaObjek: string, y: string): string {
@@ -147,16 +129,8 @@ export function buildTheoryBridge(
 
   const framing = getAcademicFraming(vLower, varName);
 
-  // Theory sentence — citation woven into the sentence naturally
-  const theory =
-    `${entry.citation} mendefinisikan ${varName} sebagai ` +
-    entry.fullDef
-      .replace(/^[^,]+mendefinisikan[^s]*sebagai\s*/i, "")
-      .replace(/^[^,]+menyatakan bahwa\s*/i, "")
-      .replace(/^[^,]+menjelaskan bahwa\s*/i, "")
-      .replace(/^[^,]+mengidentifikasi bahwa\s*/i, "");
-
-  const extension = getExtension(vLower, entry.citation);
+  const theory = entry.fullDef;
+  const extension = `Konsep tersebut menjadi dasar untuk merumuskan indikator ${varName} yang sesuai dengan konteks penelitian, dengan tetap memeriksa kesesuaiannya pada sumber asli.`;
   const application = getApplication(vLower, namaObjek, y);
 
   const text = [context, framing, theory, extension, application].join(" ");
@@ -177,7 +151,6 @@ export function buildDataTheoryBridge(
   x2: string,
   y: string
 ): string {
-  const [c1, c2] = getTwoCitations(x1, x2);
 
   const trendImplication =
     saleTrend === "menurun"
@@ -188,18 +161,8 @@ export function buildDataTheoryBridge(
       ? `Pertumbuhan penjualan yang berhasil dicatatkan ${namaObjek} merupakan sinyal positif yang perlu dipertahankan dan diperkuat melalui strategi pemasaran yang terstruktur dan berbasis pada pemahaman mendalam tentang faktor-faktor pendorongnya.`
       : `Stabilitas penjualan yang ditunjukkan oleh data ${namaObjek} perlu dimaknai secara hati-hati, karena kondisi stabil dalam pasar yang dinamis berisiko menjadi awal dari stagnasi apabila tidak disertai dengan inovasi strategi pemasaran yang berkelanjutan.`;
 
-  const theory1 =
-    `Dalam kerangka teori manajemen pemasaran, ${c1.citation} mengemukakan bahwa kemampuan ` +
-    `perusahaan dalam mempertahankan dan meningkatkan volume penjualannya sangat ditentukan oleh ` +
-    `seberapa efektif strategi ${x1 || "pemasaran"} yang diterapkan dalam menyentuh kebutuhan ` +
-    `dan preferensi segmen konsumen yang dituju.`;
-
-  const theory2 =
-    `Sementara itu, ${c2.citation} memperkuat argumen tersebut dengan menyatakan bahwa ` +
-    `${x2 || "faktor pemasaran komplementer"} memainkan peran yang tidak kalah penting ` +
-    `dalam membentuk persepsi konsumen dan mendorong terbentuknya ${y || "keputusan pembelian"} ` +
-    `yang menguntungkan bagi perusahaan.`;
-
+  const theory1 = `Dalam penelitian ini, ${x1 || "variabel pertama"} diposisikan sebagai faktor yang akan diuji hubungannya dengan ${y || "variabel dependen"}.`;
+  const theory2 = `${x2 || "Variabel kedua"} juga perlu dianalisis untuk mengetahui pengaruhnya berdasarkan data responden, bukan semata-mata asumsi awal.`;
   const synthesis =
     `Dengan demikian, penguatan sinergi antara ${x1 || "variabel pertama"} dan ` +
     `${x2 || "variabel kedua"} dalam strategi pemasaran ${namaObjek} menjadi langkah ` +

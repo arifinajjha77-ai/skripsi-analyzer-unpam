@@ -71,6 +71,9 @@ export function createFebDocument(options: IPropertiesOptions, profile: FebWriti
       ...options.styles,
       default: {
         ...base,
+        heading1: { ...base?.heading1, run: { ...base?.heading1?.run, font: FEB_2021.font, size: 24, color: "000000", bold: true }, paragraph: { ...base?.heading1?.paragraph, alignment: AlignmentType.CENTER, spacing: { before: 0, after: 0, line: febBodyLine(profile) } } },
+        heading2: { ...base?.heading2, run: { ...base?.heading2?.run, font: FEB_2021.font, size: 24, color: "000000", bold: true }, paragraph: { ...base?.heading2?.paragraph, spacing: { before: 0, after: 0, line: febBodyLine(profile) } } },
+        heading3: { ...base?.heading3, run: { ...base?.heading3?.run, font: FEB_2021.font, size: 24, color: "000000", bold: true }, paragraph: { ...base?.heading3?.paragraph, spacing: { before: 0, after: 0, line: febBodyLine(profile) } } },
         document: {
           ...base?.document,
           run: { ...base?.document?.run, font: FEB_2021.font, size: 24, color: "000000" },

@@ -1,3 +1,4 @@
+import { getBab1References } from "@/lib/bab1-engine/authorMapping";
 import { academicRuns, createFebDocument, FEB_INDENT, febSection } from "@/lib/docx/feb2021";
 /**
  * BAB I DOCX Export — UNPAM Compliant
@@ -26,6 +27,7 @@ import { ThesisState } from "./store";
 import {
   generateLatarBelakang,
   generateManfaatPenelitian,
+  generateSistematikaProposal,
   buildSalesTable,
   buildConsumerTable,
   buildCompetitorTable,
@@ -37,7 +39,7 @@ import {
 
 const FONT = "Times New Roman";
 const SIZE_BODY = 24;     // 12pt in half-points
-const SIZE_HEADING1 = 24; // 14pt
+const SIZE_HEADING1 = 24; // 12pt
 const SIZE_HEADING2 = 24; // 12pt bold
 
 // ─── Paragraph Helpers ────────────────────────────────────────────────────────
@@ -292,11 +294,22 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
     ...manfaatSections.flatMap(({ title, body }) => [
       new Paragraph({
         children: [new TextRun({ text: title, bold: true, size: SIZE_BODY, font: FONT })],
-        spacing: { before: 200, after: 80 },
+        spacing: { before: 0, after: 0, line: 480 },
       }),
       bodyPara(body),
     ]),
   ];
+
+  if (bab1.documentType === "proposal-skripsi") {
+    children.push(h2("1.5 Sistematika Penulisan"));
+    for (const block of generateSistematikaProposal().split("\n\n")) {
+      const [title, ...body] = block.split("\n");
+      children.push(h2(title), bodyPara(body.join(" ")));
+    }
+  }
+
+  const references = getBab1References([thesis.x1, thesis.x2, thesis.y]);
+  const bibliography = references.map(text => new Paragraph({ children: academicRuns(text), spacing: { before: 0, after: 0, line: 240 }, indent: { left: FEB_INDENT, hanging: FEB_INDENT } }));
 
   const doc = createFebDocument({
     styles: {
@@ -306,7 +319,7 @@ export async function generateBab1Docx(bab1: Bab1State, thesis: ThesisState): Pr
         },
       },
     },
-    sections: [febSection(children, "chapter", 1)],
+    sections: [febSection(children, "chapter", 1), ...(bibliography.length ? [febSection([h1("DAFTAR PUSTAKA"), ...bibliography], "back")] : [])],
   });
 
   return Packer.toBlob(doc);

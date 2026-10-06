@@ -79,7 +79,7 @@ export default function NarasiPage() {
   }, [computedData, yVar]);
 
   const narasi    = enhanced?.text ?? "";
-  const refsUsed  = enhanced?.refsUsed ?? [];
+  const refsUsed = useMemo(() => enhanced?.refsUsed ?? [], [enhanced]);
   const daftarList = useMemo(() => buildDaftarPustakaList(refsUsed), [refsUsed]);
   const inlineCit  = useMemo(() => formatInlineCitations(refsUsed), [refsUsed]);
 
@@ -161,6 +161,7 @@ export default function NarasiPage() {
         <a href="/settings/template" className="underline font-medium">Template</a>.
       </div>
 
+      <p className="text-sm text-slate-600">Draf ini mengisi 4.2 Hasil Penelitian dan subbab pengujian. Lengkapi 4.1 Gambaran Umum Objek Penelitian dan 4.3 Pembahasan Penelitian dari data serta literatur asli sebelum menggabungkannya ke skripsi.</p>
       {/* Tabs */}
       <Tabs defaultValue="narasi">
         <TabsList className="w-full grid grid-cols-3">
@@ -260,7 +261,7 @@ export default function NarasiPage() {
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
               <CardTitle className="text-base flex items-center gap-2">
                 <List className="w-4 h-4 text-blue-500" />
-                Daftar Pustaka — APA 7th Edition
+                Daftar Pustaka — APA sesuai FEB UNPAM 2021
               </CardTitle>
               <CopyButton
                 text={daftarList.map((d) => d.text).join("\n\n")}

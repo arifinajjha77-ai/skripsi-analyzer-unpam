@@ -35,17 +35,17 @@ function normal(text: string, size = 24): TextRun {
 }
 
 function heading(text: string, level: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_2): Paragraph {
-  return new Paragraph({ text, heading: level, spacing: { before: 300, after: 150 } });
+  return new Paragraph({ text, heading: level, spacing: { before: 0, after: 0, line: 480 } });
 }
 
-function para(children: TextRun[], spacing = 200): Paragraph {
-  return new Paragraph({ children, spacing: { after: spacing } });
+function para(children: TextRun[], spacing = 0): Paragraph {
+  return new Paragraph({ children, spacing: { before: 0, after: spacing, line: 480 } });
 }
 
 function hr(): Paragraph {
   return new Paragraph({
     border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "888888" } },
-    spacing: { after: 200 },
+    spacing: { before: 0, after: 0, line: 480 },
   });
 }
 
@@ -155,11 +155,11 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
             ),
           ]),
           new Paragraph({
-            children: [bold("Keterangan Skala:", 22)],
-            spacing: { after: 100 },
+            children: [bold("Keterangan Skala:", 24)],
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           ...["STS = Sangat Tidak Setuju (1)", "TS = Tidak Setuju (2)", "KS = Kurang Setuju (3)", "S = Setuju (4)", "SS = Sangat Setuju (5)"].map(
-            (s) => new Paragraph({ children: [normal(`     ${s}`, 22)], spacing: { after: 80 } })
+            (s) => new Paragraph({ children: [normal(`     ${s}`, 24)], spacing: { before: 0, after: 0, line: 480 } })
           ),
           hr(),
 
@@ -167,11 +167,11 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
           new Paragraph({
             children: [bold(`VARIABEL X1 – ${x1}`, 24)],
             heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300, after: 150 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
-            children: [normal(`Indikator: ${x1Data.indicators.join(", ")}`, 22)],
-            spacing: { after: 200 },
+            children: [normal(`Indikator: ${x1Data.indicators.join(", ")}`, 24)],
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           buildQuestionTable(x1Data.items),
           new Paragraph({ text: "", spacing: { after: 400 } }),
@@ -180,11 +180,11 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
           new Paragraph({
             children: [bold(`VARIABEL X2 – ${x2}`, 24)],
             heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300, after: 150 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
-            children: [normal(`Indikator: ${x2Data.indicators.join(", ")}`, 22)],
-            spacing: { after: 200 },
+            children: [normal(`Indikator: ${x2Data.indicators.join(", ")}`, 24)],
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           buildQuestionTable(x2Data.items),
           new Paragraph({ text: "", spacing: { after: 400 } }),
@@ -193,11 +193,11 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
           new Paragraph({
             children: [bold(`VARIABEL Y – ${y}`, 24)],
             heading: HeadingLevel.HEADING_2,
-            spacing: { before: 300, after: 150 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
-            children: [normal(`Indikator: ${yData.indicators.join(", ")}`, 22)],
-            spacing: { after: 200 },
+            children: [normal(`Indikator: ${yData.indicators.join(", ")}`, 24)],
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           buildQuestionTable(yData.items),
           new Paragraph({ text: "", spacing: { after: 600 } }),
@@ -205,9 +205,9 @@ export async function generateDocx(opts: DocxExportOptions): Promise<Blob> {
           // ─── Footer ─────────────────────────────────────────────────
           hr(),
           new Paragraph({
-            children: [normal("Terima kasih atas partisipasi Anda. ⚠️ Pastikan data berasal dari responden asli.", 22)],
+            children: [normal("Terima kasih atas partisipasi Anda. ⚠️ Pastikan data berasal dari responden asli.", 24)],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
+            spacing: { before: 0, after: 0, line: 480 },
           }),
           new Paragraph({
             children: [normal(`Objek Penelitian: ${objek}`, 20)],
