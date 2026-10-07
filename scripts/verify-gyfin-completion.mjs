@@ -66,10 +66,10 @@ assert(result.proposal.sections.sample.includes('[Isi teknik sampling'), 'Export
 const tables = all(xml, 'w:tbl');
 const studiesTable = tables.find(t => textOf(t).includes('Nama dan Judul Penelitian'));
 const studyRows = all(studiesTable, 'w:tr');
-assert.equal(all(studyRows[0], 'w:tc').length, 5);
-assert.equal(textOf(all(studyRows[0], 'w:tc')[3]), 'Metode Penelitian');
-assert.equal(textOf(all(studyRows[1], 'w:tc')[3]), result.proposal.studies[0].method);
-assert.equal(textOf(all(studyRows[1], 'w:tc')[4]), result.proposal.studies[0].result);
+assert.equal(all(studyRows[0], 'w:tc').length, 4);
+assert.equal(textOf(all(studyRows[0], 'w:tc')[3]), 'Hasil Penelitian');
+assert(textOf(all(studyRows[1], 'w:tc')[3]).includes(result.proposal.studies[0].result));
+assert(textOf(all(studyRows[1], 'w:tc')[3]).includes(`Metode: ${result.proposal.studies[0].method}`), 'Method is retained in the wider results cell');
 const schedule = tables.find(t => textOf(t).startsWith('TahapWaktu Pelaksanaan'));
 for (const row of all(schedule, 'w:tr').slice(1)) assert.equal(textOf(all(row, 'w:tc')[1]), '', 'Unknown dates remain blank');
 assert.equal(manuscriptText('Penelitian di Depok pada Oktober 2026. [Isi alamat rinci.]'), 'Penelitian di Depok pada Oktober 2026.');
@@ -79,8 +79,17 @@ assert(textOf(xml2js(await templateZip.file('word/document.xml').async('string')
 for (const table of all(xml, 'w:tbl')) {
   assert(all(table, 'w:tr')[0] && all(all(table, 'w:tr')[0], 'w:tblHeader').length);
   for (const size of all(table, 'w:sz')) assert(['20', '24'].includes(size.attributes['w:val']), 'Tables use TNR 10–12 within the FEB guide');
+  for (const row of all(table, 'w:tr')) assert(all(row, 'w:cantSplit').length, 'Records remain together across pages');
 }
+// A saved manuscript may have removed its editorial prompt while still citing the schedule.
+const edited = { ...result.proposal, sections: { ...result.proposal.sections, location: 'Tahap penelitian disajikan pada Tabel 3.1. Waktu pelaksanaan belum ditetapkan.', operations: 'Indikator dirangkum pada Tabel 3.2.' } };
+const editedZip = await JSZip.loadAsync(await (await exportProposalDocx(edited, input.thesis, input.bab1, 'bab3')).arrayBuffer());
+const editedXml = xml2js(await editedZip.file('word/document.xml').async('string'));
+assert(textOf(editedXml).includes('Tabel 3.1 Rencana Jadwal Penelitian'));
+assert(textOf(editedXml).includes('Tabel 3.2 Operasional Variabel Penelitian'));
+const { uniqueReferences } = await import('../lib/thesis/manuscriptLayout.ts');
+assert.deepEqual(uniqueReferences(['Penulis. (2024). Studi. Jurnal, 1(1), 1–5.', 'Penulis. (2024). Studi. Jurnal, 1(1), 1–5. https://doi.org/10.1234/studi']), ['Penulis. (2024). Studi. Jurnal, 1(1), 1–5. https://doi.org/10.1234/studi']);
 await fs.mkdir('/tmp/gyfin-revision-evidence', { recursive: true });
 await fs.writeFile('/tmp/gyfin-revision-evidence/Revisi-BAB-II-III-GYFIN-SOCK.docx', bytes);
 await fs.writeFile('/tmp/gyfin-revision-evidence/proposal.json', JSON.stringify(result.proposal, null, 2));
-console.log('PASS GYFIN completion, preserved manual facts, clean exports, separate method/results cells, blank unknown dates, editable templates, 30-item mapping, TNR10–12 tables');
+console.log('PASS GYFIN completion, preserved facts, four-column studies, intact table rows, consistent schedule numbering after edits, unique references, blank unknown dates, templates, 30-item mapping');

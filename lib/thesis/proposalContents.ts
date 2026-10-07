@@ -5,7 +5,7 @@ import {
 import { cmTwips, FEB_PAGE } from '@/lib/docx/feb2021';
 
 const PAGE_WIDTH = FEB_PAGE.size.width - FEB_PAGE.margin.left - FEB_PAGE.margin.right;
-const positions = (level: number) => ({ start: cmTwips(level === 1 ? 0 : level === 2 ? 1.5 : 2.25), text: cmTwips(level === 1 ? 2 : level === 2 ? 2.2 : 3.3) });
+const positions = (level: number) => ({ start: cmTwips(level === 1 ? 0 : level === 2 ? 1 : 1.5), text: cmTwips(level === 1 ? 2 : level === 2 ? 1 : 1.5) });
 const tabs = (level: number) => [
   { type: TabStopType.LEFT, position: positions(level).text },
   { type: TabStopType.RIGHT, position: PAGE_WIDTH, leader: LeaderType.DOT },

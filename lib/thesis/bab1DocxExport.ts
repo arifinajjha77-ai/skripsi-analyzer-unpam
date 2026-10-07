@@ -15,17 +15,14 @@ import {
   Packer,
   Paragraph,
   Table,
-  TableRow,
-  TableCell,
   TextRun,
   AlignmentType,
-  WidthType,
-  ShadingType,
   Tab,
   TabStopType,
 } from "docx";
 import { Bab1State } from "./bab1Store";
 import { ThesisState } from "./store";
+import { manuscriptTable } from "./manuscriptLayout";
 import type { ProposalContents } from "./proposalContents";
 import {
   generateLatarBelakangBlocks,
@@ -135,51 +132,9 @@ function blank(): Paragraph {
 // ─── Table Builder ────────────────────────────────────────────────────────────
 
 function buildDocxTable(table: GeneratedTable): Table {
-  const colWidth = Math.floor(7937 / table.headers.length);
-
-  const headerRow = new TableRow({
-    tableHeader: true,
-    cantSplit: true,
-    children: table.headers.map(
-      (h) =>
-        new TableCell({
-          shading: { type: ShadingType.SOLID, color: "D9E1F2" },
-          children: [
-            new Paragraph({
-              children: [new TextRun({ text: h, bold: true, size: 24, font: FONT })],
-              alignment: AlignmentType.CENTER,
-              spacing: { before: 0, after: 0, line: 240 },
-            }),
-          ],
-          width: { size: colWidth, type: WidthType.DXA },
-        })
-    ),
-  });
-
-  const dataRows = table.rows.map(
-    (row) =>
-      new TableRow({
-        cantSplit: true,
-        children: row.cols.map(
-          (cell, ci) =>
-            new TableCell({
-              children: [
-                new Paragraph({
-                  children: academicRuns(cell, table.headers.length > 5 ? 20 : 24),
-                  alignment: /^(No|Tahun|Target|Realisasi|Persentase|Rentang Harga)/i.test(table.headers[ci]) ? AlignmentType.RIGHT : AlignmentType.LEFT,
-                  spacing: { before: 0, after: 0, line: 240 },
-                }),
-              ],
-              width: { size: colWidth, type: WidthType.DXA },
-            })
-        ),
-      })
-  );
-
-  return new Table({
-    width: { size: 7937, type: WidthType.DXA },
-    rows: [headerRow, ...dataRows],
-  });
+  const widths = table.headers.length === 5 ? [780, 1730, 1730, 1450, 2247] : table.headers.length === 6 ? [430, 1610, 1880, 1240, 1537, 1240] : table.headers.map(() => Math.floor(7937 / table.headers.length));
+  const numeric = table.headers.flatMap((header, index) => /^(No|Tahun|Target|Realisasi|Persentase|Rentang Harga)/i.test(header) ? [index] : []);
+  return manuscriptTable(table.headers, table.rows.map(row => row.cols), widths, table.headers.length > 5 ? 20 : 24, numeric);
 }
 
 // ─── Rumusan & Tujuan ─────────────────────────────────────────────────────────

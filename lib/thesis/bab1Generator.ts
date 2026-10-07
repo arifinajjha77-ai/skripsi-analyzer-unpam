@@ -449,7 +449,7 @@ export function generateLatarBelakangBlocks(bab1: Bab1State, thesis: ThesisState
       ? `${transitionWord} ${varRef(namaObjek, ++refN)} yang telah diestimasi, yang tercatat ` +
         `${consumerTrend} dalam periode yang sama. ` +
         `(Catatan: Data merupakan estimasi berdasarkan gambaran umum kondisi perusahaan.) `
-      : `${transitionWord} ${varRef(namaObjek, ++refN)}, yang ${consumerTrend} ` +
+      : `Data jumlah konsumen ${varRef(namaObjek, ++refN)} ${consumerTrend} ` +
         `selama periode yang diamati. `;
 
     if (consumerValues.length < 2) {
@@ -553,7 +553,7 @@ export function generateLatarBelakangBlocks(bab1: Bab1State, thesis: ThesisState
 
     const fenCore =
       fenomenaLines.length === 1
-        ? `Permasalahan yang dicatat yaitu: ${fenomenaLines[0]}. `
+        ? `Permasalahan yang dicatat yaitu: ${fenomenaLines[0].replace(/[.!?]+$/, "")}. `
         : `Beberapa fenomena yang dicatat ` +
           `menjadi permasalahan utama ${varRef(namaObjek, ++refN)}, di antaranya: ` +
           `${fenomenaLines.join("; ")}. `;
