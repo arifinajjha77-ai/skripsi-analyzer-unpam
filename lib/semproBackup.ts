@@ -23,6 +23,9 @@ const proposal = z.object({
 const schemas = { thesis_generator_state: thesis, bab1_state: bab1, smartcampus_proposal_feb2021_v1: proposal };
 const envelope = z.object({ format: z.literal("smartcampus-sempro"), version: z.literal(1), savedAt: z.iso.datetime(), snapshot: z.object({ thesis_generator_state: text.optional(), bab1_state: text.optional(), smartcampus_proposal_feb2021_v1: text.optional() }).strict() }).strict();
 export type SemproBackup = z.infer<typeof envelope>;
+export function isStoredSemproValueValid(key: typeof SEMPRO_KEYS[number], value: unknown): boolean {
+  return schemas[key].safeParse(value).success;
+}
 
 export function parseSemproBackup(value: unknown): SemproBackup {
   const backup = envelope.parse(value);

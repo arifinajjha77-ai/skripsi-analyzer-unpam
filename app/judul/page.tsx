@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import SemproBackupPanel from "@/components/SemproBackupPanel";
 import { useRouter } from "next/navigation";
 import { independentVariables, dependentVariables } from "@/lib/thesis/variables";
 import { loadThesisState, saveThesisState, ThesisState } from "@/lib/thesis/store";
@@ -54,19 +55,24 @@ export default function JudulPage() {
   const router = useRouter();
   const [form, setForm] = useState<ThesisState>(defaultState);
   const [generated, setGenerated] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = loadThesisState();
-    if (saved.x1 || saved.x2 || saved.y) {
+    const timer = setTimeout(() => {
+      const saved = loadThesisState();
       setForm(saved);
-      setGenerated(true);
-    }
+      setGenerated(Boolean(saved.x1 && saved.x2 && saved.y && saved.objek.trim()));
+      setHydrated(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const update = useCallback((key: keyof ThesisState, val: string) => {
-    setForm((prev) => ({ ...prev, [key]: val }));
+    const next = { ...form, [key]: val };
+    setForm(next);
+    saveThesisState(next);
     setGenerated(false);
-  }, []);
+  }, [form]);
 
   function handleGenerate() {
     if (!form.x1 || !form.x2 || !form.y || !form.objek.trim()) return;
@@ -114,6 +120,8 @@ export default function JudulPage() {
         </p>
       </div>
 
+      <SemproBackupPanel />
+
       {/* Form */}
       <Card>
         <CardHeader className="pb-3 bg-slate-50 border-b border-slate-200">
@@ -126,10 +134,11 @@ export default function JudulPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* X1 */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              <label htmlFor="judul-x1" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Variabel X1 (Independen)
               </label>
               <select
+                id="judul-x1" disabled={!hydrated}
                 value={form.x1}
                 onChange={(e) => update("x1", e.target.value)}
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -145,10 +154,11 @@ export default function JudulPage() {
 
             {/* X2 */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              <label htmlFor="judul-x2" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Variabel X2 (Independen)
               </label>
               <select
+                id="judul-x2" disabled={!hydrated}
                 value={form.x2}
                 onChange={(e) => update("x2", e.target.value)}
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -164,10 +174,11 @@ export default function JudulPage() {
 
             {/* Y */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              <label htmlFor="judul-y" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Variabel Y (Dependen)
               </label>
               <select
+                id="judul-y" disabled={!hydrated}
                 value={form.y}
                 onChange={(e) => update("y", e.target.value)}
                 className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -183,10 +194,11 @@ export default function JudulPage() {
 
             {/* Objek */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              <label htmlFor="judul-objek" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                 Nama Objek Penelitian
               </label>
               <input
+                id="judul-objek" disabled={!hydrated}
                 type="text"
                 value={form.objek}
                 onChange={(e) => update("objek", e.target.value)}
