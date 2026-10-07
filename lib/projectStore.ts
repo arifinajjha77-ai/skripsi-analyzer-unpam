@@ -3,13 +3,7 @@
 const PROJECTS_KEY = "skripsi_projects";
 const ACTIVE_KEY = "skripsi_active_project";
 
-/** All sessionStorage keys we manage per-project */
-const SESSION_KEYS = [
-  "skripsi_analyzer_state",
-  "thesis_generator_state",
-  "bab1_state",
-  "responden_center_state",
-];
+import { DRAFT_KEYS, readDraft, writeDraft } from "@/lib/draftStorage";
 
 export interface Project {
   id: string;
@@ -41,7 +35,7 @@ export function saveProjects(projects: Project[]): void {
   try {
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
   } catch {
-    // ignore
+    throw new Error("Project belum dapat disimpan di browser ini.");
   }
 }
 
@@ -56,21 +50,24 @@ export function setActiveProjectId(id: string | null): void {
   else localStorage.removeItem(ACTIVE_KEY);
 }
 
-/** Snapshot current sessionStorage state into a project */
+/** Snapshot every research draft, including BAB II–III, into a project. */
 export function snapshotCurrentState(): Record<string, string> {
   const snap: Record<string, string> = {};
-  for (const key of SESSION_KEYS) {
-    const val = sessionStorage.getItem(key);
+  for (const key of DRAFT_KEYS) {
+    const val = readDraft(key);
     if (val) snap[key] = val;
   }
   return snap;
 }
 
-/** Restore a project's snapshot into sessionStorage */
+/** Restore all keys together; roll back if browser storage rejects a write. */
 export function restoreSnapshot(snap: Record<string, string>): void {
-  for (const key of SESSION_KEYS) {
-    if (snap[key]) sessionStorage.setItem(key, snap[key]);
-    else sessionStorage.removeItem(key);
+  const before = snapshotCurrentState();
+  for (const key of DRAFT_KEYS) {
+    if (!writeDraft(key, snap[key] ?? null, false)) {
+      for (const rollbackKey of DRAFT_KEYS) writeDraft(rollbackKey, before[rollbackKey] ?? null, false);
+      throw new Error("Draf belum dapat disimpan. Cadangkan data sebelum berpindah project.");
+    }
   }
 }
 
@@ -109,7 +106,7 @@ export function deleteProject(id: string): void {
   if (getActiveProjectId() === id) setActiveProjectId(null);
 }
 
-/** Estimate progress 0–100 by reading sessionStorage keys */
+/** Estimate progress 0–100 from a saved project snapshot. */
 export function estimateProgress(snap: Record<string, string>): number {
   let score = 0;
   const max = 8;

@@ -1,7 +1,7 @@
 "use client";
 
+import SemproBackupPanel from "@/components/SemproBackupPanel";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
   FolderOpen, Plus, Trash2, LogIn, Calendar, Clock,
   BarChart2, CheckCircle,
@@ -31,7 +31,6 @@ function formatDate(iso: string) {
 }
 
 export default function ProjectPage() {
-  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeId, setActiveId]  = useState<string | null>(null);
   const [showForm, setShowForm]  = useState(false);
@@ -40,15 +39,15 @@ export default function ProjectPage() {
   const [delConfirm, setDelConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    setProjects(loadProjects());
-    setActiveId(getActiveProjectId());
+    const timer = setTimeout(() => { setProjects(loadProjects()); setActiveId(getActiveProjectId()); }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleCreate = useCallback(() => {
     if (!newName.trim()) { toast.error("Nama project tidak boleh kosong"); return; }
     const proj = createProject(newName, newDesc);
     const updated = [...projects, proj];
-    saveProjects(updated);
+    try { saveProjects(updated); } catch (error) { toast.error(error instanceof Error ? error.message : "Project belum tersimpan."); return; }
     setProjects(updated);
     setNewName("");
     setNewDesc("");
@@ -57,7 +56,8 @@ export default function ProjectPage() {
   }, [newName, newDesc, projects]);
 
   const handleSwitch = useCallback((proj: Project) => {
-    // save current state to previously active project
+    try {
+    // Save the latest draft before switching, rather than using a stale React list.
     if (activeId) {
       const prev = projects.find((p) => p.id === activeId);
       if (prev) {
@@ -68,14 +68,19 @@ export default function ProjectPage() {
         saveProjects(updated);
       }
     }
-    switchToProject(proj);
+      if (!activeId && Object.keys(snapshotCurrentState()).length) {
+        const previous = createProject("Draf sebelum berpindah project");
+        saveProjects([...loadProjects(), previous]);
+      }
+      switchToProject(proj);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Project belum dapat dibuka."); return; }
     setActiveId(proj.id);
     toast.success(`Berpindah ke project "${proj.name}"`);
-    setTimeout(() => router.push("/"), 500);
-  }, [activeId, projects, router]);
+    window.location.assign("/proposal");
+  }, [activeId, projects]);
 
   const handleDelete = useCallback((id: string) => {
-    deleteProject(id);
+    try { deleteProject(id); } catch (error) { toast.error(error instanceof Error ? error.message : "Project belum dapat dihapus."); return; }
     const updated = projects.filter((p) => p.id !== id);
     setProjects(updated);
     if (activeId === id) setActiveId(null);
@@ -93,7 +98,7 @@ export default function ProjectPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Manajemen Project</h1>
-            <p className="text-sm text-slate-500">{projects.length} project tersimpan · localStorage</p>
+            <p className="text-sm text-slate-500">{projects.length} project tersimpan di browser ini</p>
           </div>
         </div>
         <button
@@ -104,6 +109,8 @@ export default function ProjectPage() {
           Project Baru
         </button>
       </div>
+
+      <SemproBackupPanel />
 
       {/* New project form */}
       {showForm && (
@@ -143,7 +150,7 @@ export default function ProjectPage() {
         <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
           <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="font-semibold text-slate-600">Belum ada project</p>
-          <p className="text-sm text-slate-400 mt-1">Klik "Project Baru" untuk memulai</p>
+          <p className="text-sm text-slate-400 mt-1">Klik &quot;Project Baru&quot; untuk memulai</p>
         </div>
       )}
 
@@ -236,9 +243,9 @@ export default function ProjectPage() {
       {/* Info */}
       <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-xs text-slate-500 space-y-1">
         <p className="font-semibold text-slate-600">Cara kerja project:</p>
-        <p>• Setiap project menyimpan snapshot data (judul, BAB I, responden, analisis) di localStorage browser.</p>
-        <p>• Klik "Buka" untuk berpindah ke project lain — semua data akan berganti otomatis.</p>
-        <p>• Data tersimpan permanen di browser selama tidak dihapus cache/localStorage.</p>
+        <p>• Setiap project menyimpan judul, BAB I–III, responden, dan analisis di browser ini.</p>
+        <p>• Klik &quot;Buka&quot; untuk berpindah ke project lain — semua data akan berganti otomatis.</p>
+        <p>• Draf tetap tersedia setelah tab ditutup. Simpan online dan salin tautan pemulihan untuk browser lain.</p>
       </div>
     </div>
   );

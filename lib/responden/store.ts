@@ -1,5 +1,7 @@
 "use client";
 
+import { readDraft, writeDraft } from "@/lib/draftStorage";
+
 import { RespondenRow } from "./types";
 
 const KEY = "responden_center_state";
@@ -19,7 +21,7 @@ export const defaultRespondenState: RespondenState = {
 export function loadRespondenState(): RespondenState {
   if (typeof window === "undefined") return defaultRespondenState;
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = readDraft(KEY);
     if (!raw) return defaultRespondenState;
     return JSON.parse(raw) as RespondenState;
   } catch {
@@ -30,7 +32,7 @@ export function loadRespondenState(): RespondenState {
 export function saveRespondenState(state: RespondenState): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(state));
+    writeDraft(KEY, JSON.stringify(state));
   } catch {
     // ignore
   }
@@ -38,5 +40,5 @@ export function saveRespondenState(state: RespondenState): void {
 
 export function clearRespondenState(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(KEY);
+  writeDraft(KEY, null);
 }

@@ -1,3 +1,4 @@
+import DraftPersistence from "@/components/DraftPersistence";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id">
       <body className={inter.className}>
         <AppProvider>
+          <DraftPersistence />
           <TooltipProvider>
             <AppShell>{children}</AppShell>
             <Toaster richColors position="top-right" />

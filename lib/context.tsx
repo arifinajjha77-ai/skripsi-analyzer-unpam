@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { AppState, VariableConfig, RespondentRow } from "@/types";
-import { loadState, saveState } from "@/lib/store";
+import { loadState, saveState, clearState } from "@/lib/store";
 
 interface AppContextValue {
   state: AppState;
@@ -61,7 +61,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearAll = useCallback(() => {
     setState(defaultState);
-    if (typeof window !== "undefined") sessionStorage.clear();
+    clearState();
   }, []);
 
   return (

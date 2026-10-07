@@ -1,3 +1,4 @@
+import { readDraft, writeDraft } from "@/lib/draftStorage";
 import type { ThesisState } from './store';
 import type { Bab1State } from './bab1Store';
 
@@ -32,7 +33,7 @@ export function loadProposal(): ProposalState {
   const blank = emptyProposal();
   if (typeof window === 'undefined') return blank;
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const raw = JSON.parse(readDraft(STORAGE_KEY) || '{}');
     for (const s of PROPOSAL_SECTIONS) if (typeof raw.sections?.[s.id] === 'string') blank.sections[s.id] = raw.sections[s.id];
     for (const key of ['studies', 'operations'] as const) {
       const schema = key === 'studies' ? emptyStudy() : emptyOperation();
@@ -46,7 +47,7 @@ export function loadProposal(): ProposalState {
   return blank;
 }
 export function saveProposal(value: ProposalState): boolean {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); return true; } catch { return false; }
+  return writeDraft(STORAGE_KEY, JSON.stringify(value));
 }
 /** Editable starting text: unknown facts and citations remain explicit placeholders. */
 export function starterSections(thesis: ThesisState, bab1: Bab1State): Record<SectionId, string> {

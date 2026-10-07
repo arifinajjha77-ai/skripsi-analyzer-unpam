@@ -1,5 +1,7 @@
 "use client";
 
+import { readDraft, writeDraft } from "@/lib/draftStorage";
+
 import { AppState, VariableConfig, RespondentRow } from "@/types";
 
 const STORAGE_KEY = "skripsi_analyzer_state";
@@ -15,7 +17,7 @@ const defaultState: AppState = {
 export function loadState(): AppState {
   if (typeof window === "undefined") return defaultState;
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    const stored = readDraft(STORAGE_KEY);
     if (!stored) return defaultState;
     return JSON.parse(stored) as AppState;
   } catch {
@@ -28,7 +30,7 @@ export function saveState(state: Partial<AppState>): void {
   try {
     const current = loadState();
     const next = { ...current, ...state };
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    writeDraft(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // ignore storage errors
   }
@@ -36,7 +38,7 @@ export function saveState(state: Partial<AppState>): void {
 
 export function clearState(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(STORAGE_KEY);
+  writeDraft(STORAGE_KEY, null);
 }
 
 export function updateRawData(rawData: RespondentRow[], columns: string[], fileName: string): void {

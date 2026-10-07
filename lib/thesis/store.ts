@@ -1,5 +1,7 @@
 "use client";
 
+import { readDraft, writeDraft } from "@/lib/draftStorage";
+
 const KEY = "thesis_generator_state";
 
 export interface ThesisState {
@@ -19,7 +21,7 @@ const defaultThesisState: ThesisState = {
 export function loadThesisState(): ThesisState {
   if (typeof window === "undefined") return defaultThesisState;
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = readDraft(KEY);
     if (!raw) return defaultThesisState;
     return JSON.parse(raw) as ThesisState;
   } catch {
@@ -30,7 +32,7 @@ export function loadThesisState(): ThesisState {
 export function saveThesisState(state: ThesisState): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(state));
+    writeDraft(KEY, JSON.stringify(state));
   } catch {
     // ignore
   }

@@ -11,7 +11,8 @@
     "test:pedoman": "node --import tsx scripts/verify-feb2021.mjs",
     "test:proposal": "node --import tsx scripts/verify-proposal-generation.mjs",
     "test:studies": "node --import tsx scripts/verify-prior-studies.mjs",
-    "test:gyfin": "node --import tsx scripts/verify-gyfin-completion.mjs"
+    "test:gyfin": "node --import tsx scripts/verify-gyfin-completion.mjs",
+    "test:persistence": "node --import tsx scripts/verify-sempro-persistence.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -19,6 +20,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@types/pdf-parse": "^1.1.5",
+    "@vercel/blob": "^2.8.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "docx": "^9.7.1",

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import SemproBackupPanel from '@/components/SemproBackupPanel';
 import Image from 'next/image';
 import { PROPOSAL_DIAGRAM_PNG } from '@/lib/thesis/proposalDiagram';
 import { useEffect, useRef, useState } from 'react';
@@ -186,6 +187,7 @@ export default function ProposalPage() {
   const referenceWarnings = referenceAgeWarnings(proposal.references.split(/\n+/).map(r => r.trim()).filter(Boolean));
   return <div className="mx-auto max-w-5xl space-y-5">
     <header><h1 className="text-2xl font-bold text-slate-900">Proposal Sempro · BAB I–III</h1><p className="mt-2 text-sm text-slate-600">Lanjutkan BAB I ke tinjauan pustaka dan metode penelitian. Editor dan template ini menggunakan susunan penelitian kuantitatif FEB UNPAM 2021.</p></header>
+    <SemproBackupPanel />
     <section className={cardClass} aria-labelledby="research-heading">
       <h2 id="research-heading" className="mb-3 font-semibold text-slate-900">Data penelitian dari BAB I</h2>
       <div className="grid gap-3 sm:grid-cols-2">{([{ key: 'x1', label: 'Variabel X1' }, { key: 'x2', label: 'Variabel X2' }, { key: 'y', label: 'Variabel Y' }, { key: 'objek', label: 'Objek penelitian' }] as const).map(f => <label key={f.key} className="block text-sm text-slate-700">{f.label}<input className={`${inputClass} mt-1`} disabled={!ready || working} value={f.key === 'objek' ? bab1.namaObjek || thesis.objek : thesis[f.key]} onChange={e => updateThesis(f.key, e.target.value)} /></label>)}</div>
