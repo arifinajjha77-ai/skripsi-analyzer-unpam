@@ -132,7 +132,7 @@ function blank(): Paragraph {
 // ─── Table Builder ────────────────────────────────────────────────────────────
 
 function buildDocxTable(table: GeneratedTable): Table {
-  const widths = table.headers.length === 5 ? [780, 1730, 1730, 1450, 2247] : table.headers.length === 6 ? [430, 1610, 1880, 1240, 1537, 1240] : table.headers.map(() => Math.floor(7937 / table.headers.length));
+  const widths = table.headers.length === 5 ? [1000, 1680, 1680, 1400, 2177] : table.headers.length === 6 ? [430, 1510, 1610, 1750, 1397, 1240] : table.headers.map(() => Math.floor(7937 / table.headers.length));
   const numeric = table.headers.flatMap((header, index) => /^(No|Tahun|Target|Realisasi|Persentase|Rentang Harga)/i.test(header) ? [index] : []);
   return manuscriptTable(table.headers, table.rows.map(row => row.cols), widths, table.headers.length > 5 ? 20 : 24, numeric);
 }

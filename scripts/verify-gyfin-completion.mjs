@@ -87,6 +87,9 @@ const editedZip = await JSZip.loadAsync(await (await exportProposalDocx(edited, 
 const editedXml = xml2js(await editedZip.file('word/document.xml').async('string'));
 assert(textOf(editedXml).includes('Tabel 3.1 Rencana Jadwal Penelitian'));
 assert(textOf(editedXml).includes('Tabel 3.2 Operasional Variabel Penelitian'));
+const legacyFramework = { ...result.proposal, sections: { ...result.proposal.sections, framework: `${result.proposal.sections.framework}\n\nKeterangan: X1 = Harga; X2 = Promosi; Y = Keputusan Pembelian. H1 dan H2 menunjukkan pengaruh parsial, sedangkan H3 menunjukkan pengaruh simultan yang akan diuji.` } };
+const frameworkZip = await JSZip.loadAsync(await (await exportProposalDocx(legacyFramework, input.thesis, input.bab1, 'bab2')).arrayBuffer());
+assert.equal(textOf(xml2js(await frameworkZip.file('word/document.xml').async('string'))).split('Keterangan: X1 = Harga').length - 1, 1, 'A legacy generated caption is exported once');
 const { uniqueReferences } = await import('../lib/thesis/manuscriptLayout.ts');
 assert.deepEqual(uniqueReferences(['Penulis. (2024). Studi. Jurnal, 1(1), 1–5.', 'Penulis. (2024). Studi. Jurnal, 1(1), 1–5. https://doi.org/10.1234/studi']), ['Penulis. (2024). Studi. Jurnal, 1(1), 1–5. https://doi.org/10.1234/studi']);
 await fs.mkdir('/tmp/gyfin-revision-evidence', { recursive: true });

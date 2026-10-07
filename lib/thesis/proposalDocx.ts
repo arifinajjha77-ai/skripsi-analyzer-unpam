@@ -37,8 +37,13 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
   const pendingSchedule = /\bTabel\s+3\.1\b|jadwal penelitian|rencana jadwal|\[Isi periode dan jadwal/i.test(state.sections.location);
   const operationNumber = pendingSchedule ? '3.2' : '3.1';
   const printable = (text: string) => template ? text : manuscriptText(text);
+  const frameworkDescription = `Keterangan: X1 = ${thesis.x1 || '[Variabel X1]'}; X2 = ${thesis.x2 || '[Variabel X2]'}; Y = ${thesis.y || '[Variabel Y]'}. H1 dan H2 menunjukkan pengaruh parsial, sedangkan H3 menunjukkan pengaruh simultan yang akan diuji.`;
   for (const s of PROPOSAL_SECTIONS.filter(s => s.chapter === chapter)) {
-    children.push(contents ? contents.heading(s.title, 2) : heading(s.title), ...textParagraphs(printable(s.id === 'operations' ? (state.sections[s.id].trim() || defaults[s.id]).replace(/\bTabel\s+3\.\d+\b/g, `Tabel ${operationNumber}`) : state.sections[s.id].trim() || defaults[s.id]), contents));
+    let sectionText = state.sections[s.id].trim() || defaults[s.id];
+    if (s.id === 'operations') sectionText = sectionText.replace(/\bTabel\s+3\.\d+\b/g, `Tabel ${operationNumber}`);
+    // Older generated drafts already contain the caption we add after the image.
+    if (s.id === 'framework') sectionText = sectionText.replace(frameworkDescription, '').trim();
+    children.push(contents ? contents.heading(s.title, 2) : heading(s.title), ...textParagraphs(printable(sectionText), contents));
     if (s.id === 'studies') {
       const rows = state.studies.filter(r => Object.values(r).some(v => v?.trim())).map((r,i) => [String(i + 1), `${printable(r.author.trim()) || (template ? '[Peneliti dan tahun]' : '—')}\n${r.title.trim() || (template ? '[Judul penelitian]' : '—')}`, printable(r.journal?.trim() || '') || (template ? '[Lengkapi identitas jurnal]' : '—'), [printable(r.result.trim()) || (template ? '[Lengkapi hasil penelitian]' : '—'), r.method.trim() ? `Metode: ${printable(r.method.trim())}` : ''].filter(Boolean).join('\n')]);
       children.push(caption('Tabel 2.1 Penelitian Terdahulu'), manuscriptTable(['No', 'Nama dan Judul Penelitian', 'Nama Jurnal', 'Hasil Penelitian'], rows.length ? rows : [['1', template ? '[Peneliti, tahun dan judul]' : '—', template ? '[Nama jurnal, volume dan nomor]' : '—', template ? '[Temuan asli dan metode]' : '—']], [430, 2590, 2000, 2917], 20, [0]));
@@ -46,7 +51,7 @@ function chapterContent(chapter: 2 | 3, state: ProposalState, thesis: ThesisStat
       for (const row of state.studies.filter(r => r.comparison.trim())) children.push(body(`${printable(row.author)}: ${printable(row.comparison)}`));
     }
     if (s.id === 'framework') {
-      children.push(new Paragraph({ children: [new ImageRun({ type: 'png', data: Uint8Array.from(atob(PROPOSAL_DIAGRAM_PNG), c => c.charCodeAt(0)), transformation: { width: 500, height: 211 }, altText: { title: 'Kerangka berpikir', description: 'X1 dan X2 menuju Y secara parsial (H1, H2) dan simultan (H3).', name: 'Kerangka berpikir' } })], alignment: AlignmentType.CENTER, keepNext: true }), caption('Gambar 2.1 Kerangka Berpikir'), source('Sumber: Rancangan model penelitian.'), body(`Keterangan: X1 = ${thesis.x1 || '[Variabel X1]'}; X2 = ${thesis.x2 || '[Variabel X2]'}; Y = ${thesis.y || '[Variabel Y]'}. H1 dan H2 menunjukkan pengaruh parsial, sedangkan H3 menunjukkan pengaruh simultan yang akan diuji.`));
+      children.push(new Paragraph({ children: [new ImageRun({ type: 'png', data: Uint8Array.from(atob(PROPOSAL_DIAGRAM_PNG), c => c.charCodeAt(0)), transformation: { width: 500, height: 211 }, altText: { title: 'Kerangka berpikir', description: 'X1 dan X2 menuju Y secara parsial (H1, H2) dan simultan (H3).', name: 'Kerangka berpikir' } })], alignment: AlignmentType.CENTER, keepNext: true }), caption('Gambar 2.1 Kerangka Berpikir'), source('Sumber: Rancangan model penelitian.'), body(frameworkDescription));
     }
     if (s.id === 'location' && pendingSchedule) {
       children.push(caption('Tabel 3.1 Rencana Jadwal Penelitian'), manuscriptTable(['Tahap', 'Waktu Pelaksanaan'], ['Penyusunan proposal', 'Penelaahan dan uji coba instrumen', 'Pengumpulan data', 'Pengolahan dan analisis', 'Penyusunan laporan', 'Sidang'].map(stage => [stage, '']), [4700, 3237]), source('Sumber: Rencana penelitian.'));
