@@ -35,6 +35,8 @@ export default function DraftPersistence() {
       if (DRAFT_KEYS.some(key => key === event.key)) toast.info("Draf berubah di tab lain. Muat ulang sebelum melanjutkan edit.", { id: "draft-other-tab", duration: Infinity, action: { label: "Muat ulang", onClick: () => window.location.reload() } });
     }
     try { for (const key of DRAFT_KEYS) readDraft(key); } catch { storageError(); }
+    // Resume a save interrupted by closing the previous tab; unchanged drafts are skipped.
+    timer = setTimeout(upload, 1000);
     window.addEventListener(DRAFT_CHANGED, changed);
     window.addEventListener(DRAFT_ERROR, storageError);
     window.addEventListener("storage", changedInOtherTab);

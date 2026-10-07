@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CLOUD_STATUS, createSemproBackup, fetchSemproBackup, getCloudCode, recoveryLink, restoreSemproBackup, saveSemproOnline, type CloudStatus } from "@/lib/semproPersistence";
+import { CLOUD_STATUS, createSemproBackup, fetchSemproBackup, getCloudCode, getCloudSavedAt, recoveryLink, restoreSemproBackup, saveSemproOnline, type CloudStatus } from "@/lib/semproPersistence";
 import { MAX_BACKUP_BYTES } from "@/lib/semproBackup";
 
 const button = "rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50";
@@ -15,6 +15,8 @@ export default function SemproBackupPanel() {
     function changed(event: Event) { setStatus((event as CustomEvent<CloudStatus>).detail); refresh(); }
     const timer = setTimeout(() => {
       refresh();
+      const savedAt = getCloudSavedAt();
+      if (getCloudCode() && savedAt) setStatus({ text: `Tersimpan online · ${new Date(savedAt).toLocaleString("id-ID")}. Perubahan berikutnya dicadangkan otomatis.` });
       const code = new URLSearchParams(window.location.hash.slice(1)).get("pemulihan");
       if (code) { setInput(code); setStatus({ text: "Tautan pemulihan tersedia. Klik Buka cadangan untuk memuat BAB I–III. Draf saat ini akan dicadangkan sebagai project terpisah." }); }
     }, 0);

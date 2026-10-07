@@ -8,6 +8,7 @@ export const CLOUD_STATUS = "smartcampus:cloud-status";
 export type CloudStatus = { text: string; error?: boolean; saving?: boolean };
 const connectionKey = () => `smartcampus_cloud_${getActiveProjectId() || "draft"}`;
 export function getCloudCode(): string { try { return localStorage.getItem(connectionKey()) || ""; } catch { return ""; } }
+export function getCloudSavedAt(): string { try { return localStorage.getItem(`${connectionKey()}:savedAt`) || ""; } catch { return ""; } }
 export function recoveryLink(code: string): string { return `${window.location.origin}/proposal#pemulihan=${code}`; }
 export function reportCloud(status: CloudStatus) { window.dispatchEvent(new CustomEvent(CLOUD_STATUS, { detail: status })); }
 export function createSemproBackup(): SemproBackup {
